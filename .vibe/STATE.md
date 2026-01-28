@@ -13,7 +13,7 @@
 
 - Stage: 2
 - Checkpoint: 3.1
-- Status: IN_REVIEW  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
+- Status: DONE  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
 
 ## Objective (current checkpoint)
 
@@ -33,6 +33,7 @@
 
 ## Work log (current session)
 
+- 2026-01-28: Reviewed checkpoint 3.1; acceptance satisfied.
 - 2026-01-28: Verified Codex continuous-run skill and agentctl interaction for checkpoint 3.1.
 - 2026-01-28: Advanced checkpoint from 3.0 to 3.1 and reset status to NOT_STARTED.
 - 2026-01-28: Reviewed checkpoint 3.0; acceptance satisfied.
