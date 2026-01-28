@@ -13,7 +13,7 @@
 
 - Stage: 2
 - Checkpoint: 3.0
-- Status: NOT_STARTED  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
+- Status: IN_REVIEW  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
 
 ## Objective (current checkpoint)
 
@@ -33,6 +33,7 @@
 
 ## Work log (current session)
 
+- 2026-01-28: Documented continuous mode semantics for checkpoint 3.0.
 - 2026-01-28: Advanced checkpoint from 2.2 to 3.0 and reset status to NOT_STARTED.
 - 2026-01-28: Reviewed checkpoint 2.2; acceptance satisfied.
 - 2026-01-28: Documented manual fallback and removed Codex-only wording for checkpoint 2.2.
@@ -65,6 +66,27 @@
 
 ## Evidence
 
+- `rg -n "Continuous mode semantics" docs/concepts.md`
+  ```
+  39:## Continuous mode semantics
+  ```
+- `sed -n '39,80p' docs/concepts.md`
+  ```
+  ## Continuous mode semantics
+
+  Continuous mode is a **dispatcher-driven loop** that repeats only after the current loop
+  has completed and `.vibe/STATE.md` is updated. The dispatcher is re-invoked after each loop
+  to determine the next prompt.
+
+  Stop conditions:
+  - **Plan exhausted**: no next checkpoint exists in `.vibe/PLAN.md` → stop and record evidence.
+  - **BLOCKED state**: `.vibe/STATE.md` is set to BLOCKED → stop immediately.
+  - **BLOCKER issue**: any active issue marked BLOCKER → stop immediately.
+  - **Dispatcher recommends stop**: respect a `stop` recommendation from `agentctl`.
+
+  This definition prevents self-looping prompts and keeps control in `agentctl` rather than
+  inside individual prompt bodies.
+  ```
 - `rg -n "Manual execution fallback" -n docs/concepts.md`
   ```
   27:## Manual execution fallback (non-tool agents)

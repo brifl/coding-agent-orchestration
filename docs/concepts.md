@@ -35,3 +35,18 @@ producing explicit instructions for a human (or tool-enabled agent) to apply. Th
 4) Stop after one loop and wait for the updated `.vibe/STATE.md`.
 
 This keeps single-loop parity while respecting environments without direct tool access.
+
+## Continuous mode semantics
+
+Continuous mode is a **dispatcher-driven loop** that repeats only after the current loop
+has completed and `.vibe/STATE.md` is updated. The dispatcher is re-invoked after each loop
+to determine the next prompt.
+
+Stop conditions:
+- **Plan exhausted**: no next checkpoint exists in `.vibe/PLAN.md` → stop and record evidence.
+- **BLOCKED state**: `.vibe/STATE.md` is set to BLOCKED → stop immediately.
+- **BLOCKER issue**: any active issue marked BLOCKER → stop immediately.
+- **Dispatcher recommends stop**: respect a `stop` recommendation from `agentctl`.
+
+This definition prevents self-looping prompts and keeps control in `agentctl` rather than
+inside individual prompt bodies.
