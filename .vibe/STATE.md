@@ -13,7 +13,7 @@
 
 - Stage: 2
 - Checkpoint: 2.0
-- Status: NOT_STARTED  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
+- Status: IN_REVIEW  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
 
 ## Objective (current checkpoint)
 
@@ -33,6 +33,7 @@
 
 ## Work log (current session)
 
+- 2026-01-28: Added agent capability matrix and internal bootstrap capability map for checkpoint 2.0.
 - 2026-01-27: Bootstrapped this repo as a “real” example repo; populated plan/state.
 - 2026-01-27: Added the vibe-prompts catalog resource, refreshed both skill SKILL.md files, made `vibe_next_and_print.py` obey CODEX_HOME, reinstalled the codex skills, and exercised the `--show-decision` demonstration path.
 - 2026-01-27: Verified `agentctl next --format json` now surfaces `prompt.checkpoint_review`, confirming the scripts output a stable loop recommendation after the install changes.
@@ -56,6 +57,24 @@
 
 ## Evidence
 
+- `cat docs/agent_capabilities.md`
+  ```
+  | Agent | File editing | Command execution | Single-loop mode | Continuous mode | Notes |
+  | --- | --- | --- | --- | --- | --- |
+  | Codex | Yes | Yes | Yes | Yes | Reference implementation for loop execution. |
+  | Claude Code | Tool-dependent | Tool-dependent | Yes (manual or tool-assisted) | No (manual re-invocation only) | Default to advisory/review unless tools are explicitly available. |
+  | Gemini | Tool-dependent | Tool-dependent | Yes (manual or tool-assisted) | No (manual re-invocation only) | Default to advisory/review unless tools are explicitly available. |
+  | Copilot | Tool-dependent | Tool-dependent | Yes (manual or tool-assisted) | No (manual re-invocation only) | Default to advisory/review unless tools are explicitly available. |
+  ```
+- `cat prompts/init/capability_map.md`
+  ```
+  | Agent | Edit files | Run commands | Single-loop | Continuous |
+  | --- | --- | --- | --- | --- |
+  | Codex | yes | yes | yes | yes |
+  | Claude Code | tool-dependent | tool-dependent | yes (manual/tool) | no |
+  | Gemini | tool-dependent | tool-dependent | yes (manual/tool) | no |
+  | Copilot | tool-dependent | tool-dependent | yes (manual/tool) | no |
+  ```
 - `python3 tools/bootstrap.py install-skills --global --agent codex`
   ```
   install-skills summary (codex global)
