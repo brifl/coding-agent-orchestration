@@ -82,6 +82,76 @@ class ValidationResult:
     plan_check: PlanCheck | None
 
 
+def _slice_active_issues_section(text: str) -> list[str]:
+    lines = text.splitlines()
+    start = None
+    for idx, line in enumerate(lines):
+        if re.match(r"(?im)^\s*##\s+Active issues\s*$", line):
+            start = idx + 1
+            break
+    if start is None:
+        return []
+
+    out: list[str] = []
+    for line in lines[start:]:
+        if re.match(r"(?im)^\s*##\s+\S", line):
+            break
+        out.append(line)
+    return out
+
+
+def _parse_issues_checkbox_format(text: str) -> tuple[Issue, ...]:
+    """
+    Parse issues only from the '## Active issues' section:
+
+    - [ ] ISSUE-001: Title
+      - Severity: QUESTION
+      - Notes: ...
+    """
+    section_lines = _slice_active_issues_section(text)
+    if not section_lines:
+        return ()
+
+    issues: list[Issue] = []
+    issue_head = re.compile(r"^\s*-\s*\[\s*([xX ]?)\s*\]\s*(.+?)\s*$")
+    severity_line = re.compile(r"(?im)^\s*-\s*Severity\s*:\s*(.+?)\s*$")
+
+    i = 0
+    while i < len(section_lines):
+        line = section_lines[i].rstrip("\n")
+        m = issue_head.match(line)
+        if not m:
+            i += 1
+            continue
+
+        title = m.group(2).strip()
+        # Ignore placeholders and explicit "None."
+        if "<short" in title.lower() or title.strip().lower() in {"none", "none."}:
+            i += 1
+            continue
+
+        sev: str | None = None
+        j = i + 1
+        while j < len(section_lines):
+            nxt = section_lines[j]
+            if issue_head.match(nxt):
+                break
+            if nxt.strip() == "":
+                break
+            sm = severity_line.match(nxt)
+            if sm and sev is None:
+                sev = sm.group(1).strip().split()[0].upper()
+            j += 1
+
+        if sev not in SEVERITIES:
+            sev = "QUESTION"
+
+        issues.append(Issue(severity=sev, title=title, line=line))
+        i = j
+
+    return tuple(issues)
+
+
 def _resolve_path(repo_root: Path, raw_path: str) -> Path:
     path = Path(raw_path)
     return path if path.is_absolute() else (repo_root / path)
@@ -112,64 +182,6 @@ def _clean_status(raw: str | None) -> str | None:
     # Allow inline comments like: "IN_PROGRESS  <!-- ... -->"
     token = raw.strip().split()[0]
     return token.upper()
-
-
-def _parse_issues_checkbox_format(text: str) -> tuple[Issue, ...]:
-    """
-    Parse issues from STATE.md template style:
-
-    - [ ] ISSUE-001: Title
-      - Severity: QUESTION
-      - Notes: ...
-
-    Severity line may appear within the indented block; if missing, default QUESTION.
-    """
-    lines = text.splitlines()
-    issues: list[Issue] = []
-
-    issue_head = re.compile(r"^\s*-\s*\[\s*([xX ]?)\s*\]\s*(.+?)\s*$")
-    severity_line = re.compile(r"(?im)^\s*-\s*Severity\s*:\s*(.+?)\s*$")
-
-    i = 0
-    while i < len(lines):
-        line = lines[i].rstrip("\n")
-        if line.lstrip().startswith(">"):
-            i += 1
-            continue
-
-        m = issue_head.match(line)
-        if not m:
-            i += 1
-            continue
-
-        title = m.group(2).strip()
-        # Ignore template placeholder lines like "<short title>"
-        if "<short" in title.lower():
-            i += 1
-            continue
-
-        # Look ahead within the indented block (until next checkbox issue or blank line)
-        sev: str | None = None
-        j = i + 1
-        while j < len(lines):
-            nxt = lines[j]
-            if issue_head.match(nxt):
-                break
-            if nxt.strip() == "":
-                # allow blank lines but stop if we hit a new header
-                # (keep it simple: break on blank)
-                break
-            sm = severity_line.match(nxt)
-            if sm and sev is None:
-                sev = sm.group(1).strip().split()[0].upper()
-            j += 1
-
-        if sev not in SEVERITIES:
-            sev = "QUESTION"
-
-        issues.append(Issue(severity=sev, title=title, line=line))
-        i = j
-    return tuple(issues)
 
 
 def _parse_issues_legacy(text: str) -> tuple[Issue, ...]:
