@@ -43,6 +43,7 @@ Role = Literal[
     "design",
     "consolidation",
     "improvements",
+    "advance",
 ]
 
 
@@ -80,6 +81,38 @@ class ValidationResult:
     warnings: tuple[str, ...]
     state: StateInfo | None
     plan_check: PlanCheck | None
+
+
+def _parse_plan_checkpoint_ids(plan_text: str) -> list[str]:
+    """
+    Extract checkpoint ids in order from headings.
+
+    Recognizes headings like:
+      ### 1.2 — Title
+      ### 1.2 - Title
+      ### (DONE) 1.2 — Title
+    """
+    ids: list[str] = []
+    # capture (DONE) optionally, then capture the numeric id X.Y
+    pat = re.compile(r"(?im)^\s*#{3,6}\s+(?:\(\s*DONE\s*\)\s+)?(?P<id>\d+\.\d+)\b")
+    for m in pat.finditer(plan_text):
+        ids.append(m.group("id"))
+    return ids
+
+
+def _is_checkpoint_marked_done(plan_text: str, checkpoint_id: str) -> bool:
+    pat = re.compile(rf"(?im)^\s*#{3,6}\s+\(\s*DONE\s*\)\s+{re.escape(checkpoint_id)}\b")
+    return bool(pat.search(plan_text))
+
+
+def _next_checkpoint_after(plan_ids: list[str], current_id: str) -> str | None:
+    try:
+        idx = plan_ids.index(current_id)
+    except ValueError:
+        return plan_ids[0] if plan_ids else None
+    if idx + 1 < len(plan_ids):
+        return plan_ids[idx + 1]
+    return None
 
 
 def _slice_active_issues_section(text: str) -> list[str]:
@@ -422,25 +455,54 @@ def _top_issue_severity(issues: tuple[Issue, ...]) -> str | None:
     return best.severity
 
 
-def _recommend_next(state: StateInfo) -> tuple[Role, str]:
-    if state.issues:
-        top = _top_issue_severity(state.issues)
-        if top in {"BLOCKER", "MAJOR", "QUESTION"}:
-            return ("issues_triage", f"Active issues present (top severity: {top}).")
-
-    if state.status == "IN_REVIEW":
-        return ("review", "Checkpoint status is IN_REVIEW.")
-    if state.status in {"NOT_STARTED", "IN_PROGRESS"}:
-        return ("implement", f"Checkpoint status is {state.status}.")
+def _recommend_next(state: StateInfo, repo_root: Path) -> tuple[Role, str]:
+    # 0) Hard stop / hard triage conditions
     if state.status == "BLOCKED":
         return ("issues_triage", "Checkpoint status is BLOCKED.")
-    if state.status == "DONE":
-        # After DONE, either consolidate docs or move on to design the next checkpoint.
-        return ("consolidation", "Checkpoint status is DONE; consolidate docs and/or advance state.")
-    if not state.status:
-        return ("design", "No status set; stage design likely required.")
 
-    return ("implement", f"Status is '{state.status}'; defaulting to implement.")
+    top = _top_issue_severity(state.issues)
+    if top == "BLOCKER":
+        return ("issues_triage", "BLOCKER issue present.")
+
+    # 1) Review always happens if IN_REVIEW
+    if state.status == "IN_REVIEW":
+        return ("review", "Checkpoint status is IN_REVIEW.")
+
+    # 2) If DONE, either advance to next checkpoint or stop if plan exhausted
+    if state.status == "DONE":
+        plan_path = repo_root / ".vibe" / "PLAN.md"
+        plan_text = _read_text(plan_path) if plan_path.exists() else ""
+        plan_ids = _parse_plan_checkpoint_ids(plan_text)
+
+        if not plan_ids:
+            return ("stop", "No checkpoints found in .vibe/PLAN.md (plan exhausted).")
+
+        if not state.checkpoint:
+            return ("advance", "Status DONE but no checkpoint set; advance to first checkpoint in plan.")
+
+        nxt = _next_checkpoint_after(plan_ids, state.checkpoint)
+        if not nxt:
+            return ("stop", "Current checkpoint is last checkpoint in .vibe/PLAN.md (plan exhausted).")
+
+        # If the next one is explicitly marked (DONE), skip forward until you find not-DONE
+        while nxt and _is_checkpoint_marked_done(plan_text, nxt):
+            state_ck = nxt
+            nxt = _next_checkpoint_after(plan_ids, state_ck)
+
+        if not nxt:
+            return ("stop", "All remaining checkpoints are marked (DONE) in .vibe/PLAN.md (plan exhausted).")
+
+        return ("advance", f"Checkpoint is DONE; next checkpoint is {nxt}.")
+
+    # 3) Normal execution states
+    if state.status in {"NOT_STARTED", "IN_PROGRESS"}:
+        # If there are non-blocking issues, triage can be recommended (your choice)
+        if top in {"MAJOR", "QUESTION"}:
+            return ("issues_triage", f"Active issues present (top severity: {top}).")
+        return ("implement", f"Checkpoint status is {state.status}.")
+
+    # 4) Default
+    return ("design", "No recognized status; stage design likely required.")
 
 
 def _render_output(payload: dict[str, Any], fmt: str) -> str:
@@ -480,6 +542,14 @@ PROMPT_MAP: dict[Role, dict[str, str]] = {
         "id": "prompt.process_improvements",
         "title": "Process Improvements Prompt (system uplift)",
     },
+    "advance": {
+        "id": "prompt.advance_checkpoint",
+        "title": "Advance Checkpoint Prompt",
+    },
+    "stop": {
+        "id": "stop",
+        "title": "Stop (no remaining checkpoints)",
+    },
 }
 
 
@@ -517,7 +587,7 @@ def cmd_status(args: argparse.Namespace) -> int:
     repo_root = Path(args.repo_root)
     state = load_state(repo_root)
 
-    role, reason = _recommend_next(state)
+    role, reason = _recommend_next(state, repo_root)
 
     payload: dict[str, Any] = {
         "stage": state.stage,
@@ -542,7 +612,7 @@ def cmd_next(args: argparse.Namespace) -> int:
     repo_root = Path(args.repo_root)
     state = load_state(repo_root)
 
-    role, reason = _recommend_next(state)
+    role, reason = _recommend_next(state, repo_root)
 
     payload: dict[str, Any] = {
         "recommended_role": role,

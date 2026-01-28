@@ -206,7 +206,7 @@ def install_skills_codex_global(force: bool) -> int:
     src_skills_root = repo_root / "skills" / "codex"
 
     # Expected skill folders (we install only these by name)
-    skill_names = ["vibe-prompts", "vibe-loop", "vibe-one-loop", "vibe-review-pass"]
+    skill_names = ["vibe-prompts", "vibe-loop", "vibe-one-loop", "vibe-review-pass", "vibe-run"]
 
     updated: list[str] = []
     skipped: list[str] = []

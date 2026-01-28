@@ -424,3 +424,31 @@ Provide a 2–4 bullet justification.
 STOP CONDITION
 Stop after producing the output. Wait for human answers before proceeding.
 ```
+
+## prompt.advance_checkpoint — Advance Checkpoint Prompt
+
+```md
+ROLE: Workflow operator (mechanical)
+
+TASK
+Advance `.vibe/STATE.md` from a DONE checkpoint to the next checkpoint in `.vibe/PLAN.md`, then stop.
+
+RULES
+- Do not implement code.
+- Do not change `.vibe/PLAN.md`.
+- Do not skip ahead more than one checkpoint.
+- If no next checkpoint exists in `.vibe/PLAN.md`, set no new checkpoint; instead add a note under Evidence that the plan is exhausted and stop.
+
+PROCESS
+1) Read: AGENTS.md, .vibe/STATE.md, .vibe/PLAN.md
+2) Identify the current checkpoint in .vibe/STATE.md.
+3) Find the next checkpoint id in .vibe/PLAN.md (next heading with X.Y).
+4) Update .vibe/STATE.md:
+   - set Checkpoint to the next id
+   - set Status to NOT_STARTED
+   - append a Work log line
+5) Stop.
+
+STOP CONDITION
+Stop after updating `.vibe/STATE.md`.
+```
