@@ -12,8 +12,8 @@
 ## Current focus
 
 - Stage: 2
-- Checkpoint: 4.1
-- Status: DONE  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
+- Checkpoint: 5.0
+- Status: NOT_STARTED  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
 
 ## Objective (current checkpoint)
 
@@ -33,6 +33,7 @@
 
 ## Work log (current session)
 
+- 2026-01-28: Advanced checkpoint from 4.1 to 5.0 and reset status to NOT_STARTED.
 - 2026-01-28: Reviewed checkpoint 4.1; acceptance satisfied.
 - 2026-01-28: Documented cross-agent base skill packs for checkpoint 4.1.
 - 2026-01-28: Advanced checkpoint from 4.0 to 4.1 and reset status to NOT_STARTED.
