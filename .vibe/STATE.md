@@ -13,7 +13,7 @@
 
 - Stage: 2
 - Checkpoint: 2.0
-- Status: IN_REVIEW  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
+- Status: DONE  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
 
 ## Objective (current checkpoint)
 
@@ -33,6 +33,7 @@
 
 ## Work log (current session)
 
+- 2026-01-28: Reviewed checkpoint 2.0; acceptance satisfied.
 - 2026-01-28: Added agent capability matrix and internal bootstrap capability map for checkpoint 2.0.
 - 2026-01-27: Bootstrapped this repo as a “real” example repo; populated plan/state.
 - 2026-01-27: Added the vibe-prompts catalog resource, refreshed both skill SKILL.md files, made `vibe_next_and_print.py` obey CODEX_HOME, reinstalled the codex skills, and exercised the `--show-decision` demonstration path.
