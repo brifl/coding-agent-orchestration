@@ -13,7 +13,7 @@
 
 - Stage: 2
 - Checkpoint: 3.2
-- Status: NOT_STARTED  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
+- Status: IN_REVIEW  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
 
 ## Objective (current checkpoint)
 
@@ -33,6 +33,7 @@
 
 ## Work log (current session)
 
+- 2026-01-28: Added pseudo-continuous guidance to non-Codex bootstraps for checkpoint 3.2.
 - 2026-01-28: Advanced checkpoint from 3.1 to 3.2 and reset status to NOT_STARTED.
 - 2026-01-28: Reviewed checkpoint 3.1; acceptance satisfied.
 - 2026-01-28: Verified Codex continuous-run skill and agentctl interaction for checkpoint 3.1.
@@ -71,6 +72,39 @@
 
 ## Evidence
 
+- `sed -n '9,16p' prompts/init/claude_bootstrap.md`
+  ```
+  MODE
+  - Single-loop: choose one loop only; do not chain.
+  - Continuous mode exists, but only Codex should run it.
+  - For pseudo-continuous progress, re-run this bootstrap each loop or delegate to a tool-enabled operator.
+
+  READ ORDER
+  1) `AGENTS.md` (optional if already read this session)
+  2) `.vibe/STATE.md`
+  ```
+- `sed -n '9,16p' prompts/init/gemini_bootstrap.md`
+  ```
+  MODE
+  - Single-loop: pick one loop only; do not chain.
+  - Continuous mode exists, but only Codex should run it.
+  - For pseudo-continuous progress, re-run this bootstrap each loop or delegate to a tool-enabled operator.
+
+  READ ORDER
+  1) `AGENTS.md` (optional if already read this session)
+  2) `.vibe/STATE.md`
+  ```
+- `sed -n '9,16p' prompts/init/copilot_bootstrap.md`
+  ```
+  MODE
+  - Single-loop: choose one loop only; do not chain.
+  - Continuous mode exists, but only Codex should run it.
+  - For pseudo-continuous progress, re-run this bootstrap each loop or delegate to a tool-enabled operator.
+
+  READ ORDER
+  1) `AGENTS.md` (optional if already read this session)
+  2) `.vibe/STATE.md`
+  ```
 - `sed -n '1,80p' skills/codex/vibe-run/SKILL.md`
   ```
   ---

@@ -9,6 +9,7 @@ CONTRACT
 MODE
 - Single-loop: pick one loop only; do not chain.
 - Continuous mode exists, but only Codex should run it.
+- For pseudo-continuous progress, re-run this bootstrap each loop or delegate to a tool-enabled operator.
 
 READ ORDER
 1) `AGENTS.md` (optional if already read this session)
