@@ -21,5 +21,4 @@ Project-specific workflow files live under `.vibe/` and are typically gitignored
 - Use the next-step recommendation from your orchestration tools (if installed), or
 - Use the prompt catalog (`template_prompts.md` in your orchestration kit) to run one loop:
   - Stage Design → Implementation → Review → Triage (as needed) → Consolidation (as needed)
-
-Stop if you hit missing info, conflicting instructions, or any scope-changing decision point.
+Log an issue in `.vibe/STATE.md` if you hit missing info, conflicting instructions, or any scope-changing decision point. Then stop.

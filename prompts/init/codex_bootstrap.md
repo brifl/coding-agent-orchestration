@@ -35,4 +35,4 @@ C) If you can proceed, run the selected loop now.
 - Update `.vibe/STATE.md` accordingly.
 - Stop after completing the loop.
 
-D) If blocked, ask up to 2 clarifying questions and stop.
+D) If blocked, ask up to 2 clarifying questions as blocking issues in `.vibe/STATE.md` and stop.

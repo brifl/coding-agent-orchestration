@@ -57,6 +57,7 @@ tracking them, you can remove the ignore entry for that repo.
   Agent Skills packages (Codex first) that can:
   - fetch the right prompt text from the catalog
   - drive a “run one loop, stop” workflow using `agentctl.py`
+  - drive a continuous loop workflow using skills
 
 ## Quick start
 

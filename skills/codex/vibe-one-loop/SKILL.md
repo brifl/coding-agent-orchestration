@@ -26,4 +26,4 @@ Non-negotiable rule:
 
 ## Failure mode
 
-If the script fails, report the error and stop.
+If the script fails, report the error as a blocking issue in `.vibe/STATE.md` and stop.

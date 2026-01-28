@@ -6,7 +6,7 @@ NON-NEGOTIABLE RULES
 - `.vibe/STATE.md` is the current truth for what to do next.
 - `.vibe/PLAN.md` contains checkpoints with acceptance criteria.
 - Do not start implementation until you know the current checkpoint and its acceptance criteria.
-- Ask at most 1–2 clarifying questions if needed, then stop.
+- Ask at most 1–2 clarifying questions if needed as issues in `.vibe/STATE.md`, then stop.
 
 READ ORDER (do this now)
 1) `AGENTS.md`
@@ -34,4 +34,4 @@ C) Clarifying questions (max 2)
 Only ask questions that block the next loop.
 
 STOP
-Stop after producing A–C. Wait for answers if you asked questions.
+Stop after producing A–C. Wait for answers if you asked questions. Otherwise, retrieve the next command.

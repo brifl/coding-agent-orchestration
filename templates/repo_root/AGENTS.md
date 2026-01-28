@@ -34,7 +34,7 @@ At the start of any new session (or when context is unclear), the agent must:
 
 - Do **one coherent unit of work** at a time (typically one checkpoint step).
 - Prefer **small, reviewable diffs**.
-- When ambiguity affects correctness, ask **1–2 clarifying questions max**, then stop.
+- When ambiguity affects correctness, ask **1–2 clarifying questions max** as issues in `.vibe/STATE.md`, then stop.
 
 ### Output discipline
 
@@ -64,7 +64,7 @@ The agent should operate in one of these loops, as appropriate to `.vibe/STATE.m
 
 ## Stop conditions (hard)
 
-Stop and ask for input if any of the following occurs:
+Stop and ask for input (as issue) if any of the following occurs:
 - Missing required information to meet acceptance criteria
 - Conflicting instructions between authoritative sources
 - A decision point that changes scope, architecture, or dependencies materially

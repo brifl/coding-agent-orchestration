@@ -66,7 +66,7 @@ Ship a usable Codex global skill MVP that can (a) recommend the next loop, and (
   ROLE: Primary software engineer
 
   TASK
-  Advance the project by EXACTLY ONE checkpoint from .vibe/PLAN.md (the checkpoint currently marked CURRENT in .vibe/STATE.md), then stop.
+  Advance the project by EXACTLY ONE checkpoint from .vibe/PLAN.md (the checkpoint currently marked CURRENT in .vibe/STATE.md), then get next instruction.
 
   GENERAL RULES
   - Treat .vibe/STATE.md as authoritative for what to do next.
@@ -75,10 +75,10 @@ Ship a usable Codex global skill MVP that can (a) recommend the next loop, and (
   - If you discover missing requirements or contradictions, add an issue to .vibe/STATE.md and stop.
 
   READ FIRST
-  - README.md (optional)
   - AGENTS.md
   - .vibe/STATE.md
   - .vibe/PLAN.md
+  - README.md (optional, codebase context)
 
   EXECUTION
   1) Identify current checkpoint from .vibe/STATE.md.

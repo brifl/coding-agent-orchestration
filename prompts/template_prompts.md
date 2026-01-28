@@ -4,17 +4,16 @@ This repo is executed via a small set of repeating prompt loops. Plans and state
 
 ### Source of truth (read order)
 
-1) README.md (optional)
-2) AGENTS.md (execution contract)
-3) .vibe/STATE.md (current stage/checkpoint/status + active issues)
-4) .vibe/PLAN.md (near-term plan: stages + checkpoints)
+1) AGENTS.md (execution contract)
+2) .vibe/STATE.md (current stage/checkpoint/status + active issues)
+3) .vibe/PLAN.md (near-term plan: stages + checkpoints)
+4) README.md (optional, codebase context)
 5) .vibe/HISTORY.md (optional; non-authoritative rollups)
 
 ### Common rules (apply to all loops)
 
-- Always start by reading: README.md, AGENTS.md, .vibe/STATE.md, .vibe/PLAN.md.
 - The plan is in .vibe/PLAN.md; the current truth is in .vibe/STATE.md. If they conflict, update the plan to match the state (unless the state is clearly wrong, in which case open an issue in .vibe/STATE.md first).
-- If you are missing key information, ask 1-2 clarifying questions and stop.
+- If you are missing key information, ask 1-2 clarifying questions in the form of issues in STATE.md and stop.
 - Keep changes tight and minimize churn.
 - Prefer deterministic, verifiable outputs:
   - concrete files
@@ -39,10 +38,10 @@ SCOPE
 - If the current stage/checkpoint is wrong or missing, fix .vibe/STATE.md first.
 
 SOURCE OF TRUTH (read in order)
-1) README.md (optional)
-2) AGENTS.md
-3) .vibe/STATE.md (authoritative current stage/checkpoint/status)
-4) .vibe/PLAN.md
+1) AGENTS.md
+2) .vibe/STATE.md (authoritative current stage/checkpoint/status)
+3) .vibe/PLAN.md
+4) README.md (optional, codebase context)
 5) .vibe/HISTORY.md (optional; non-authoritative)
 
 PRIMARY OBJECTIVE
@@ -66,7 +65,7 @@ OUTPUT
 - If you change the current checkpoint or stage, update .vibe/STATE.md accordingly.
 
 STOP CONDITION
-Stop after updating .vibe/PLAN.md (and .vibe/STATE.md if needed). Do not begin implementation.
+Stop this step after updating .vibe/PLAN.md (and .vibe/STATE.md if needed). Retrieve the next command. If it is "stop", then exit.
 ```
 
 ---
@@ -86,10 +85,10 @@ GENERAL RULES
 - If you discover missing requirements or contradictions, add an issue to .vibe/STATE.md and stop.
 
 READ FIRST
-- README.md (optional)
 - AGENTS.md
 - .vibe/STATE.md
 - .vibe/PLAN.md
+- README.md (optional)
 
 EXECUTION
 1) Identify current checkpoint from .vibe/STATE.md.
@@ -123,10 +122,9 @@ Continue looping (re-run this prompt) while checkpoints remain and no blocking i
 ROLE: Active reviewer (adversarial)
 
 GOAL
-Decide whether the IN_REVIEW checkpoint is truly complete per README.md + AGENTS.md + .vibe/PLAN.md, and whether we are ready to move on.
+Decide whether the IN_REVIEW checkpoint is truly complete per AGENTS.md + .vibe/PLAN.md, and whether we are ready to move on.
 
 GENERAL RULES
-- Always start by reading: README.md, AGENTS.md, .vibe/STATE.md, .vibe/PLAN.md.
 - You are allowed to run commands/tests and read code.
 - Prefer catching subtle incompleteness and drift.
 
@@ -153,7 +151,7 @@ D) Next action
 - If FAIL: set status to IN_PROGRESS or BLOCKED and point to the issues
 
 STOP CONDITION
-Stop after updating .vibe/STATE.md and providing the verdict.
+Stop this step after updating .vibe/STATE.md and providing the verdict. Retrieve the next command. If it is "stop", then exit.
 ```
 
 ---
@@ -195,7 +193,7 @@ OUTPUT
 - Any new questions (max 2)
 
 STOP CONDITION
-Stop after resolving the top issues or after asking questions needed to proceed.
+Stop after resolving blocking / critical issues or after asking questions needed to proceed. Otherwise, retrieve the next command. If it is "stop", then exit.
 ```
 
 ---
@@ -289,13 +287,13 @@ SCOPE
 - Do not implement product features.
 
 INPUTS (read in order)
-1) README.md (optional)
-2) AGENTS.md
-3) .vibe/STATE.md
-4) .vibe/PLAN.md
-5) .vibe/HISTORY.md (optional; non-authoritative)
-6) template_prompts.md (prompt catalog; optional)
-7) tools/agentctl.py (if present)
+1) AGENTS.md
+2) .vibe/STATE.md
+3) .vibe/PLAN.md
+4) .vibe/HISTORY.md (optional; non-authoritative)
+5) template_prompts.md (prompt catalog; optional)
+6) tools/agentctl.py (if present)
+7) README.md (optional, codebase context)
 8) Optional: `./var/process_log.jsonl` (untracked)
 
 GOAL
@@ -327,18 +325,18 @@ D) Result summary (brief)
 E) Next recommendation (optional; one bullet)
 
 STOP CONDITION
-Stop after the improvement is implemented and validated.
+Stop this step after the improvement is implemented and validated. Retrieve the next command. If it is "stop", then exit.
 ```
 
 ---
 
-## guide.create_checkpoints — Design: Create checkpoints
+## guide.create_checkpoints — Design: Create checkpoints (external)
 
 ```md
 Let's grab the next 1 to 3 stages and break out some checkpoints for imminent work to be done. 
 - Crisp up the stages themselves and create 1 to 6 checkpoints within the stages. 
 - Do not make any "optional" - either it is in the stage/checkpoint or it isn't. 
-- This should be the next 1 to 3 stages and their checkpoints, and then stop.
+- This should be the next 1 to 3 stages and their checkpoints.
 
 Each checkpoint needs:
 - Objective (1 sentence)
@@ -347,14 +345,11 @@ Each checkpoint needs:
 - Demo commands (exact, local, minimal)
 - Evidence (what to paste into .vibe/STATE.md)
 
-OUTPUT
-Update .vibe/PLAN.md only. Do not implement.
-STOP after updating .vibe/PLAN.md.
 ```
 
 ---
 
-## prompt.onboarding — Onboarding Prompt
+## prompt.onboarding — Onboarding Prompt (deprecated)
 
 ```md
 ROLE: New contributor LLM (Claude Code / other)
@@ -383,10 +378,10 @@ SCOPE (this prompt is questions-only)
 - Your job is to ask clarifying questions and report your understanding.
 
 READ FIRST (in order)
-1) README.md (optional)
-2) AGENTS.md
-3) .vibe/STATE.md
-4) .vibe/PLAN.md
+1) AGENTS.md
+2) .vibe/STATE.md
+3) .vibe/PLAN.md
+4) README.md (optional, codebase context)
 5) .vibe/HISTORY.md (optional; non-authoritative)
 6) template_prompts.md (prompt catalog; optional)
 
@@ -431,7 +426,7 @@ Stop after producing the output. Wait for human answers before proceeding.
 ROLE: Workflow operator (mechanical)
 
 TASK
-Advance `.vibe/STATE.md` from a DONE checkpoint to the next checkpoint in `.vibe/PLAN.md`, then stop.
+Advance `.vibe/STATE.md` from a DONE checkpoint to the next checkpoint in `.vibe/PLAN.md`, then get the next command from `tools\agentctl.py`.
 
 RULES
 - Do not implement code.
@@ -450,5 +445,5 @@ PROCESS
 5) Stop.
 
 STOP CONDITION
-Stop after updating `.vibe/STATE.md`.
+Stop this step after updating `.vibe/STATE.md`.
 ```
