@@ -75,6 +75,11 @@
 - **Resolution:** Declared `.vibe/` as the only authoritative location and removed fallback logic.
 - **Impact:** Simplified scripts, reduced agent ambiguity, and lowered cognitive overhead.
 
+### 2026-01-27 — ISSUE-001: `vibe_next_and_print.py` assumed the default `~/.codex/skills` path
+
+- **Resolution:** Updated `vibe_next_and_print.py` to prefer the CODEX_HOME-aware skills root, added the catalog resources to the skill tree, and refreshed skill docs/scripts via the bootstrap installer.
+- **Impact:** The helper now works from both the repo and any CODEX_HOME-defined global install, eliminating the previous minor blocker.
+
 ---
 
 ## Process notes

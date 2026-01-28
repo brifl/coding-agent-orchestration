@@ -45,6 +45,33 @@ def _codex_skills_root_env_fallback() -> Path | None:
     return Path(codex_home).expanduser().resolve() / "skills"
 
 
+def _looks_like_skills_root(root: Path) -> bool:
+    """
+    Simple heuristics to ensure the candidate folder contains the required skills.
+    """
+    return (root / "vibe-loop").exists() and (root / "vibe-prompts").exists()
+
+
+def _locate_skills_root() -> Path:
+    """
+    Prefer the CODEX_HOME-aware install root but fall back to whichever root contains the skills layout.
+    """
+    candidates: list[Path] = []
+    env_root = _codex_skills_root_env_fallback()
+    if env_root and env_root.exists():
+        candidates.append(env_root)
+
+    script_root = _skills_root_from_this_script()
+    candidates.append(script_root)
+
+    for candidate in candidates:
+        if _looks_like_skills_root(candidate):
+            return candidate
+
+    # Nothing matched the heuristic; fall back to the script-derived location.
+    return script_root
+
+
 def _run_agentctl(repo_root: Path, agentctl_path: Path) -> dict:
     cmd = [
         sys.executable,
@@ -95,16 +122,8 @@ def main() -> int:
         print(f"ERROR: repo root not found: {repo_root}", file=sys.stderr)
         return 2
 
-    # Locate skill install layout.
-    skills_root = _skills_root_from_this_script()
-
-    # If someone installed to a nonstandard location, allow CODEX_HOME/skills to override.
-    env_root = _codex_skills_root_env_fallback()
-    if env_root and env_root.exists():
-        # Only override if this script is running from a non-skills-root context
-        # or if the env root appears more plausible.
-        # (Keep it simple: prefer the script-derived root; use env only if script-derived missing siblings.)
-        pass
+    # Locate skill install layout (prefers CODEX_HOME when present).
+    skills_root = _locate_skills_root()
 
     agentctl_path = skills_root / "vibe-loop" / "scripts" / "agentctl.py"
     if not agentctl_path.exists():

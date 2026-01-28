@@ -15,18 +15,20 @@ This skill can:
 
 ## Resources
 
-- `resources/template_prompts.md` (canonical prompt catalog; synced by bootstrap)
+- `resources/template_prompts.md` (canonical prompt catalog; synced from `prompts/template_prompts.md`)
 
 ## Scripts
 
 - `scripts/prompt_catalog.py`
+- `scripts/vibe_get_prompt.py`
 
 ## How to use
 
 - List prompts:
   - Run: `python3 scripts/prompt_catalog.py resources/template_prompts.md list`
 - Get a prompt body:
-  - Run: `python3 scripts/prompt_catalog.py resources/template_prompts.md get <prompt_id_or_title>`
+  - Run: `python3 scripts/vibe_get_prompt.py resources/template_prompts.md prompt.onboarding`
+  - `vibe_get_prompt.py` wraps `prompt_catalog.py get` and prints only the prompt body so it can be pasted directly into a loop
 
 ## Output
 
