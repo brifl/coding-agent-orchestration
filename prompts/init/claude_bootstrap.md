@@ -34,4 +34,4 @@ C) Clarifying questions (max 2)
 Only ask questions that block the next loop.
 
 STOP
-Stop after producing A–C. Wait for answers if you asked questions. Otherwise, retrieve the next command.
+Stop after producing A–C. Wait for answers if you asked questions.

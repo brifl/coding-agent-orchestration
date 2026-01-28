@@ -6,4 +6,4 @@ description: Mark the current IN_REVIEW checkpoint as DONE (PASS) deterministica
 Run:
 python ~/.codex/skills/vibe-loop/scripts/vibe_mark_done.py --repo-root . --pass
 
-Then stop.
+Ensure blocking issue logged, then stop.

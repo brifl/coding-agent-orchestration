@@ -34,8 +34,7 @@ This skill uses `.vibe/STATE.md` and `.vibe/PLAN.md` to recommend the next loop 
 1) Run `next` to obtain `recommended_prompt_id`.
 2) Use the `vibe-prompts` skill to print the corresponding prompt body.
 3) Execute that prompt loop in the agent session.
-4) Stop after one loop completes and `.vibe/STATE.md` is updated.
-5) Wait for next command message.
+4) Select next loop from `next`. Repeat until dispatcher returns stop or blocking.
 
 The `vibe_next_and_print.py` helper wraps `agentctl.py` and `prompt_catalog.py`, prints the decision JSON (when `--show-decision` is set), and then emits the prompt body from the catalog. It locates the installed `vibe-prompts` skill via the same CODEX_HOME-aware logic as `tools/bootstrap.py` so it works from both repo sources and global installs.
 

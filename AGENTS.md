@@ -66,7 +66,7 @@ The agent should operate in one of these loops, as appropriate to `.vibe/STATE.m
 
 ## Stop conditions (hard)
 
-Stop and ask for input if any of the following occurs:
+Stop and ask for input (as issue) if any of the following occurs:
 - Missing required information to meet acceptance criteria
 - Conflicting instructions between authoritative sources
 - A decision point that changes scope, architecture, or dependencies materially

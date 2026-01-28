@@ -65,7 +65,7 @@ OUTPUT
 - If you change the current checkpoint or stage, update .vibe/STATE.md accordingly.
 
 STOP CONDITION
-Stop this step after updating .vibe/PLAN.md (and .vibe/STATE.md if needed). Retrieve the next command. If it is "stop", then exit.
+Stop this loop after updating .vibe/PLAN.md (and .vibe/STATE.md if needed). Return to dispatcher.
 ```
 
 ---
@@ -151,7 +151,7 @@ D) Next action
 - If FAIL: set status to IN_PROGRESS or BLOCKED and point to the issues
 
 STOP CONDITION
-Stop this step after updating .vibe/STATE.md and providing the verdict. Retrieve the next command. If it is "stop", then exit.
+Stop this loop after updating .vibe/STATE.md and providing the verdict. Return to dispatcher.
 ```
 
 ---
@@ -193,7 +193,7 @@ OUTPUT
 - Any new questions (max 2)
 
 STOP CONDITION
-Stop after resolving blocking / critical issues or after asking questions needed to proceed. Otherwise, retrieve the next command. If it is "stop", then exit.
+Stop after resolving blocking / critical issues or after asking questions needed to proceed. Return to dispatcher.
 ```
 
 ---
@@ -325,7 +325,7 @@ D) Result summary (brief)
 E) Next recommendation (optional; one bullet)
 
 STOP CONDITION
-Stop this step after the improvement is implemented and validated. Retrieve the next command. If it is "stop", then exit.
+Stop this loop after the improvement is implemented and validated. Return to dispatcher.
 ```
 
 ---
