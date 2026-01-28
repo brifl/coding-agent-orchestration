@@ -8,358 +8,311 @@
 - Each checkpoint must have: Objective, Deliverables, Acceptance, Demo commands, Evidence.
 - Keep checkpoints small enough to complete in one focused iteration.
 
-## Stage 0 — Baseline workflow + bootstrapping (DONE)
+## Stage 2 — Cross-agent parity for core Vibe workflow
 
-### 0.0 — Repo scaffold + baseline templates
+**Stage objective:**
+All core Vibe functionality (bootstrap, loop execution, state transitions, stop conditions) works _consistently_ across Codex, Gemini, Claude Code, and Copilot, using the same conceptual model and prompt catalog.
 
-- Objective:
-  - Establish the canonical repo structure and baseline templates for bootstrapping target repos.
-- Deliverables:
-  - `templates/repo_root/AGENTS.md`
-  - `templates/repo_root/VIBE.md`
-  - `templates/vibe_folder/STATE.md`, `PLAN.md`, `HISTORY.md`
-  - `README.md` describing the system
-- Acceptance:
-  - [x] Target repo structure is stable and minimal
-  - [x] Templates are consistent with `.vibe/` being authoritative
-- Demo commands:
-  - `python3 tools/bootstrap.py init-repo /path/to/target/repo`
-- Evidence:
-  - Screenshot/paste of init-repo summary output
+### 2.0 — Agent capability matrix + constraints model
 
-### 0.1 — Bootstrap script (init-repo) is idempotent
+* **Objective:**
+  Explicitly model what each agent can and cannot do so the same workflow can adapt without forking logic.
 
-- Objective:
-  - Provide a safe initializer that creates `.vibe/` and adds `.vibe/` to `.gitignore` without overwriting project files.
-- Deliverables:
-  - `tools/bootstrap.py` with `init-repo <path>`
-- Acceptance:
-  - [x] Running `init-repo` twice results in no destructive changes
-  - [x] `.vibe/` is added to `.gitignore` exactly once
-- Demo commands:
-  - `python3 tools/bootstrap.py init-repo .`
-  - `python3 tools/bootstrap.py init-repo .`
-- Evidence:
-  - Paste the two summaries showing “Created” then “Skipped”
+* **Deliverables:**
 
-## Stage 1 — Codex-first MVP skills + deterministic control plane (IN PROGRESS)
+  * `docs/agent_capabilities.md` defining:
 
-### Checkpoint 1.0 — Prompt catalog + stable IDs
+    * file editing support
+    * command execution support
+    * continuous vs single-loop viability
+  * Internal capability map used by bootstraps (not code-executed yet)
 
-- Objective:
-  - Make prompt retrieval deterministic and scriptable with stable IDs.
-- Deliverables:
-  - `prompts/template_prompts.md` uses stable IDs (`## prompt.* — ...`)
-  - `tools/prompt_catalog.py` supports `list` and `get`
-- Acceptance:
-  - [x] `python3 tools/prompt_catalog.py prompts/template_prompts.md list` prints IDs + titles
-  - [x] `... get prompt.onboarding` prints the correct body
-- Demo commands:
-  - `python3 tools/prompt_catalog.py prompts/template_prompts.md list`
-  - `python3 tools/prompt_catalog.py prompts/template_prompts.md get prompt.onboarding`
-- Evidence:
-  - Paste list output + one retrieved prompt body
+* **Acceptance:**
 
-### Checkpoint 1.1 — `.vibe/`-aware agent control plane
+  * Capabilities for Codex, Gemini, Claude Code, Copilot are clearly documented
+  * No workflow assumptions contradict documented capabilities
 
-- Objective:
-  - Provide a deterministic `agentctl` that reads `.vibe/STATE.md` and recommends the next loop prompt.
-- Deliverables:
-  - `tools/agentctl.py` supports `status|next|validate` and emits `recommended_prompt_id`
-- Acceptance:
-  - [x] `python3 tools/agentctl.py status` works in a bootstrapped repo
-  - [x] `python3 tools/agentctl.py next --format json` includes `recommended_prompt_id`
-- Demo commands:
-  - `python3 tools/agentctl.py --repo-root . status`
-  - `python3 tools/agentctl.py --repo-root . next --format json`
-- Evidence:
-  - Paste JSON output from `next`
+* **Demo commands:**
 
-### Checkpoint 1.2 — Codex global skills MVP (CURRENT)
+  * (manual) open `docs/agent_capabilities.md`
 
-- Objective:
-  - Install global Codex skills and provide one-command prompt retrieval and “next-and-print” for a target repo.
-- Deliverables:
-  - `skills/codex/vibe-prompts/SKILL.md`
-  - `skills/codex/vibe-prompts/scripts/vibe_get_prompt.py`
-  - `skills/codex/vibe-loop/SKILL.md`
-  - `skills/codex/vibe-loop/scripts/vibe_next_and_print.py` (respects `CODEX_HOME`)
-  - `tools/bootstrap.py install-skills --global --agent codex`
-- Acceptance:
-  - [ ] Global install works and is idempotent
-  - [ ] `vibe_next_and_print.py` prints a valid loop prompt body for the repo’s current state
-  - [ ] Clear error messages for missing `.vibe` or missing catalog
-- Demo commands:
-  - `python3 tools/bootstrap.py install-skills --global --agent codex`
-  - `python3 ~/.codex/skills/vibe-loop/scripts/vibe_next_and_print.py --repo-root . --show-decision`
-- Evidence:
-  - Paste install summary + `--show-decision` output (decision JSON + prompt body)
+* **Evidence:**
 
-## Stage 2 — Multi-agent adapters (Codex-led, Claude/Gemini compatible)
-
-**Purpose:**
-Make this repo the canonical, agent-agnostic reference implementation. Codex executes; other agents reason, plan, and review without breaking the contract.
-
-### Checkpoint 2.0 — Canonical bootstrap prompts (Codex, Claude, Gemini, Copilot)
-
-**Objective**
-Provide minimal, unambiguous bootstrap prompts that orient each agent into the Vibe workflow without duplicating logic or embedding loops.
-
-**Deliverables**
-
-* `prompts/init/codex_bootstrap.md`
-* `prompts/init/claude_bootstrap.md`
-* `prompts/init/gemini_bootstrap.md`
-* `prompts/init/copilot_bootstrap.md`
-* Corresponding stable-ID entries in `prompts/template_prompts.md`
-
-**Acceptance**
-
-* Each bootstrap is ≤ 30 lines.
-* Each bootstrap:
-
-  * points to `AGENTS.md`, `.vibe/STATE.md`, `.vibe/PLAN.md`
-  * clearly distinguishes **single-loop vs continuous** execution
-  * does **not** embed looping behavior
-* Codex bootstrap explicitly references `$vibe-one-loop` and `$vibe-run`.
-
-**Demo commands**
-
-```bash
-python tools/prompt_catalog.py prompts/template_prompts.md get init.codex_bootstrap
-python tools/prompt_catalog.py prompts/template_prompts.md get init.claude_bootstrap
-```
-
-**Evidence**
-
-* Paste the four bootstrap texts.
-* Paste a short transcript excerpt from each agent showing correct orientation (stage / checkpoint / status identified).
+  * Paste the capability table
 
 ---
 
-### Checkpoint 2.1 — Continuous runner skill (Codex)
+### 2.1 — Unified bootstrap prompts for all agents
 
-**Objective**
-Enable Codex to autonomously progress a repo until interruption, plan exhaustion, or blocking issue.
+* **Objective:**
+  Ensure every supported agent can be dropped into a repo and correctly orient to the Vibe workflow without copy-paste confusion.
 
-**Deliverables**
+* **Deliverables:**
 
-* `skills/codex/vibe-run/SKILL.md`
-* Installer wiring in `tools/bootstrap.py`
-* Documentation note in `README.md` describing continuous mode vs single-loop
+  * `prompts/init/codex_bootstrap.md`
+  * `prompts/init/claude_bootstrap.md`
+  * `prompts/init/gemini_bootstrap.md`
+  * `prompts/init/copilot_bootstrap.md`
+  * All reference the same conceptual steps:
 
-**Acceptance**
+    * read AGENTS.md
+    * read `.vibe/STATE.md` and `.vibe/PLAN.md`
+    * select or run next loop based on capability
 
-* `$vibe-run` repeatedly:
+* **Acceptance:**
 
-  * dispatches via `agentctl`
-  * executes exactly one loop per iteration
-  * advances checkpoints when DONE
-* Stops when:
+  * Each bootstrap:
 
-  * no next checkpoint exists
-  * status becomes BLOCKED
-  * a BLOCKER issue exists
+    * is ≤ 40 lines
+    * does not embed workflow logic
+    * does not contradict single-loop vs continuous semantics
+  * Language differs only where agent capability requires it
 
-**Demo commands**
+* **Demo commands:**
 
-```bash
-python tools/bootstrap.py install-skills --global --agent codex
-# In Codex chat:
-$vibe-run
-```
+  * (manual) paste each bootstrap into a fresh chat
 
-**Evidence**
+* **Evidence:**
 
-* Paste a run transcript showing at least:
-
-  * implementation → review → advance → next implementation
-  * clean stop when plan is exhausted
+  * Paste each bootstrap header + first successful response snippet
 
 ---
 
-### Checkpoint 2.2 — Agent capability contract
+### 2.2 — Core loop execution parity (single-loop)
 
-**Objective**
-Make agent differences explicit so the workflow behaves predictably across tools.
+* **Objective:**
+  Verify that **Checkpoint Implementation, Review, Issues Triage, Consolidation, Advance** loops can be executed correctly by _all_ agents in single-loop mode.
 
-**Deliverables**
+* **Deliverables:**
 
-* Section in `README.md` or `docs/concepts.md`:
+  * Adjusted loop prompts (if needed) to remove Codex-only assumptions
+  * Documented “manual execution fallback” for non-tool agents
 
-  * Codex: executes loops + edits files
-  * Claude/Gemini: propose, review, design; may execute only if tools allow
-* Clear rule: only Codex runs `$vibe-run` by default
+* **Acceptance:**
 
-**Acceptance**
+  * Each agent can:
 
-* A new user can tell which agent to use for which role in <5 minutes.
+    * run exactly one loop
+    * update `.vibe/STATE.md` correctly
+    * stop cleanly
+  * No agent requires special-cased prompts
 
-**Demo commands**
+* **Demo commands:**
 
-```bash
-# none (doc-only)
-```
+  * (manual) run one loop per agent on the same repo
 
-**Evidence**
+* **Evidence:**
 
-* Paste the capability matrix section.
-
----
-
-## Stage 3 — Repo-specific skill sets (Claude/Gemini design-led)
-
-**Purpose:**
-Allow repos to extend or constrain behavior without mutating global skills.
-
-### Checkpoint 3.0 — Skill set configuration model
-
-**Objective**
-Define how a repo declares additional skills and prompt catalogs.
-
-**Deliverables**
-
-* `.vibe/config.json` schema (documented)
-* `docs/concepts.md` section: “Skill Sets”
-* `tools/bootstrap.py init-repo --skillset <name>`
-
-**Acceptance**
-
-* Skill set config can specify:
-
-  * name
-  * additional skill folders
-  * additional prompt catalogs
-* No behavior changes if config is absent.
-
-**Demo commands**
-
-```bash
-python tools/bootstrap.py init-repo . --skillset minimal
-cat .vibe/config.json
-```
-
-**Evidence**
-
-* Paste generated `.vibe/config.json`.
+  * Paste resulting `.vibe/STATE.md` diffs per agent
 
 ---
 
-### Checkpoint 3.1 — Repo-local skill installation (Codex)
+## Stage 3 — Continuous mode + dispatcher parity
 
-**Objective**
-Install repo-local skills alongside global ones with deterministic precedence.
+**Stage objective:**
+Continuous execution (`$vibe-run`) behaves identically across agents _where possible_, and degrades gracefully where not.
 
-**Deliverables**
+### 3.0 — Continuous-mode semantics finalized
 
-* `tools/bootstrap.py install-skills --repo --agent codex`
-* Example repo-local skill:
+* **Objective:**
+  Lock down what “continuous run” means independently of agent.
 
-  * e.g. `skills/repo/example-validation/SKILL.md`
+* **Deliverables:**
 
-**Acceptance**
+  * Documented semantics:
 
-* Repo-local skills:
+    * when dispatcher is re-invoked
+    * when execution stops
+    * how BLOCKED and exhausted plans are handled
+  * Updated `docs/concepts.md` section
 
-  * do not overwrite global skills
-  * are discoverable by Codex
-* Precedence rules documented and enforced.
+* **Acceptance:**
 
-**Demo commands**
+  * Continuous mode definition is unambiguous
+  * No loop prompt self-loops
 
-```bash
-python tools/bootstrap.py install-skills --repo --agent codex
-tree .vibe/skills
-```
+* **Demo commands:**
 
-**Evidence**
+  * (manual) review doc section
 
-* Paste tree showing global + repo-local skill coexistence.
+* **Evidence:**
 
----
-
-## Stage 4 — Advanced capability expansion (Codex execution, Claude/Gemini design)
-
-**Purpose:**
-Add power without sacrificing determinism or safety.
-
-### Checkpoint 4.0 — Multi-directory scan + index skill
-
-**Objective**
-Allow agents to reason over large repos without ad-hoc globbing.
-
-**Deliverables**
-
-* `skills/*/vibe-scan/SKILL.md`
-* Script to:
-
-  * scan configured directories
-  * produce a lightweight index (paths + summaries)
-* Optional `.vibe/scan.json` config
-
-**Acceptance**
-
-* Scan completes deterministically.
-* Index is readable by prompts and tools.
-* No implicit recursion beyond configured roots.
-
-**Demo commands**
-
-```bash
-python ~/.codex/skills/vibe-scan/scripts/scan.py --repo-root .
-```
-
-**Evidence**
-
-* Paste index file snippet.
+  * Paste final semantics section
 
 ---
 
-### Checkpoint 4.1 — RLM tools skill (bounded recursion)
+### 3.1 — Continuous run for Codex (reference implementation)
 
-**Objective**
-Introduce recursive tool use with explicit bounds and auditability.
+* **Objective:**
+  Make Codex the reference implementation for continuous execution.
 
-**Deliverables**
+* **Deliverables:**
 
-* `skills/*/vibe-rlm/SKILL.md`
-* Guardrails:
+  * `skills/codex/vibe-run/SKILL.md`
+  * Verified interaction with `agentctl next`
 
-  * max depth
-  * explicit subtask logging
-  * automatic abort on loop or ambiguity
+* **Acceptance:**
 
-**Acceptance**
+  * `$vibe-run` progresses through multiple checkpoints
+  * Stops on plan exhaustion or BLOCKED
 
-* Recursive behavior is visible, logged, and bounded.
-* Failure modes are explicit (no silent looping).
+* **Demo commands:**
 
-**Demo commands**
+  * `$vibe-run` in a repo with ≥2 checkpoints
 
-```bash
-# Via Codex skill invocation
-$vibe-rlm
-```
+* **Evidence:**
 
-**Evidence**
+  * Paste decision log excerpts + final STATE.md
 
-* Paste a short run log showing bounded recursion.
 ---
 
-### Stage 5 — Skill subscriptions and curation
+### 3.2 — Continuous-mode adaptation for other agents
 
-- Subscribe to skills from public repos (e.g., Anthropics skill repo) and pin versions
-- Trust model: allowlist + checksums/signatures + update workflow
-- Conflict resolution when two skills export similar capabilities
+* **Objective:**
+  Provide the best possible continuous experience for Gemini, Claude, and Copilot.
 
-### Stage 6 — Prompt library expansion + clipper UI upgrades
+* **Deliverables:**
 
-- Add refactoring loop (hardcore/strict)
-- Add human-interactive testing/feedback loop (explicit “paste outputs” checkpoints)
-- Re-parameterize clipper input catalog(s) and improve UI (search, grouping, favorites)
+  * Clear guidance in bootstraps:
 
-### Stage 7 — Workflow configuration and triggers
+    * “pseudo-continuous” (manual re-invocation)
+    * or delegated execution patterns
+  * No new skills yet
 
-- Config model for intended loop frequency and triggers
-- “Autonomous issue addressing” rules (bounded, safe)
-- Reporting: periodic summaries of state/progress/issues
+* **Acceptance:**
+
+  * Agents do not dead-loop or silently stop
+  * User expectations are correctly set
+
+* **Demo commands:**
+
+  * (manual) simulate 2–3 loop progression per agent
+
+* **Evidence:**
+
+  * Short transcript excerpts
+
+---
+
+## Stage 4 — Base Vibe skills stabilized across all agents
+
+**Stage objective:**
+Declare the **Vibe base skill set “complete”** and frozen before expansion.
+
+### 4.0 — Base skill surface defined
+
+* **Objective:**
+  Formally define what “base Vibe skills” include.
+
+* **Deliverables:**
+
+  * `docs/base_skills.md` listing:
+
+    * vibe-prompts
+    * vibe-loop
+    * vibe-run
+    * agentctl semantics
+  * Compatibility guarantees per agent
+
+* **Acceptance:**
+
+  * No ambiguity about what is “core”
+  * Future skills must layer on top
+
+* **Demo commands:**
+
+  * (manual) review doc
+
+* **Evidence:**
+
+  * Paste base skills list
+
+---
+
+### 4.1 — Publish base skills for all agents
+
+* **Objective:**
+  Make the same base Vibe functionality available to all supported agents in their native formats.
+
+* **Deliverables:**
+
+  * Codex skills (already present)
+  * Claude / Gemini / Copilot equivalents:
+
+    * instructions
+    * prompt packs
+    * invocation patterns
+
+* **Acceptance:**
+
+  * Same logical capabilities exist for all agents
+  * Differences are explicitly documented
+
+* **Demo commands:**
+
+  * (manual) verify discovery/usage per agent
+
+* **Evidence:**
+
+  * Paste discovery screenshots or logs
+
+---
+
+## Stage 5 — Expansion readiness (no new features yet)
+
+**Stage objective:**
+Prepare the system to safely grow **after** base parity is achieved.
+
+### 5.0 — Skill lifecycle and compatibility policy
+
+* **Objective:**
+  Define how new skills will be added without breaking existing workflows.
+
+* **Deliverables:**
+
+  * Policy doc covering:
+
+    * versioning
+    * compatibility guarantees
+    * deprecation rules
+  * “No breaking changes” rule for base skills
+
+* **Acceptance:**
+
+  * Clear go/no-go criteria for new skills
+  * Enforced via review checklist
+
+* **Demo commands:**
+
+  * (manual) review policy
+
+* **Evidence:**
+
+  * Paste policy excerpt
+
+---
+
+### 5.1 — Repo-level skill readiness (no implementation yet)
+
+* **Objective:**
+  Prepare for repo-specific skill overlays without implementing them yet.
+
+* **Deliverables:**
+
+  * `.vibe/config.json` schema (draft)
+  * Documentation of intended behavior
+
+* **Acceptance:**
+
+  * Schema supports future expansion
+  * No runtime behavior changes yet
+
+* **Demo commands:**
+
+  * (manual) view schema
+
+* **Evidence:**
+
+  * Paste schema file
+
+---

@@ -11,13 +11,13 @@
 
 ## Current focus
 
-- Stage: 4
-- Checkpoint: 4.0
+- Stage: 2
+- Checkpoint: 2.0
 - Status: NOT_STARTED  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
 
 ## Objective (current checkpoint)
 
-Install repo-local skills alongside global ones with deterministic precedence.
+(Need to rewrite this with the actual) Much of the plan has already been implemented, so please avoid redundant implementations.
 
 ## Deliverables (current checkpoint)
 
