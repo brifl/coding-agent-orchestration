@@ -12,8 +12,8 @@
 ## Current focus
 
 - Stage: 2
-- Checkpoint: 2.2
-- Status: DONE  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
+- Checkpoint: 3.0
+- Status: NOT_STARTED  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
 
 ## Objective (current checkpoint)
 
@@ -33,6 +33,7 @@
 
 ## Work log (current session)
 
+- 2026-01-28: Advanced checkpoint from 2.2 to 3.0 and reset status to NOT_STARTED.
 - 2026-01-28: Reviewed checkpoint 2.2; acceptance satisfied.
 - 2026-01-28: Documented manual fallback and removed Codex-only wording for checkpoint 2.2.
 - 2026-01-28: Advanced checkpoint from 2.1 to 2.2 and reset status to NOT_STARTED.
