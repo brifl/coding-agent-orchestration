@@ -170,6 +170,9 @@ def main() -> int:
     if args.show_decision:
         print(json.dumps(decision, indent=2, sort_keys=True), file=sys.stderr)
 
+    if decision.get("recommended_role") == "stop" or prompt_id == "stop":
+        return 0
+
     _print_prompt(prompt_catalog_path, catalog_path, prompt_id)
     return 0
 

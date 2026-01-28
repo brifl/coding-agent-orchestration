@@ -95,76 +95,256 @@
 - Evidence:
   - Paste install summary + `--show-decision` output (decision JSON + prompt body)
 
-## Stage 2 — Multi-agent adapters (Gemini + Claude), still canonical in this repo
+# Stage 2 — Multi-agent adapters (Codex-led, Claude/Gemini compatible)
 
-### 2.0 — Thin bootstraps (no duplication of workflow)
+**Purpose:**
+Make this repo the canonical, agent-agnostic reference implementation. Codex executes; other agents reason, plan, and review without breaking the contract.
 
-- Objective:
-  - Provide short, agent-specific initialization prompts that route to `AGENTS.md` + `.vibe/*` + the prompt catalog.
-- Deliverables:
-  - `prompts/init/gemini_bootstrap.md`
-  - `prompts/init/claude_bootstrap.md`
-- Acceptance:
-  - [ ] Each bootstrap is ≤ 30 lines and contains only routing + stop conditions
-  - [ ] Both explicitly reference `.vibe/STATE.md` and `.vibe/PLAN.md`
-- Demo commands:
-  - (manual) paste prompt into a new agent chat and verify it asks/acts correctly
-- Evidence:
-  - Paste the bootstrap text and a short transcript snippet showing correct behavior
+## 2.0 — Canonical bootstrap prompts (Codex, Claude, Gemini, Copilot)
 
-### 2.1 — Parameterized “design conversation” prompts (non-coding LLM friendly)
+**Objective**
+Provide minimal, unambiguous bootstrap prompts that orient each agent into the Vibe workflow without duplicating logic or embedding loops.
 
-- Objective:
-  - Add design-side prompt loops that facilitate structured conversations without coding, using the same catalog mechanism.
-- Deliverables:
-  - New `prompt.design_*` entries in `prompts/template_prompts.md`
-  - `tools/clipper.py --catalog <path>` documented usage
-- Acceptance:
-  - [ ] `clipper.py` can point to a design-catalog file and render buttons
-- Demo commands:
-  - `python3 tools/clipper.py --catalog prompts/template_prompts.md`
-- Evidence:
-  - Screenshot of UI with new design prompts visible
+**Deliverables**
 
-## Stage 3 — Repo-specific skill sets (overlay on top of global skills)
+* `prompts/init/codex_bootstrap.md`
+* `prompts/init/claude_bootstrap.md`
+* `prompts/init/gemini_bootstrap.md`
+* `prompts/init/copilot_bootstrap.md`
+* Corresponding stable-ID entries in `prompts/template_prompts.md`
 
-### 3.0 — Skill set spec + bootstrap option
+**Acceptance**
 
-- Objective:
-  - Allow a repo to specify a “skill set” that adds repo-local skills on top of global ones.
-- Deliverables:
-  - `docs/concepts.md` section defining skill sets (name, selection, precedence)
-  - `tools/bootstrap.py init-repo --skillset <name>` (initial stub ok)
-- Acceptance:
-  - [ ] CLI accepts `--skillset` and stores selection in a repo-local config file (e.g., `.vibe/config.json`)
-  - [ ] No behavior changes unless skill set is present
-- Demo commands:
-  - `python3 tools/bootstrap.py init-repo . --skillset minimal`
-- Evidence:
-  - Paste created config file contents
+* Each bootstrap is ≤ 30 lines.
+* Each bootstrap:
 
-### 3.1 — Repo-local skills install (Codex)
+  * points to `AGENTS.md`, `.vibe/STATE.md`, `.vibe/PLAN.md`
+  * clearly distinguishes **single-loop vs continuous** execution
+  * does **not** embed looping behavior
+* Codex bootstrap explicitly references `$vibe-one-loop` and `$vibe-run`.
 
-- Objective:
-  - Install additional skills into the repo in a predictable location (in addition to global).
-- Deliverables:
-  - `tools/bootstrap.py install-skills --repo --agent codex` (or similar)
-  - A small example repo-local skill for validation or prompting
-- Acceptance:
-  - [ ] Repo-local skills do not break global skills
-  - [ ] Clear precedence rules documented
-- Demo commands:
-  - `python3 tools/bootstrap.py install-skills --repo --agent codex`
-- Evidence:
-  - Paste tree snippet showing installed repo-local skills
+**Demo commands**
 
-## Stage 4+ — Future (stage-only, not checkpoint resolution yet)
+```bash
+python tools/prompt_catalog.py prompts/template_prompts.md get init.codex_bootstrap
+python tools/prompt_catalog.py prompts/template_prompts.md get init.claude_bootstrap
+```
 
-### Stage 4 — Advanced skills (RLM tools, multi-dir scan, RAG)
+**Evidence**
 
-- Build an “RLM tools” skill (recursive tool use / self-driven subloops)
-- Multi-directory scan skill + lightweight local index
-- RAG skill (pluggable backends; local-first)
+* Paste the four bootstrap texts.
+* Paste a short transcript excerpt from each agent showing correct orientation (stage / checkpoint / status identified).
+
+---
+
+## 2.1 — Continuous runner skill (Codex)
+
+**Objective**
+Enable Codex to autonomously progress a repo until interruption, plan exhaustion, or blocking issue.
+
+**Deliverables**
+
+* `skills/codex/vibe-run/SKILL.md`
+* Installer wiring in `tools/bootstrap.py`
+* Documentation note in `README.md` describing continuous mode vs single-loop
+
+**Acceptance**
+
+* `$vibe-run` repeatedly:
+
+  * dispatches via `agentctl`
+  * executes exactly one loop per iteration
+  * advances checkpoints when DONE
+* Stops when:
+
+  * no next checkpoint exists
+  * status becomes BLOCKED
+  * a BLOCKER issue exists
+
+**Demo commands**
+
+```bash
+python tools/bootstrap.py install-skills --global --agent codex
+# In Codex chat:
+$vibe-run
+```
+
+**Evidence**
+
+* Paste a run transcript showing at least:
+
+  * implementation → review → advance → next implementation
+  * clean stop when plan is exhausted
+
+---
+
+## 2.2 — Agent capability contract
+
+**Objective**
+Make agent differences explicit so the workflow behaves predictably across tools.
+
+**Deliverables**
+
+* Section in `README.md` or `docs/concepts.md`:
+
+  * Codex: executes loops + edits files
+  * Claude/Gemini: propose, review, design; may execute only if tools allow
+* Clear rule: only Codex runs `$vibe-run` by default
+
+**Acceptance**
+
+* A new user can tell which agent to use for which role in <5 minutes.
+
+**Demo commands**
+
+```bash
+# none (doc-only)
+```
+
+**Evidence**
+
+* Paste the capability matrix section.
+
+---
+
+# Stage 3 — Repo-specific skill sets (Claude/Gemini design-led)
+
+**Purpose:**
+Allow repos to extend or constrain behavior without mutating global skills.
+
+## 3.0 — Skill set configuration model
+
+**Objective**
+Define how a repo declares additional skills and prompt catalogs.
+
+**Deliverables**
+
+* `.vibe/config.json` schema (documented)
+* `docs/concepts.md` section: “Skill Sets”
+* `tools/bootstrap.py init-repo --skillset <name>`
+
+**Acceptance**
+
+* Skill set config can specify:
+
+  * name
+  * additional skill folders
+  * additional prompt catalogs
+* No behavior changes if config is absent.
+
+**Demo commands**
+
+```bash
+python tools/bootstrap.py init-repo . --skillset minimal
+cat .vibe/config.json
+```
+
+**Evidence**
+
+* Paste generated `.vibe/config.json`.
+
+---
+
+## 3.1 — Repo-local skill installation (Codex)
+
+**Objective**
+Install repo-local skills alongside global ones with deterministic precedence.
+
+**Deliverables**
+
+* `tools/bootstrap.py install-skills --repo --agent codex`
+* Example repo-local skill:
+
+  * e.g. `skills/repo/example-validation/SKILL.md`
+
+**Acceptance**
+
+* Repo-local skills:
+
+  * do not overwrite global skills
+  * are discoverable by Codex
+* Precedence rules documented and enforced.
+
+**Demo commands**
+
+```bash
+python tools/bootstrap.py install-skills --repo --agent codex
+tree .vibe/skills
+```
+
+**Evidence**
+
+* Paste tree showing global + repo-local skill coexistence.
+
+---
+
+# Stage 4 — Advanced capability expansion (Codex execution, Claude/Gemini design)
+
+**Purpose:**
+Add power without sacrificing determinism or safety.
+
+## 4.0 — Multi-directory scan + index skill
+
+**Objective**
+Allow agents to reason over large repos without ad-hoc globbing.
+
+**Deliverables**
+
+* `skills/*/vibe-scan/SKILL.md`
+* Script to:
+
+  * scan configured directories
+  * produce a lightweight index (paths + summaries)
+* Optional `.vibe/scan.json` config
+
+**Acceptance**
+
+* Scan completes deterministically.
+* Index is readable by prompts and tools.
+* No implicit recursion beyond configured roots.
+
+**Demo commands**
+
+```bash
+python ~/.codex/skills/vibe-scan/scripts/scan.py --repo-root .
+```
+
+**Evidence**
+
+* Paste index file snippet.
+
+---
+
+## 4.1 — RLM tools skill (bounded recursion)
+
+**Objective**
+Introduce recursive tool use with explicit bounds and auditability.
+
+**Deliverables**
+
+* `skills/*/vibe-rlm/SKILL.md`
+* Guardrails:
+
+  * max depth
+  * explicit subtask logging
+  * automatic abort on loop or ambiguity
+
+**Acceptance**
+
+* Recursive behavior is visible, logged, and bounded.
+* Failure modes are explicit (no silent looping).
+
+**Demo commands**
+
+```bash
+# Via Codex skill invocation
+$vibe-rlm
+```
+
+**Evidence**
+
+* Paste a short run log showing bounded recursion.
+---
 
 ### Stage 5 — Skill subscriptions and curation
 

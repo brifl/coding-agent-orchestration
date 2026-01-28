@@ -43,6 +43,7 @@ Ship a usable Codex global skill MVP that can (a) recommend the next loop, and (
 - 2026-01-27: Bootstrapped this repo as a “real” example repo; populated plan/state.
 - 2026-01-27: Added the vibe-prompts catalog resource, refreshed both skill SKILL.md files, made `vibe_next_and_print.py` obey CODEX_HOME, reinstalled the codex skills, and exercised the `--show-decision` demonstration path.
 - 2026-01-27: Verified `agentctl next --format json` now surfaces `prompt.checkpoint_review`, confirming the scripts output a stable loop recommendation after the install changes.
+- 2026-01-27: Fixed `vibe_next_and_print.py` to exit cleanly when agentctl recommends stop; reinstalled global skills and verified stop output.
 
 ## Evidence
 
@@ -60,6 +61,18 @@ Ship a usable Codex global skill MVP that can (a) recommend the next loop, and (
     - C:\Users\brian\.codex\skills\vibe-prompts\resources\template_prompts.md
     - C:\Users\brian\.codex\skills\vibe-loop\scripts\agentctl.py
     - C:\Users\brian\.codex\skills\vibe-prompts\scripts\prompt_catalog.py
+  ```
+- `python3 ~/.codex/skills/vibe-loop/scripts/vibe_next_and_print.py --repo-root . --show-decision`
+  ```
+  {
+    "checkpoint": "1.2",
+    "reason": "Current checkpoint is last checkpoint in .vibe/PLAN.md (plan exhausted).",
+    "recommended_prompt_id": "stop",
+    "recommended_prompt_title": "Stop (no remaining checkpoints)",
+    "recommended_role": "stop",
+    "stage": "1",
+    "status": "DONE"
+  }
   ```
 - `python3 ~/.codex/skills/vibe-loop/scripts/vibe_next_and_print.py --repo-root . --show-decision`
   ```
