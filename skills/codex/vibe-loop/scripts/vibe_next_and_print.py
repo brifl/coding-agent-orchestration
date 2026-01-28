@@ -96,7 +96,17 @@ def _print_prompt(prompt_catalog_path: Path, catalog_path: Path, prompt_id: str)
         "get",
         prompt_id,
     ]
-    p = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+    env = os.environ.copy()
+    env.setdefault("PYTHONIOENCODING", "utf-8")
+    p = subprocess.run(
+        cmd,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        env=env,
+    )
     if p.returncode != 0:
         raise RuntimeError(f"prompt_catalog get failed ({p.returncode}): {p.stderr.strip() or p.stdout.strip()}")
     sys.stdout.write(p.stdout)
@@ -116,6 +126,11 @@ def main() -> int:
         help="Print the decision JSON to stderr before printing the prompt body.",
     )
     args = ap.parse_args()
+
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    if hasattr(sys.stderr, "reconfigure"):
+        sys.stderr.reconfigure(encoding="utf-8", errors="replace")
 
     repo_root = Path(args.repo_root).expanduser().resolve()
     if not repo_root.exists():

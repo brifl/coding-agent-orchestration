@@ -18,6 +18,7 @@ This module is intended to be used by:
 from __future__ import annotations
 
 import re
+import sys
 import unicodedata
 from dataclasses import dataclass
 from pathlib import Path
@@ -173,8 +174,15 @@ def list_entries(path: Path) -> List[Tuple[str, str]]:
     return [(e.key, e.title) for e in entries]
 
 
+def _ensure_utf8_output() -> None:
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+
+
 def main() -> int:
     import argparse
+
+    _ensure_utf8_output()
 
     p = argparse.ArgumentParser(prog="prompt_catalog.py")
     p.add_argument("catalog", type=str, help="Path to prompts/template_prompts.md")
