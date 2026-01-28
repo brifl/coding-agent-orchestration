@@ -13,7 +13,7 @@
 
 - Stage: 2
 - Checkpoint: 2.1
-- Status: NOT_STARTED  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
+- Status: IN_REVIEW  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
 
 ## Objective (current checkpoint)
 
@@ -33,6 +33,7 @@
 
 ## Work log (current session)
 
+- 2026-01-28: Verified bootstrap prompts for checkpoint 2.1 and gathered evidence.
 - 2026-01-28: Advanced checkpoint from 2.0 to 2.1 and reset status to NOT_STARTED.
 - 2026-01-28: Reviewed checkpoint 2.0; acceptance satisfied.
 - 2026-01-28: Added agent capability matrix and internal bootstrap capability map for checkpoint 2.0.
@@ -59,6 +60,54 @@
 
 ## Evidence
 
+- `wc -l prompts/init/codex_bootstrap.md prompts/init/claude_bootstrap.md prompts/init/gemini_bootstrap.md prompts/init/copilot_bootstrap.md`
+  ```
+   25 prompts/init/codex_bootstrap.md
+   25 prompts/init/claude_bootstrap.md
+   26 prompts/init/gemini_bootstrap.md
+   26 prompts/init/copilot_bootstrap.md
+  102 total
+  ```
+- `sed -n '1,8p' prompts/init/codex_bootstrap.md`
+  ```
+  ROLE
+  You are Codex operating inside the Vibe workflow.
+
+  CONTRACT
+  - Follow `AGENTS.md`.
+  - `.vibe/STATE.md` is authoritative for stage/checkpoint/status/issues.
+  - `.vibe/PLAN.md` defines deliverables/acceptance/demo/evidence.
+  ```
+- `sed -n '1,8p' prompts/init/claude_bootstrap.md`
+  ```
+  ROLE
+  You are a coding agent (Claude) joining a Vibe workflow.
+
+  CONTRACT
+  - Follow `AGENTS.md`.
+  - `.vibe/STATE.md` is the current truth.
+  - `.vibe/PLAN.md` lists checkpoints with acceptance criteria.
+  ```
+- `sed -n '1,8p' prompts/init/gemini_bootstrap.md`
+  ```
+  ROLE
+  You are a coding agent (Gemini) joining a Vibe workflow.
+
+  CONTRACT
+  - Follow `AGENTS.md`.
+  - `.vibe/STATE.md` is the active pointer (stage/checkpoint/status/issues).
+  - `.vibe/PLAN.md` is the checkpoint backlog with acceptance criteria.
+  ```
+- `sed -n '1,8p' prompts/init/copilot_bootstrap.md`
+  ```
+  ROLE
+  You are a coding agent (Copilot-style) joining a Vibe workflow.
+
+  CONTRACT
+  - Follow `AGENTS.md`.
+  - `.vibe/STATE.md` is the current truth (stage/checkpoint/status/issues).
+  - `.vibe/PLAN.md` is the checkpoint backlog with acceptance and demo commands.
+  ```
 - `cat docs/agent_capabilities.md`
   ```
   | Agent | File editing | Command execution | Single-loop mode | Continuous mode | Notes |
