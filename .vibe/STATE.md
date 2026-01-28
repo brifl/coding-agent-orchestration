@@ -12,8 +12,8 @@
 ## Current focus
 
 - Stage: 2
-- Checkpoint: 3.2
-- Status: DONE  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
+- Checkpoint: 4.0
+- Status: NOT_STARTED  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
 
 ## Objective (current checkpoint)
 
@@ -33,6 +33,7 @@
 
 ## Work log (current session)
 
+- 2026-01-28: Advanced checkpoint from 3.2 to 4.0 and reset status to NOT_STARTED.
 - 2026-01-28: Reviewed checkpoint 3.2; acceptance satisfied.
 - 2026-01-28: Added pseudo-continuous guidance to non-Codex bootstraps for checkpoint 3.2.
 - 2026-01-28: Advanced checkpoint from 3.1 to 3.2 and reset status to NOT_STARTED.
