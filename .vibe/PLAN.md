@@ -44,7 +44,7 @@
 
 ## Stage 1 — Codex-first MVP skills + deterministic control plane (IN PROGRESS)
 
-### 1.0 — Prompt catalog + stable IDs
+### Checkpoint 1.0 — Prompt catalog + stable IDs
 
 - Objective:
   - Make prompt retrieval deterministic and scriptable with stable IDs.
@@ -60,7 +60,7 @@
 - Evidence:
   - Paste list output + one retrieved prompt body
 
-### 1.1 — `.vibe/`-aware agent control plane
+### Checkpoint 1.1 — `.vibe/`-aware agent control plane
 
 - Objective:
   - Provide a deterministic `agentctl` that reads `.vibe/STATE.md` and recommends the next loop prompt.
@@ -75,7 +75,7 @@
 - Evidence:
   - Paste JSON output from `next`
 
-### 1.2 — Codex global skills MVP (CURRENT)
+### Checkpoint 1.2 — Codex global skills MVP (CURRENT)
 
 - Objective:
   - Install global Codex skills and provide one-command prompt retrieval and “next-and-print” for a target repo.
@@ -95,12 +95,12 @@
 - Evidence:
   - Paste install summary + `--show-decision` output (decision JSON + prompt body)
 
-# Stage 2 — Multi-agent adapters (Codex-led, Claude/Gemini compatible)
+## Stage 2 — Multi-agent adapters (Codex-led, Claude/Gemini compatible)
 
 **Purpose:**
 Make this repo the canonical, agent-agnostic reference implementation. Codex executes; other agents reason, plan, and review without breaking the contract.
 
-## 2.0 — Canonical bootstrap prompts (Codex, Claude, Gemini, Copilot)
+### Checkpoint 2.0 — Canonical bootstrap prompts (Codex, Claude, Gemini, Copilot)
 
 **Objective**
 Provide minimal, unambiguous bootstrap prompts that orient each agent into the Vibe workflow without duplicating logic or embedding loops.
@@ -137,7 +137,7 @@ python tools/prompt_catalog.py prompts/template_prompts.md get init.claude_boots
 
 ---
 
-## 2.1 — Continuous runner skill (Codex)
+### Checkpoint 2.1 — Continuous runner skill (Codex)
 
 **Objective**
 Enable Codex to autonomously progress a repo until interruption, plan exhaustion, or blocking issue.
@@ -178,7 +178,7 @@ $vibe-run
 
 ---
 
-## 2.2 — Agent capability contract
+### Checkpoint 2.2 — Agent capability contract
 
 **Objective**
 Make agent differences explicit so the workflow behaves predictably across tools.
@@ -207,12 +207,12 @@ Make agent differences explicit so the workflow behaves predictably across tools
 
 ---
 
-# Stage 3 — Repo-specific skill sets (Claude/Gemini design-led)
+## Stage 3 — Repo-specific skill sets (Claude/Gemini design-led)
 
 **Purpose:**
 Allow repos to extend or constrain behavior without mutating global skills.
 
-## 3.0 — Skill set configuration model
+### Checkpoint 3.0 — Skill set configuration model
 
 **Objective**
 Define how a repo declares additional skills and prompt catalogs.
@@ -245,7 +245,7 @@ cat .vibe/config.json
 
 ---
 
-## 3.1 — Repo-local skill installation (Codex)
+### Checkpoint 3.1 — Repo-local skill installation (Codex)
 
 **Objective**
 Install repo-local skills alongside global ones with deterministic precedence.
@@ -278,12 +278,12 @@ tree .vibe/skills
 
 ---
 
-# Stage 4 — Advanced capability expansion (Codex execution, Claude/Gemini design)
+## Stage 4 — Advanced capability expansion (Codex execution, Claude/Gemini design)
 
 **Purpose:**
 Add power without sacrificing determinism or safety.
 
-## 4.0 — Multi-directory scan + index skill
+### Checkpoint 4.0 — Multi-directory scan + index skill
 
 **Objective**
 Allow agents to reason over large repos without ad-hoc globbing.
@@ -315,7 +315,7 @@ python ~/.codex/skills/vibe-scan/scripts/scan.py --repo-root .
 
 ---
 
-## 4.1 — RLM tools skill (bounded recursion)
+### Checkpoint 4.1 — RLM tools skill (bounded recursion)
 
 **Objective**
 Introduce recursive tool use with explicit bounds and auditability.
