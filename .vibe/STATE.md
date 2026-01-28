@@ -13,7 +13,7 @@
 
 - Stage: 1
 - Checkpoint: 1.2
-- Status: IN_REVIEW  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
+- Status: DONE  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
 
 ## Objective (current checkpoint)
 
@@ -42,6 +42,7 @@ Ship a usable Codex global skill MVP that can (a) recommend the next loop, and (
 
 - 2026-01-27: Bootstrapped this repo as a “real” example repo; populated plan/state.
 - 2026-01-27: Added the vibe-prompts catalog resource, refreshed both skill SKILL.md files, made `vibe_next_and_print.py` obey CODEX_HOME, reinstalled the codex skills, and exercised the `--show-decision` demonstration path.
+- 2026-01-27: Verified `agentctl next --format json` now surfaces `prompt.checkpoint_review`, confirming the scripts output a stable loop recommendation after the install changes.
 
 ## Evidence
 
@@ -106,6 +107,18 @@ Ship a usable Codex global skill MVP that can (a) recommend the next loop, and (
     "recommended_role": "implement",
     "stage": "1",
     "status": "IN_PROGRESS"
+  }
+  ```
+- `python tools/agentctl.py --repo-root . --format json next`
+  ```
+  {
+    "checkpoint": "1.2",
+    "reason": "Checkpoint status is IN_REVIEW.",
+    "recommended_prompt_id": "prompt.checkpoint_review",
+    "recommended_prompt_title": "Checkpoint Review Prompt",
+    "recommended_role": "review",
+    "stage": "1",
+    "status": "IN_REVIEW"
   }
   ```
 

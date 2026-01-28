@@ -68,6 +68,19 @@
 
 ---
 
+### 2026-01-27 — Stage 1 / Checkpoint 1.2: Codex skills MVP + deterministic loop helper
+
+- Added the prompt catalog resource and documentation to `skills/codex/vibe-prompts`.
+- Updated `vibe_next_and_print.py` to respect CODEX_HOME, enforce UTF-8 I/O, and prefer the installed skills layout.
+- Reinstalled the skills globally and confirmed the loop helper / `agentctl next` still produce the expected recommended prompt.
+
+**Evidence pointer**
+- `python3 tools/bootstrap.py install-skills --global --agent codex`
+- `python3 tools/agentctl.py --repo-root . --format json next`
+- `python ~/.codex/skills/vibe-loop/scripts/vibe_next_and_print.py --repo-root . --show-decision`
+
+---
+
 ## Resolved issues
 
 ### 2026-01-26 — ISSUE-BOOT-001: Ambiguity between root and `.vibe` workflow files

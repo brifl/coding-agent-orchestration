@@ -77,7 +77,7 @@ Stop after updating .vibe/PLAN.md (and .vibe/STATE.md if needed). Do not begin i
 ROLE: Primary software engineer
 
 TASK
-Advance the project by EXACTLY ONE checkpoint from .vibe/PLAN.md (the checkpoint currently marked CURRENT in .vibe/STATE.md), then stop.
+Advance the project by traversing checkpoints from .vibe/PLAN.md in sequence. After each checkpoint you must update .vibe/STATE.md and then proceed to the next checkpoint until a blocking issue is recorded or there are no checkpoints left.
 
 GENERAL RULES
 - Treat .vibe/STATE.md as authoritative for what to do next.
@@ -101,15 +101,18 @@ EXECUTION
    - add a short work log
    - add evidence snippets or command outputs
    - add issues if anything failed
+6) When .vibe/STATE.md lists no blocking issues and the plan defines another checkpoint:
+   - continue looping by re-running this prompt with the new current checkpoint.
+   Repeat until either the backlog is exhausted or a blocking issue is raised.
 
 OUTPUT FORMAT
 - What you changed (files)
-- Commands you ran + results (short)
+- Commands you ran + results (short); include each checkpoint run if multiple executed
 - Evidence pasted into .vibe/STATE.md
 - Any new issues created (with severity)
 
 STOP CONDITION
-Stop after completing one checkpoint and updating .vibe/STATE.md. Wait for review.
+Continue looping (re-run this prompt) while checkpoints remain and no blocking issue exists. Stop only when you record a blocking issue or there are no further checkpoints defined.
 ```
 
 ---
