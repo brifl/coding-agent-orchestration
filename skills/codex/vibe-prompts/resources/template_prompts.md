@@ -16,9 +16,9 @@ SCOPE
 
 SOURCE OF TRUTH (read in order)
 1) AGENTS.md
-2) .vibe/STATE.md (authoritative current stage/checkpoint/status)
+2) .vibe/STATE.md
 3) .vibe/PLAN.md
-4) README.md (optional, codebase context)
+4) README.md (optional)
 5) .vibe/HISTORY.md (optional; non-authoritative)
 
 PRIMARY OBJECTIVE
@@ -36,13 +36,14 @@ CHECKPOINT TEMPLATE (use this exact structure for each checkpoint)
 
 OUTPUT
 - Update .vibe/PLAN.md with:
-  - clearer stage definitions (1-3 stages)
+  - clearer stage definitions (1–3 stages)
   - 1 to 6 checkpoints per stage (for the next stage or two)
   - acceptance criteria that are testable
 - If you change the current checkpoint or stage, update .vibe/STATE.md accordingly.
 
 STOP CONDITION
 Stop this loop after updating .vibe/PLAN.md (and .vibe/STATE.md if needed). Return to dispatcher.
+
 ```
 
 ---
@@ -53,7 +54,7 @@ Stop this loop after updating .vibe/PLAN.md (and .vibe/STATE.md if needed). Retu
 ROLE: Primary software engineer
 
 TASK
-Advance the project by traversing checkpoints from .vibe/PLAN.md in sequence. After each checkpoint you must update .vibe/STATE.md and then proceed to the next checkpoint until a blocking issue is recorded or there are no checkpoints left.
+Advance the project by completing EXACTLY ONE checkpoint: the checkpoint currently indicated in .vibe/STATE.md.
 
 GENERAL RULES
 - Treat .vibe/STATE.md as authoritative for what to do next.
@@ -67,28 +68,28 @@ READ FIRST
 - .vibe/PLAN.md
 - README.md (optional)
 
-EXECUTION
+EXECUTION (exactly one checkpoint)
 1) Identify current checkpoint from .vibe/STATE.md.
 2) Locate that checkpoint entry in .vibe/PLAN.md.
-3) Implement the deliverables.
-4) Run the demo commands (or the closest equivalents).
+3) Implement the deliverables (only those deliverables).
+4) Run the demo commands (or the closest equivalents; document deviations).
 5) Update .vibe/STATE.md:
    - set Status to IN_REVIEW
-   - add a short work log
-   - add evidence snippets or command outputs
-   - add issues if anything failed
-6) When .vibe/STATE.md lists no blocking issues and the plan defines another checkpoint:
-   - continue looping by re-running this prompt with the new current checkpoint.
-   Repeat until either the backlog is exhausted or a blocking issue is raised.
+   - add a short work log entry
+   - paste evidence snippets or command outputs
+   - add issues if anything failed or is unclear
+   - if a blocking issue exists, set Status to BLOCKED
 
 OUTPUT FORMAT
-- What you changed (files)
-- Commands you ran + results (short); include each checkpoint run if multiple executed
+- Checkpoint completed: <id>
+- Files changed (list)
+- Commands run + short results
 - Evidence pasted into .vibe/STATE.md
-- Any new issues created (with severity)
+- Issues created/updated (if any)
 
 STOP CONDITION
-Continue looping (re-run this prompt) while checkpoints remain and no blocking issue exists. Stop only when you record a blocking issue or there are no further checkpoints defined.
+Stop after completing EXACTLY ONE checkpoint and updating .vibe/STATE.md. Return to dispatcher.
+
 ```
 
 ---
@@ -96,39 +97,47 @@ Continue looping (re-run this prompt) while checkpoints remain and no blocking i
 ## prompt.checkpoint_review — Checkpoint Review Prompt
 
 ```md
-ROLE: Active reviewer (adversarial)
+ROLE: Primary software architect (design pass)
 
-GOAL
-Decide whether the IN_REVIEW checkpoint is truly complete per AGENTS.md + .vibe/PLAN.md, and whether we are ready to move on.
+TASK
+Tighten the plan for the next stage or checkpoint(s) in .vibe/PLAN.md to make implementation smoother. This is not a blank-slate redesign, but meaningful restructuring is allowed.
 
-GENERAL RULES
-- You are allowed to run commands/tests and read code.
-- Prefer catching subtle incompleteness and drift.
+SCOPE
+- Modify only .vibe/PLAN.md and (if needed) .vibe/STATE.md.
+- Do not implement product code.
+- Do not add large new architecture; keep it pragmatic.
+- If the current stage/checkpoint is wrong or missing, fix .vibe/STATE.md first.
 
-PROCESS
-1) Identify the checkpoint marked IN_REVIEW in .vibe/STATE.md.
-2) Find the same checkpoint in .vibe/PLAN.md.
-3) Verify:
-   - Deliverables exist and match the plan.
-   - Acceptance criteria are satisfied.
-   - Demo commands run cleanly (or documented deviations are justified).
-4) If anything is missing:
-   - add issues to .vibe/STATE.md (severity QUESTION/MINOR/MAJOR/BLOCKER)
-   - set status to IN_PROGRESS or BLOCKED as appropriate
-   - clearly list what remains
+SOURCE OF TRUTH (read in order)
+1) AGENTS.md
+2) .vibe/STATE.md
+3) .vibe/PLAN.md
+4) README.md (optional)
+5) .vibe/HISTORY.md (optional; non-authoritative)
 
-OUTPUT FORMAT (must follow)
-A) Verdict: PASS | FAIL
-B) Evidence review (brief)
-- Acceptance items: ✅/❌ with notes
-- Demo commands: ✅/❌ with notes
-C) Issues created/updated (if any)
-D) Next action
-- If PASS: set status to DONE and recommend next checkpoint
-- If FAIL: set status to IN_PROGRESS or BLOCKED and point to the issues
+PRIMARY OBJECTIVE
+.vibe/PLAN.md must be a near-term plan aligned to .vibe/STATE.md:
+- It MUST contain the current stage S and current checkpoint C from .vibe/STATE.md.
+- It MUST NOT contain detailed plans for distant stages beyond the next 1 to 3 stages.
+- Each checkpoint MUST be implementable in one focused iteration.
+
+CHECKPOINT TEMPLATE (use this exact structure for each checkpoint)
+- Objective (1 sentence)
+- Deliverables (concrete files/modules/behaviors)
+- Acceptance (verifiable)
+- Demo commands (exact, local, minimal)
+- Evidence (what to paste into .vibe/STATE.md)
+
+OUTPUT
+- Update .vibe/PLAN.md with:
+  - clearer stage definitions (1–3 stages)
+  - 1 to 6 checkpoints per stage (for the next stage or two)
+  - acceptance criteria that are testable
+- If you change the current checkpoint or stage, update .vibe/STATE.md accordingly.
 
 STOP CONDITION
-Stop this loop after updating .vibe/STATE.md and providing the verdict. Return to dispatcher.
+Stop this loop after updating .vibe/PLAN.md (and .vibe/STATE.md if needed). Return to dispatcher.
+
 ```
 
 ---
@@ -139,7 +148,7 @@ Stop this loop after updating .vibe/STATE.md and providing the verdict. Return t
 ROLE: Engineer / Triage
 
 TASK
-Resolve or clarify issues in .vibe/STATE.md with minimal disruption to the active checkpoint.
+Resolve or clarify the top 1–2 active issues in .vibe/STATE.md with minimal disruption to the active checkpoint.
 
 SCOPE
 - Prefer doc/config/plan fixes.
@@ -153,24 +162,27 @@ READ FIRST
 - README.md (optional)
 
 PROCESS
-1) List active issues from .vibe/STATE.md in priority order:
+1) List active issues from the "Active issues" section of .vibe/STATE.md in priority order:
    BLOCKER > MAJOR > MINOR > QUESTION
-2) For the top 1–2 issues:
+2) Pick the top 1–2 issues.
+3) For each selected issue:
    - determine the smallest change that resolves it
-   - implement or ask a clarifying question if needed
-3) Update .vibe/STATE.md:
-   - mark resolved issues as done (and move them to .vibe/HISTORY.md if desired)
+   - implement that change OR ask a clarifying question (max 2 total)
+4) Update .vibe/STATE.md:
+   - mark resolved issues as done (checked) or remove them if fully resolved
    - add evidence for the resolution
    - if resolution changes the plan, update .vibe/PLAN.md accordingly
+   - if a BLOCKER remains unresolved, set Status to BLOCKED
 
 OUTPUT
-- Issues addressed
-- Changes made
+- Issues addressed (which ones)
+- Changes made (files)
 - Evidence / commands run
 - Any new questions (max 2)
 
 STOP CONDITION
-Stop after resolving blocking / critical issues or after asking questions needed to proceed. Return to dispatcher.
+Stop after resolving the selected issues or after asking blocking questions. Return to dispatcher.
+
 ```
 
 ---
@@ -214,7 +226,8 @@ OUTPUT
 - Any inconsistencies found and how you resolved them
 
 STOP CONDITION
-Stop after docs are aligned and clutter is reduced.
+Stop after docs are aligned and clutter is reduced. Return to dispatcher.
+
 ```
 
 ---
@@ -278,6 +291,7 @@ E) Next recommendation (optional; one bullet)
 
 STOP CONDITION
 Stop this loop after the improvement is implemented and validated. Return to dispatcher.
+
 ```
 
 ---
@@ -288,24 +302,29 @@ Stop this loop after the improvement is implemented and validated. Return to dis
 ROLE: Workflow operator (mechanical)
 
 TASK
-Advance `.vibe/STATE.md` from a DONE checkpoint to the next checkpoint in `.vibe/PLAN.md`, then get the next command from `tools\agentctl.py`.
+Advance `.vibe/STATE.md` from a DONE checkpoint to the next checkpoint in `.vibe/PLAN.md`.
 
 RULES
 - Do not implement code.
 - Do not change `.vibe/PLAN.md`.
 - Do not skip ahead more than one checkpoint.
-- If no next checkpoint exists in `.vibe/PLAN.md`, set no new checkpoint; instead add a note under Evidence that the plan is exhausted and stop.
+- If no next checkpoint exists, do not invent work.
 
 PROCESS
 1) Read: AGENTS.md, .vibe/STATE.md, .vibe/PLAN.md
-2) Identify the current checkpoint in .vibe/STATE.md.
-3) Find the next checkpoint id in .vibe/PLAN.md (next heading with X.Y).
+2) Confirm .vibe/STATE.md Status is DONE.
+3) Find the next checkpoint id in .vibe/PLAN.md (the next heading with X.Y after the current checkpoint).
 4) Update .vibe/STATE.md:
-   - set Checkpoint to the next id
-   - set Status to NOT_STARTED
-   - append a Work log line
+   - If a next checkpoint exists:
+     - set Checkpoint to the next id
+     - set Status to NOT_STARTED
+     - append a Work log line
+   - If no next checkpoint exists:
+     - keep current checkpoint
+     - add an Evidence note that the plan appears exhausted
 5) Stop.
 
 STOP CONDITION
-Stop this step after updating `.vibe/STATE.md`.
+Stop after updating `.vibe/STATE.md`. Return to dispatcher.
+
 ```
