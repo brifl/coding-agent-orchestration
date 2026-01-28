@@ -13,7 +13,7 @@
 
 - Stage: 2
 - Checkpoint: 4.0
-- Status: NOT_STARTED  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
+- Status: IN_REVIEW  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
 
 ## Objective (current checkpoint)
 
@@ -33,6 +33,7 @@
 
 ## Work log (current session)
 
+- 2026-01-28: Defined base Vibe skills and compatibility for checkpoint 4.0.
 - 2026-01-28: Advanced checkpoint from 3.2 to 4.0 and reset status to NOT_STARTED.
 - 2026-01-28: Reviewed checkpoint 3.2; acceptance satisfied.
 - 2026-01-28: Added pseudo-continuous guidance to non-Codex bootstraps for checkpoint 3.2.
@@ -74,6 +75,35 @@
 
 ## Evidence
 
+- `sed -n '1,120p' docs/base_skills.md`
+  ```
+  # Base Vibe skills
+
+  This document defines the **base skill surface** that is considered stable and core.
+  All future skills must layer on top of this foundation without breaking it.
+
+  ## Core skills
+
+  - **vibe-prompts**: provides prompt catalog access and prompt lookup.
+  - **vibe-loop**: runs a single workflow loop using `agentctl` to select the next prompt.
+  - **vibe-run**: continuous loop runner (Codex reference implementation).
+  - **agentctl semantics**: deterministic `next`, `status`, and validation behaviors that
+    drive loop selection and state transitions.
+
+  ## Compatibility guarantees
+
+  | Agent | vibe-prompts | vibe-loop | vibe-run | Notes |
+  | --- | --- | --- | --- | --- |
+  | Codex | Full | Full | Full | Reference implementation for continuous mode. |
+  | Claude Code | Manual/Tool-dependent | Manual/Tool-dependent | Not supported | Use single-loop prompts or manual instructions. |
+  | Gemini | Manual/Tool-dependent | Manual/Tool-dependent | Not supported | Use single-loop prompts or manual instructions. |
+  | Copilot | Manual/Tool-dependent | Manual/Tool-dependent | Not supported | Use single-loop prompts or manual instructions. |
+
+  ## Non-goals
+
+  - Base skills do **not** promise product-specific automation.
+  - Base skills do **not** include repo-local overlays (those are opt-in extensions).
+  ```
 - `sed -n '9,16p' prompts/init/claude_bootstrap.md`
   ```
   MODE
