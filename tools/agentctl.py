@@ -44,6 +44,7 @@ Role = Literal[
     "consolidation",
     "improvements",
     "advance",
+    "stop",
 ]
 
 

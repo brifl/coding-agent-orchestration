@@ -25,3 +25,10 @@ Project-specific workflow files live under `.vibe/` and are typically gitignored
   - Stage Design → Implementation → Review → Triage (as needed) → Consolidation (as needed)
 
 Log an issue in .vibe/STATE.md and stop if you hit missing info, conflicting instructions, or any scope-changing decision point.
+
+## Workflow
+
+* `IN_PROGRESS` → dispatcher picks implementation → loop ends → dispatcher continues
+* `IN_REVIEW` → dispatcher picks review → PASS sets `DONE` → dispatcher picks advance → continues
+* `DONE` and no next checkpoint → dispatcher returns `stop` → continuous runner exits
+* `BLOCKED` or `BLOCKER` issue → dispatcher returns triage (or stop if you choose) → runner handles accordingly
