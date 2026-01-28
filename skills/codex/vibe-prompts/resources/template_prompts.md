@@ -15,7 +15,7 @@ SCOPE
 - If the current stage/checkpoint is wrong or missing, fix .vibe/STATE.md first.
 
 SOURCE OF TRUTH (read in order)
-1) AGENTS.md
+1) AGENTS.md (optional if already read this session)
 2) .vibe/STATE.md
 3) .vibe/PLAN.md
 4) README.md (optional)
@@ -63,7 +63,7 @@ GENERAL RULES
 - If you discover missing requirements or contradictions, add an issue to .vibe/STATE.md and stop.
 
 READ FIRST
-- AGENTS.md
+- AGENTS.md (optional if already read this session)
 - .vibe/STATE.md
 - .vibe/PLAN.md
 - README.md (optional)
@@ -109,7 +109,7 @@ SCOPE
 - If the current stage/checkpoint is wrong or missing, fix .vibe/STATE.md first.
 
 SOURCE OF TRUTH (read in order)
-1) AGENTS.md
+1) AGENTS.md (optional if already read this session)
 2) .vibe/STATE.md
 3) .vibe/PLAN.md
 4) README.md (optional)
@@ -156,7 +156,7 @@ SCOPE
 - Do not expand scope.
 
 READ FIRST
-- AGENTS.md
+- AGENTS.md (optional if already read this session)
 - .vibe/STATE.md
 - .vibe/PLAN.md
 - README.md (optional)
@@ -203,7 +203,7 @@ SCOPE
 - Do not modify product code.
 
 READ FIRST
-- AGENTS.md
+- AGENTS.md (optional if already read this session)
 - .vibe/STATE.md
 - .vibe/PLAN.md
 - .vibe/HISTORY.md (optional)
@@ -252,7 +252,7 @@ SCOPE
 - Do not implement product features.
 
 INPUTS (read in order)
-1) AGENTS.md
+1) AGENTS.md (optional if already read this session)
 2) .vibe/STATE.md
 3) .vibe/PLAN.md
 4) .vibe/HISTORY.md (optional; non-authoritative)
@@ -311,7 +311,7 @@ RULES
 - If no next checkpoint exists, do not invent work.
 
 PROCESS
-1) Read: AGENTS.md, .vibe/STATE.md, .vibe/PLAN.md
+1) Read: AGENTS.md (optional if already read this session), .vibe/STATE.md, .vibe/PLAN.md
 2) Confirm .vibe/STATE.md Status is DONE.
 3) Find the next checkpoint id in .vibe/PLAN.md (the next heading with X.Y after the current checkpoint).
 4) Update .vibe/STATE.md:

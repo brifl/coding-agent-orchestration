@@ -2,7 +2,7 @@
 
 ## Session read order
 
-1) `AGENTS.md`
+1) `AGENTS.md` (optional if already read this session)
 2) `.vibe/STATE.md` (this file)
 3) `.vibe/PLAN.md`
 4) `.vibe/HISTORY.md` (optional)

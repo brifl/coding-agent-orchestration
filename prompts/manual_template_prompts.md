@@ -50,7 +50,7 @@ SCOPE (this prompt is questions-only)
 - Your job is to ask clarifying questions and report your understanding.
 
 READ FIRST (in order)
-1) AGENTS.md
+1) AGENTS.md (optional if already read this session)
 2) .vibe/STATE.md
 3) .vibe/PLAN.md
 4) README.md (optional, codebase context)

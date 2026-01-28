@@ -11,7 +11,7 @@ MODE
 - Continuous mode exists, but only Codex should run it.
 
 READ ORDER
-1) `AGENTS.md`
+1) `AGENTS.md` (optional if already read this session)
 2) `.vibe/STATE.md`
 3) `.vibe/PLAN.md`
 4) `.vibe/HISTORY.md` (optional)

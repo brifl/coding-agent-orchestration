@@ -15,7 +15,7 @@ SCOPE
 - If the current stage/checkpoint is wrong or missing, fix .vibe/STATE.md first.
 
 SOURCE OF TRUTH (read in order)
-1) AGENTS.md
+1) AGENTS.md (optional if already read this session)
 2) .vibe/STATE.md (authoritative current stage/checkpoint/status)
 3) .vibe/PLAN.md
 4) README.md (optional, codebase context)
@@ -62,7 +62,7 @@ GENERAL RULES
 - If you discover missing requirements or contradictions, add an issue to .vibe/STATE.md and stop.
 
 READ FIRST
-- AGENTS.md
+- AGENTS.md (optional if already read this session)
 - .vibe/STATE.md
 - .vibe/PLAN.md
 - README.md (optional)
@@ -147,7 +147,7 @@ SCOPE
 - Do not expand scope.
 
 READ FIRST
-- AGENTS.md
+- AGENTS.md (optional if already read this session)
 - .vibe/STATE.md
 - .vibe/PLAN.md
 - README.md (optional)
@@ -191,23 +191,26 @@ SCOPE
 - Do not modify product code.
 
 READ FIRST
-- AGENTS.md
+- AGENTS.md (optional if already read this session)
 - .vibe/STATE.md
 - .vibe/PLAN.md
 - .vibe/HISTORY.md (optional)
 - README.md (optional)
 
 PROCESS
-1) Ensure .vibe/STATE.md accurately points to the current stage/checkpoint/status.
-2) Ensure .vibe/PLAN.md includes:
-   - the current stage/checkpoint
-   - the next 1–3 stages only (near-term)
-   - checkpoints using the standard template
-3) Move completed or stale plan content into .vibe/HISTORY.md:
-   - completed checkpoints
+1) Read: AGENTS.md (optional if already read this session), .vibe/STATE.md, .vibe/PLAN.md, .vibe/HISTORY.md (optional).
+2) Append a dated entry to .vibe/HISTORY.md summarizing:
+   - checkpoints completed since last consolidation (from STATE work log/evidence)
    - resolved issues
-   - past stage notes
-4) Keep .vibe/PLAN.md tight: remove historical clutter.
+   - key decisions
+3) Prune .vibe/STATE.md:
+   - Work log: keep only the last 10 entries (move older ones into HISTORY)
+   - Evidence: keep only evidence for the current checkpoint and immediately previous checkpoint
+   - Active issues: keep only unresolved issues; move resolved issues into HISTORY
+4) Prune .vibe/PLAN.md:
+   - Ensure it contains the current stage/checkpoint and the next 1–3 stages only
+   - Remove completed past stages/checkpoints from PLAN (move them to HISTORY)
+5) Ensure .vibe/STATE.md still correctly points to current stage/checkpoint/status.
 
 OUTPUT
 - Summary of doc changes (short)
@@ -239,7 +242,7 @@ SCOPE
 - Do not implement product features.
 
 INPUTS (read in order)
-1) AGENTS.md
+1) AGENTS.md (optional if already read this session)
 2) .vibe/STATE.md
 3) .vibe/PLAN.md
 4) .vibe/HISTORY.md (optional; non-authoritative)
@@ -297,7 +300,7 @@ RULES
 - If no next checkpoint exists in `.vibe/PLAN.md`, set no new checkpoint; instead add a note under Evidence that the plan is exhausted and stop.
 
 PROCESS
-1) Read: AGENTS.md, .vibe/STATE.md, .vibe/PLAN.md
+1) Read: AGENTS.md (optional if already read this session), .vibe/STATE.md, .vibe/PLAN.md
 2) Identify the current checkpoint in .vibe/STATE.md.
 3) Find the next checkpoint id in .vibe/PLAN.md (next heading with X.Y).
 4) Update .vibe/STATE.md:
@@ -329,7 +332,7 @@ MODE
 - Do not invent your own looping.
 
 READ ORDER
-1) `AGENTS.md`
+1) `AGENTS.md` (optional if already read this session)
 2) `.vibe/STATE.md`
 3) `.vibe/PLAN.md`
 4) `.vibe/HISTORY.md` (optional)
@@ -359,7 +362,7 @@ MODE
 - Continuous mode exists, but only Codex should run it.
 
 READ ORDER
-1) `AGENTS.md`
+1) `AGENTS.md` (optional if already read this session)
 2) `.vibe/STATE.md`
 3) `.vibe/PLAN.md`
 4) `.vibe/HISTORY.md` (optional)
@@ -391,7 +394,7 @@ MODE
 - Continuous mode exists, but only Codex should run it.
 
 READ ORDER
-1) `AGENTS.md`
+1) `AGENTS.md` (optional if already read this session)
 2) `.vibe/STATE.md`
 3) `.vibe/PLAN.md`
 4) `.vibe/HISTORY.md` (optional)
@@ -424,7 +427,7 @@ MODE
 - Continuous mode exists, but only Codex should run it.
 
 READ ORDER
-1) `AGENTS.md`
+1) `AGENTS.md` (optional if already read this session)
 2) `.vibe/STATE.md`
 3) `.vibe/PLAN.md`
 4) `.vibe/HISTORY.md` (optional)

@@ -25,7 +25,7 @@ When instructions conflict, follow this order:
 ### Read order at the start of a session
 
 At the start of any new session (or when context is unclear), the agent must:
-1. Read `AGENTS.md`
+1. Read `AGENTS.md` (optional if already read this session)
 2. Read `.vibe/STATE.md`
 3. Read `.vibe/PLAN.md`
 4. Optionally read `.vibe/HISTORY.md` if needed
