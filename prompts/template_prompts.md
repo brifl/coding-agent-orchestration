@@ -224,7 +224,7 @@ Stop after docs are aligned and clutter is reduced.
 
 ## prompt.process_improvements — Process Improvements Prompt (system uplift)
 
-This is the “improve the vibecoding system itself” loop, rewritten to match how Codex behaves: it needs bounded scope, objective tests, and a concrete “done” that doesn’t sprawl into product work.
+This is the “improve the vibecoding system itself” loop. Keep scope bounded, tests objective, and “done” concrete so it doesn’t sprawl into product work.
 
 ```md
 ROLE: Process engineer

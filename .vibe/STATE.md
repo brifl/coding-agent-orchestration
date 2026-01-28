@@ -13,7 +13,7 @@
 
 - Stage: 2
 - Checkpoint: 2.2
-- Status: NOT_STARTED  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
+- Status: IN_REVIEW  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
 
 ## Objective (current checkpoint)
 
@@ -33,6 +33,7 @@
 
 ## Work log (current session)
 
+- 2026-01-28: Documented manual fallback and removed Codex-only wording for checkpoint 2.2.
 - 2026-01-28: Advanced checkpoint from 2.1 to 2.2 and reset status to NOT_STARTED.
 - 2026-01-28: Reviewed checkpoint 2.1; acceptance satisfied.
 - 2026-01-28: Verified bootstrap prompts for checkpoint 2.1 and gathered evidence.
@@ -62,6 +63,42 @@
 
 ## Evidence
 
+- `rg -n "Manual execution fallback" -n docs/concepts.md`
+  ```
+  27:## Manual execution fallback (non-tool agents)
+  ```
+- `sed -n '23,60p' docs/concepts.md`
+  ```
+  Skill precedence:
+  - Repo-local skills live in `.vibe/skills` and take precedence over global skills with the same name.
+  - Global skills remain in the Codex install directory and are never overwritten by repo-local installs.
+
+  ## Manual execution fallback (non-tool agents)
+
+  If an agent cannot edit files or run commands, it should still execute **exactly one loop** by
+  producing explicit instructions for a human (or tool-enabled agent) to apply. The fallback is:
+
+  1) Read `AGENTS.md`, `.vibe/STATE.md`, `.vibe/PLAN.md`.
+  2) Decide the next loop (design / implement / review / triage / consolidation / improvements).
+  3) Provide the concrete file edits or commands a tool-enabled operator should perform.
+  4) Stop after one loop and wait for the updated `.vibe/STATE.md`.
+
+  This keeps single-loop parity while respecting environments without direct tool access.
+  ```
+- `sed -n '222,236p' prompts/template_prompts.md`
+  ```
+  ---
+
+  ## prompt.process_improvements — Process Improvements Prompt (system uplift)
+
+  This is the “improve the vibecoding system itself” loop. Keep scope bounded, tests objective, and “done” concrete so it doesn’t sprawl into product work.
+
+  ```md
+  ROLE: Process engineer
+
+  TASK
+  Improve the agent workflow system in a bounded, testable way. Focus on determinism, reducing friction, and improving correctness of the loops.
+  ```
 - `wc -l prompts/init/codex_bootstrap.md prompts/init/claude_bootstrap.md prompts/init/gemini_bootstrap.md prompts/init/copilot_bootstrap.md`
   ```
    25 prompts/init/codex_bootstrap.md
