@@ -77,6 +77,18 @@ Stop and ask for input (as issue) if any of the following occurs:
 - Keep `.vibe/HISTORY.md` for resolved issues or postmortems.
 - Don’t invent new “issue taxonomies” unless the repo explicitly needs it.
 
+## Version control policy (required)
+
+- Work on a feature branch unless explicitly told otherwise.
+- Commit as you go:
+  - Create at least one commit per completed checkpoint.
+  - Additional commits are allowed for discrete sub-steps (e.g., “fix parser”, “tighten prompts”).
+- Commit messages:
+  - Use imperative mood.
+  - Prefix with the checkpoint ID, e.g. "1.2: Fix prompt_catalog fence parsing".
+- Do not commit broken builds/tests unless the checkpoint explicitly allows it.
+- After setting Status to IN_REVIEW, ensure the branch contains the commits needed to satisfy the checkpoint.
+
 ## Definitions
 
 - **Authoritative**: must be followed unless overridden by a higher-precedence source.

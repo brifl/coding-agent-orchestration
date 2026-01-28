@@ -12,7 +12,9 @@ description: Run exactly one Vibe workflow loop (decide next prompt, execute it,
    - Do the work described (read files, run commands, edit files).
    - Update `.vibe/STATE.md` as required by the prompt.
 
-3) Stop immediately after completing that one loop.
+3) After completing a loop that changes files, create a git commit before returning to dispatcher (unless no changes).
+
+4) Stop immediately after completing that one loop.
 - Do not run a second loop.
 - Do not re-run the script unless the printed prompt explicitly requires it.
 

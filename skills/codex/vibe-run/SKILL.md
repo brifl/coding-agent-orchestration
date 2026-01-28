@@ -8,9 +8,10 @@ Repeat:
    python ~/.codex/skills/vibe-loop/scripts/vibe_next_and_print.py --repo-root . --show-decision
 
 2) If the decision indicates no work remains (recommended_role == "stop"), stop.
-3) Execute the printed prompt body verbatim.
-4) Stop if `.vibe/STATE.md` becomes BLOCKED or any BLOCKER issue exists.
-5) Otherwise, repeat.
+3) Execute the printed prompt body verbatim. 
+4) After completing a loop that changes files, create a git commit before returning to dispatcher (unless no changes).
+5) Stop if `.vibe/STATE.md` becomes BLOCKED or any BLOCKER issue exists.
+6) Otherwise, repeat.
 
 Important interpretation rule (continuous mode):
 - When a printed loop prompt says “STOP CONDITION / Stop …”, interpret it as:
