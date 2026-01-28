@@ -208,3 +208,5 @@ __marimo__/
 
 # VIBE framework
 # .vibe/ # This normally would not be commented. We are tracking the .vibe files in this repo to show an example.
+
+.vibe/

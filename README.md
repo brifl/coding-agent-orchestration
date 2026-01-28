@@ -1,4 +1,4 @@
-# coding-agent-orchestration
+# Vibe Coding-Agent
 
 A lightweight toolkit for running consistent, low-overhead workflows with coding agents
 (OpenAI Codex first; Gemini/Claude next; Copilot later).
@@ -22,7 +22,7 @@ This repo is the **canonical source** for:
 
 A bootstrapped repo looks like:
 
-```
+```md
 
 <repo>/
 AGENTS.md          # repo-specific execution contract (can drift)
@@ -32,7 +32,7 @@ PLAN.md          # checkpoint backlog with acceptance/demo/evidence
 HISTORY.md       # rollups + archive
 .gitignore         # contains ".vibe/"
 
-````
+```
 
 ### Why `.vibe/` is gitignored
 
@@ -66,7 +66,7 @@ From this repo:
 
 ```bash
 python3 tools/bootstrap.py init-repo /path/to/your/repo
-````
+```
 
 This will:
 

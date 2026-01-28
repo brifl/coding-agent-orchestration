@@ -18,15 +18,20 @@ This module is intended to be used by:
 from __future__ import annotations
 
 import re
+import unicodedata
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
 
 _HEADER_RE = re.compile(r"^##\s+(?P<hdr>.+?)\s*$")
-_STABLE_ID_RE = re.compile(r"^(?P<id>[a-z0-9_.-]+)\s+—\s+(?P<title>.+)$")
-_FENCE_START_RE = re.compile(r"^```(?P<lang>[A-Za-z0-9_-]+)?\s*$")
-_FENCE_END_RE = re.compile(r"^```\s*$")
+_STABLE_ID_RE = re.compile(r"^(?P<id>[a-z0-9_.-]+)\s+[—–-]\s+(?P<title>.+)$") # Accept em dash (—), en dash (–), or hyphen (-) as the separator.
+_ZERO_WIDTH = dict.fromkeys(map(ord, "\ufeff\u200b\u200c\u200d"), None)
+_BAD_4BT_RE = re.compile(r"^\s*`{4,}\s*$")          # line is only 4+ backticks
+_FENCE_START_RE = re.compile(r"^\s*```(?P<lang>[A-Za-z0-9_-]+)?\s*$")
+_FENCE_END_RE = re.compile(r"^\s*```\s*$")
+
+
 
 
 @dataclass(frozen=True)
@@ -55,11 +60,14 @@ def parse_catalog(text: str) -> List[CatalogEntry]:
             i += 1
             continue
 
-        hdr = m.group("hdr").strip()
+        hdr = _normalize_header(m.group("hdr").strip())
         stable = _STABLE_ID_RE.match(hdr)
         if stable:
-            key = stable.group("id").strip()
-            title = stable.group("title").strip()
+            raw_key = _normalize_header(stable.group("id").strip())
+            # Defensive: remove any leftover non-ascii key junk
+            key = re.sub(r"[^a-z0-9_.-]", "", raw_key)
+            title = _normalize_header(stable.group("title").strip())
+
         else:
             title = hdr
             key = _derive_key_from_title(title)
@@ -68,11 +76,17 @@ def parse_catalog(text: str) -> List[CatalogEntry]:
 
         # Find first fenced code block after header.
         j = i + 1
+        
         while j < len(lines) and not _FENCE_START_RE.match(lines[j]):
-            # stop early if another header starts (no payload)
+            if _BAD_4BT_RE.match(lines[j]):
+                raise ValueError(
+                    f"Invalid fence: found 4+ backticks at line {j+1}. "
+                    f"Use triple backticks only."
+                )
             if _HEADER_RE.match(lines[j]):
                 break
             j += 1
+
 
         if j >= len(lines) or not _FENCE_START_RE.match(lines[j]):
             # No payload found; skip this header.
@@ -82,7 +96,13 @@ def parse_catalog(text: str) -> List[CatalogEntry]:
         # Capture until closing fence.
         j += 1
         body_lines: List[str] = []
+
         while j < len(lines) and not _FENCE_END_RE.match(lines[j]):
+            if _BAD_4BT_RE.match(lines[j]):
+                raise ValueError(
+                    f"Invalid fence: found 4+ backticks at line {j+1}. "
+                    f"Use triple backticks only."
+                )
             body_lines.append(lines[j])
             j += 1
 
@@ -114,6 +134,13 @@ def load_catalog(path: Path) -> List[CatalogEntry]:
 
 def index_catalog(entries: List[CatalogEntry]) -> Dict[str, CatalogEntry]:
     return {e.key: e for e in entries}
+
+
+def _normalize_header(s: str) -> str:
+    # Normalize Unicode and strip common invisible chars that break keys.
+    s = unicodedata.normalize("NFKC", s)
+    s = s.translate(_ZERO_WIDTH)
+    return s
 
 
 def find_entry(entries: List[CatalogEntry], key_or_title: str) -> Optional[CatalogEntry]:

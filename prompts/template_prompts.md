@@ -67,7 +67,7 @@ OUTPUT
 
 STOP CONDITION
 Stop after updating .vibe/PLAN.md (and .vibe/STATE.md if needed). Do not begin implementation.
-````
+```
 
 ---
 

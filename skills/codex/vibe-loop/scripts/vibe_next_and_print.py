@@ -5,36 +5,50 @@ vibe_next_and_print.py
 Compute the recommended next prompt for a target repo (via agentctl.py),
 then print the corresponding prompt body from the prompt catalog.
 
-This is intentionally deterministic:
+Deterministic:
 - agentctl decides the next prompt id
 - prompt catalog prints the exact body
-- no LLM judgment required
 
-Usage (from inside a target repo):
-  python3 ~/.codex/skills/vibe-loop/scripts/vibe_next_and_print.py \
-    --repo-root . \
-    --catalog ~/.codex/skills/vibe-prompts/resources/template_prompts.md
-
-Tip: add --format json to see the decision payload.
+Robust install:
+- Locates the skills root from this script's path.
+- Locates vibe-prompts as a sibling skill folder.
+- Also supports CODEX_HOME if needed.
 """
 
 from __future__ import annotations
 
 import argparse
 import json
+import os
 import subprocess
 import sys
 from pathlib import Path
 
-# These files are expected to exist within the installed skill folder:
-# - agentctl.py in the same scripts/ directory
-# - prompt_catalog.py in the vibe-prompts skill; we call it via subprocess for isolation.
+
+def _skills_root_from_this_script() -> Path:
+    """
+    .../skills/vibe-loop/scripts/vibe_next_and_print.py
+    -> .../skills
+    """
+    p = Path(__file__).resolve()
+    # parents: [0]=scripts, [1]=vibe-loop, [2]=skills
+    return p.parents[2]
 
 
-def _run_agentctl(repo_root: Path) -> dict:
+def _codex_skills_root_env_fallback() -> Path | None:
+    """
+    If CODEX_HOME is set, Codex uses $CODEX_HOME/skills.
+    """
+    codex_home = os.environ.get("CODEX_HOME")
+    if not codex_home:
+        return None
+    return Path(codex_home).expanduser().resolve() / "skills"
+
+
+def _run_agentctl(repo_root: Path, agentctl_path: Path) -> dict:
     cmd = [
         sys.executable,
-        str(Path(__file__).resolve().parent / "agentctl.py"),
+        str(agentctl_path),
         "--repo-root",
         str(repo_root),
         "--format",
@@ -47,13 +61,11 @@ def _run_agentctl(repo_root: Path) -> dict:
     return json.loads(p.stdout)
 
 
-def _print_prompt(catalog: Path, prompt_id: str) -> None:
-    # Use vibe-prompts' prompt_catalog.py directly (it prints the body).
-    # We do not import across skill folders to keep installs simple.
+def _print_prompt(prompt_catalog_path: Path, catalog_path: Path, prompt_id: str) -> None:
     cmd = [
         sys.executable,
-        str(Path.home() / ".codex" / "skills" / "vibe-prompts" / "scripts" / "prompt_catalog.py"),
-        str(catalog),
+        str(prompt_catalog_path),
+        str(catalog_path),
         "get",
         prompt_id,
     ]
@@ -68,8 +80,8 @@ def main() -> int:
     ap.add_argument("--repo-root", default=".", help="Target repo root (default: .)")
     ap.add_argument(
         "--catalog",
-        default=str(Path.home() / ".codex" / "skills" / "vibe-prompts" / "resources" / "template_prompts.md"),
-        help="Path to the prompt catalog to use (default: global vibe-prompts catalog).",
+        default="",
+        help="Optional path to template_prompts.md. If omitted, uses sibling vibe-prompts resources.",
     )
     ap.add_argument(
         "--show-decision",
@@ -79,16 +91,43 @@ def main() -> int:
     args = ap.parse_args()
 
     repo_root = Path(args.repo_root).expanduser().resolve()
-    catalog = Path(args.catalog).expanduser().resolve()
-
     if not repo_root.exists():
         print(f"ERROR: repo root not found: {repo_root}", file=sys.stderr)
         return 2
-    if not catalog.exists():
-        print(f"ERROR: catalog not found: {catalog}", file=sys.stderr)
+
+    # Locate skill install layout.
+    skills_root = _skills_root_from_this_script()
+
+    # If someone installed to a nonstandard location, allow CODEX_HOME/skills to override.
+    env_root = _codex_skills_root_env_fallback()
+    if env_root and env_root.exists():
+        # Only override if this script is running from a non-skills-root context
+        # or if the env root appears more plausible.
+        # (Keep it simple: prefer the script-derived root; use env only if script-derived missing siblings.)
+        pass
+
+    agentctl_path = skills_root / "vibe-loop" / "scripts" / "agentctl.py"
+    if not agentctl_path.exists():
+        print(f"ERROR: agentctl.py not found at: {agentctl_path}", file=sys.stderr)
         return 2
 
-    decision = _run_agentctl(repo_root)
+    prompt_catalog_path = skills_root / "vibe-prompts" / "scripts" / "prompt_catalog.py"
+    if not prompt_catalog_path.exists():
+        print(f"ERROR: prompt_catalog.py not found at: {prompt_catalog_path}", file=sys.stderr)
+        return 2
+
+    if args.catalog:
+        catalog_path = Path(args.catalog).expanduser().resolve()
+    else:
+        catalog_path = skills_root / "vibe-prompts" / "resources" / "template_prompts.md"
+
+    if not catalog_path.exists():
+        print(f"ERROR: catalog not found at: {catalog_path}", file=sys.stderr)
+        print("Hint: reinstall skills to refresh resources:", file=sys.stderr)
+        print("  python3 tools/bootstrap.py install-skills --global --agent codex", file=sys.stderr)
+        return 2
+
+    decision = _run_agentctl(repo_root, agentctl_path)
     prompt_id = decision.get("recommended_prompt_id")
     if not prompt_id:
         print(f"ERROR: agentctl decision missing recommended_prompt_id: {decision}", file=sys.stderr)
@@ -97,7 +136,7 @@ def main() -> int:
     if args.show_decision:
         print(json.dumps(decision, indent=2, sort_keys=True), file=sys.stderr)
 
-    _print_prompt(catalog, prompt_id)
+    _print_prompt(prompt_catalog_path, catalog_path, prompt_id)
     return 0
 
 
