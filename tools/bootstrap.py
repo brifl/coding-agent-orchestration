@@ -25,6 +25,7 @@ Design:
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import shutil
 import sys
@@ -87,7 +88,7 @@ def _ensure_gitignore_contains(repo_path: Path, lines: Iterable[str]) -> bool:
     return True
 
 
-def init_repo(target_repo: Path) -> int:
+def init_repo(target_repo: Path, skillset: str | None = None) -> int:
     repo_root = _repo_root_from_this_file()
 
     if not target_repo.exists():
@@ -126,6 +127,20 @@ def init_repo(target_repo: Path) -> int:
             created.append(str(vibe_md_dst))
         else:
             skipped.append(str(vibe_md_dst))
+
+    # 5) Optional skillset config (never overwrite)
+    if skillset:
+        config_path = vibe_dir / "config.json"
+        if config_path.exists():
+            skipped.append(str(config_path))
+        else:
+            config_payload = {
+                "name": skillset,
+                "skill_folders": [],
+                "prompt_catalogs": [],
+            }
+            _write_text(config_path, json.dumps(config_payload, indent=2) + "\n")
+            created.append(str(config_path))
 
     # Summary
     print("init-repo summary")
@@ -285,15 +300,68 @@ def install_skills_codex_global(force: bool) -> int:
     return 0
 
 
+def install_skills_codex_repo(target_repo: Path, force: bool) -> int:
+    repo_root = _repo_root_from_this_file()
+    src_skills_root = repo_root / "skills" / "repo"
+
+    if not target_repo.exists():
+        raise FileNotFoundError(f"Target repo path does not exist: {target_repo}")
+    if not target_repo.is_dir():
+        raise NotADirectoryError(f"Target repo path is not a directory: {target_repo}")
+
+    vibe_dir = target_repo / ".vibe"
+    if not vibe_dir.exists():
+        raise FileNotFoundError(f"Missing .vibe directory in target repo: {vibe_dir}")
+
+    if not src_skills_root.exists():
+        raise FileNotFoundError(f"Repo-local skills folder missing: {src_skills_root}")
+
+    dst_root = vibe_dir / "skills"
+    dst_root.mkdir(parents=True, exist_ok=True)
+
+    updated: list[str] = []
+    skipped: list[str] = []
+    skill_names: list[str] = []
+
+    for src_dir in sorted(p for p in src_skills_root.iterdir() if p.is_dir()):
+        skill_names.append(src_dir.name)
+        dst_dir = dst_root / src_dir.name
+        u = _sync_dir(src_dir, dst_dir, force=force)
+        if u:
+            updated.extend(u)
+        else:
+            skipped.append(str(dst_dir))
+
+    if not skill_names:
+        raise RuntimeError(f"No repo-local skills found in: {src_skills_root}")
+
+    print("install-skills summary (codex repo-local)")
+    print(f"- Repo: {target_repo}")
+    print(f"- Destination: {dst_root}")
+    print(f"- Skills: {', '.join(skill_names)}")
+    if updated:
+        print("- Updated:")
+        for pth in updated:
+            print(f"  - {pth}")
+    if skipped:
+        print("- No changes:")
+        for pth in skipped:
+            print(f"  - {pth}")
+
+    return 0
+
+
 def _build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="bootstrap.py")
     sub = p.add_subparsers(dest="cmd", required=True)
 
     initp = sub.add_parser("init-repo", help="Bootstrap a target repo with AGENTS.md and .vibe templates")
     initp.add_argument("path", type=str, help="Path to the target repo root")
+    initp.add_argument("--skillset", type=str, help="Optional skillset name to seed .vibe/config.json")
 
     isp = sub.add_parser("install-skills", help="Install skills for a given agent/tool")
     isp.add_argument("--global", dest="global_install", action="store_true", help="Install to user/global location")
+    isp.add_argument("--repo", dest="repo_install", action="store_true", help="Install into .vibe/skills in the repo")
     isp.add_argument("--agent", choices=("codex",), required=True, help="Which agent to install for (codex)")
     isp.add_argument("--force", action="store_true", help="Force overwrite of SKILL.md and other files")
     return p
@@ -303,13 +371,15 @@ def main(argv: list[str]) -> int:
     args = _build_parser().parse_args(argv)
     try:
         if args.cmd == "init-repo":
-            return init_repo(Path(args.path).expanduser().resolve())
+            return init_repo(Path(args.path).expanduser().resolve(), skillset=args.skillset)
 
         if args.cmd == "install-skills":
-            if not args.global_install:
-                raise ValueError("Only --global installs are supported currently.")
+            if args.global_install == args.repo_install:
+                raise ValueError("Choose exactly one of --global or --repo for install-skills.")
             if args.agent == "codex":
-                return install_skills_codex_global(force=args.force)
+                if args.global_install:
+                    return install_skills_codex_global(force=args.force)
+                return install_skills_codex_repo(Path.cwd().resolve(), force=args.force)
 
         raise ValueError(f"Unknown command: {args.cmd}")
     except Exception as e:

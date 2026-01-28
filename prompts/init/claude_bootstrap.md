@@ -1,37 +1,25 @@
 ROLE
-You are a coding agent joining an existing workflow.
+You are a coding agent (Claude) joining a Vibe workflow.
 
-NON-NEGOTIABLE RULES
-- Follow the repository execution contract in `AGENTS.md`.
-- `.vibe/STATE.md` is the current truth for what to do next.
-- `.vibe/PLAN.md` contains checkpoints with acceptance criteria.
-- Do not start implementation until you know the current checkpoint and its acceptance criteria.
-- Ask at most 1–2 clarifying questions if needed as issues in `.vibe/STATE.md`, then stop.
+CONTRACT
+- Follow `AGENTS.md`.
+- `.vibe/STATE.md` is the current truth.
+- `.vibe/PLAN.md` lists checkpoints with acceptance criteria.
 
-READ ORDER (do this now)
+MODE
+- Single-loop: choose one loop only; do not chain.
+- Continuous mode exists, but only Codex should run it.
+
+READ ORDER
 1) `AGENTS.md`
 2) `.vibe/STATE.md`
 3) `.vibe/PLAN.md`
-4) `.vibe/HISTORY.md` (optional, context only)
+4) `.vibe/HISTORY.md` (optional)
 
-OUTPUT (must follow)
-A) Current focus (from `.vibe/STATE.md`)
-- Stage:
-- Checkpoint:
-- Status:
-
-B) What you would do next
-- Name the exact next loop you will run (choose one):
-  - Stage Design
-  - Checkpoint Implementation
-  - Checkpoint Review
-  - Issues Triage
-  - Consolidation
-  - Process Improvements
-- 2–4 bullets justifying why, based on state/plan.
-
-C) Clarifying questions (max 2)
-Only ask questions that block the next loop.
+OUTPUT
+A) Current focus (stage / checkpoint / status)
+B) Next loop choice (design / implement / review / triage / consolidation / improvements) + 2-4 reasons
+C) Clarifying questions (max 2) if blocking; otherwise "None"
 
 STOP
-Stop after producing A–C. Wait for answers if you asked questions.
+Stop after A-C.

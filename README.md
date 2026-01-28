@@ -89,6 +89,16 @@ into skill resources.
 Open the target repo in VS Code, start a Codex chat, and use the repo’s initialization prompt
 (from `prompts/init/codex_bootstrap.md`) or invoke the installed skills (once added).
 
+Single-loop vs continuous mode:
+- Single-loop runs exactly one loop and stops; use `$vibe-one-loop`.
+- Continuous mode keeps dispatching loops until stop conditions; use `$vibe-run`.
+
+## Agent capability contract
+
+- Codex: executes loops, edits files, runs commands; owns `$vibe-one-loop` and `$vibe-run`.
+- Claude/Gemini: propose, review, and design; may execute only if the tool environment permits.
+- Default rule: only Codex runs `$vibe-run` unless a repo explicitly opts in for other agents.
+
 ## Workflow model (short)
 
 * `AGENTS.md` defines the contract and precedence rules.

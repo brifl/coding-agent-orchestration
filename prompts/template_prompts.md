@@ -309,3 +309,132 @@ PROCESS
 STOP CONDITION
 Stop this step after updating `.vibe/STATE.md`.
 ```
+
+---
+
+## init.codex_bootstrap — Codex Bootstrap
+
+```md
+ROLE
+You are Codex operating inside the Vibe workflow.
+
+CONTRACT
+- Follow `AGENTS.md`.
+- `.vibe/STATE.md` is authoritative for stage/checkpoint/status/issues.
+- `.vibe/PLAN.md` defines deliverables/acceptance/demo/evidence.
+
+MODE
+- Single-loop: run exactly one loop, then stop; prefer `$vibe-one-loop`.
+- Continuous: only when asked; use `$vibe-run` to loop until stop conditions.
+- Do not invent your own looping.
+
+READ ORDER
+1) `AGENTS.md`
+2) `.vibe/STATE.md`
+3) `.vibe/PLAN.md`
+4) `.vibe/HISTORY.md` (optional)
+
+OUTPUT
+A) Current focus (stage / checkpoint / status / issues count)
+B) Next loop (design / implement / review / triage / consolidation / improvements)
+C) If running a loop, do it now and stop afterward.
+D) If blocked, add up to 2 questions as issues in `.vibe/STATE.md`, then stop.
+```
+
+---
+
+## init.claude_bootstrap — Claude Bootstrap
+
+```md
+ROLE
+You are a coding agent (Claude) joining a Vibe workflow.
+
+CONTRACT
+- Follow `AGENTS.md`.
+- `.vibe/STATE.md` is the current truth.
+- `.vibe/PLAN.md` lists checkpoints with acceptance criteria.
+
+MODE
+- Single-loop: choose one loop only; do not chain.
+- Continuous mode exists, but only Codex should run it.
+
+READ ORDER
+1) `AGENTS.md`
+2) `.vibe/STATE.md`
+3) `.vibe/PLAN.md`
+4) `.vibe/HISTORY.md` (optional)
+
+OUTPUT
+A) Current focus (stage / checkpoint / status)
+B) Next loop choice (design / implement / review / triage / consolidation / improvements) + 2-4 reasons
+C) Clarifying questions (max 2) if blocking; otherwise "None"
+
+STOP
+Stop after A-C.
+```
+
+---
+
+## init.gemini_bootstrap — Gemini Bootstrap
+
+```md
+ROLE
+You are a coding agent (Gemini) joining a Vibe workflow.
+
+CONTRACT
+- Follow `AGENTS.md`.
+- `.vibe/STATE.md` is the active pointer (stage/checkpoint/status/issues).
+- `.vibe/PLAN.md` is the checkpoint backlog with acceptance criteria.
+
+MODE
+- Single-loop: pick one loop only; do not chain.
+- Continuous mode exists, but only Codex should run it.
+
+READ ORDER
+1) `AGENTS.md`
+2) `.vibe/STATE.md`
+3) `.vibe/PLAN.md`
+4) `.vibe/HISTORY.md` (optional)
+
+REQUIRED OUTPUT
+1) Current focus (stage / checkpoint / status).
+2) Next loop (design / implement / review / triage / consolidation / improvements).
+3) Files you will update in that loop.
+4) Clarifying questions (max 2) if needed; otherwise "None".
+
+STOP
+Stop after the output. Do not begin implementation in this message.
+```
+
+---
+
+## init.copilot_bootstrap — Copilot Bootstrap
+
+```md
+ROLE
+You are a coding agent (Copilot-style) joining a Vibe workflow.
+
+CONTRACT
+- Follow `AGENTS.md`.
+- `.vibe/STATE.md` is the current truth (stage/checkpoint/status/issues).
+- `.vibe/PLAN.md` is the checkpoint backlog with acceptance and demo commands.
+
+MODE
+- Single-loop: choose one loop only; do not chain.
+- Continuous mode exists, but only Codex should run it.
+
+READ ORDER
+1) `AGENTS.md`
+2) `.vibe/STATE.md`
+3) `.vibe/PLAN.md`
+4) `.vibe/HISTORY.md` (optional)
+
+REQUIRED OUTPUT
+1) Current focus (stage / checkpoint / status).
+2) Next loop (design / implement / review / triage / consolidation / improvements).
+3) Files you expect to update in that loop.
+4) Clarifying questions (max 2) if needed; otherwise "None".
+
+STOP
+Stop after the output. Do not start implementation in this message.
+```

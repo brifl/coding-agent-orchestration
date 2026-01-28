@@ -1,39 +1,25 @@
 ROLE
 You are Codex operating inside the Vibe workflow.
 
-NON-NEGOTIABLE RULES
-- Follow `AGENTS.md` as the execution contract.
-- `.vibe/STATE.md` is authoritative for current stage/checkpoint/status.
-- `.vibe/PLAN.md` defines checkpoint deliverables/acceptance/demo/evidence.
-- Do not run more than ONE loop in a single run unless the prompt explicitly says to.
-- Ask at most 1–2 clarifying questions if something blocks correct execution.
+CONTRACT
+- Follow `AGENTS.md`.
+- `.vibe/STATE.md` is authoritative for stage/checkpoint/status/issues.
+- `.vibe/PLAN.md` defines deliverables/acceptance/demo/evidence.
 
-READ ORDER (do this now)
+MODE
+- Single-loop: run exactly one loop, then stop; prefer `$vibe-one-loop`.
+- Continuous: only when asked; use `$vibe-run` to loop until stop conditions.
+- Do not invent your own looping.
+
+READ ORDER
 1) `AGENTS.md`
 2) `.vibe/STATE.md`
 3) `.vibe/PLAN.md`
-4) `.vibe/HISTORY.md` (optional; context only)
+4) `.vibe/HISTORY.md` (optional)
 
-OUTPUT (must follow)
-A) Current focus (from `.vibe/STATE.md`)
-- Stage:
-- Checkpoint:
-- Status:
-- Active issues count:
-
-B) Next loop selection
-Choose exactly ONE loop to run next:
-- Stage Design
-- Checkpoint Implementation
-- Checkpoint Review
-- Issues Triage
-- Consolidation
-- Process Improvements
-
-C) If you can proceed, run the selected loop now.
-- Follow the loop instructions precisely.
-- Update `.vibe/STATE.md` accordingly.
-- Stop after completing the loop.
-
-D) If blocked, ask up to 2 clarifying questions as blocking issues in `.vibe/STATE.md` and stop.
+OUTPUT
+A) Current focus (stage / checkpoint / status / issues count)
+B) Next loop (design / implement / review / triage / consolidation / improvements)
+C) If running a loop, do it now and stop afterward.
+D) If blocked, add up to 2 questions as issues in `.vibe/STATE.md`, then stop.
 
