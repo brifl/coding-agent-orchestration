@@ -12,8 +12,8 @@
 ## Current focus
 
 - Stage: 2
-- Checkpoint: 4.0
-- Status: DONE  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
+- Checkpoint: 4.1
+- Status: NOT_STARTED  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
 
 ## Objective (current checkpoint)
 
@@ -33,6 +33,7 @@
 
 ## Work log (current session)
 
+- 2026-01-28: Advanced checkpoint from 4.0 to 4.1 and reset status to NOT_STARTED.
 - 2026-01-28: Reviewed checkpoint 4.0; acceptance satisfied.
 - 2026-01-28: Defined base Vibe skills and compatibility for checkpoint 4.0.
 - 2026-01-28: Advanced checkpoint from 3.2 to 4.0 and reset status to NOT_STARTED.
