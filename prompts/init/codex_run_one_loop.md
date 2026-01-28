@@ -1,3 +1,5 @@
+# Prompt Loops
+
 ROLE
 You are operating inside a Vibe coding-agent workflow.
 

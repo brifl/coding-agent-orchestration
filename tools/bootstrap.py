@@ -211,39 +211,57 @@ def install_skills_codex_global(force: bool) -> int:
     updated: list[str] = []
     skipped: list[str] = []
 
-    # 1) Sync skill folders (excluding prompt catalog sync which we do explicitly)
+    # 1) Sync skill folders
     for name in skill_names:
         src_dir = src_skills_root / name
         dst_dir = dst_root / name
         if not src_dir.exists():
             raise FileNotFoundError(f"Skill folder missing: {src_dir}")
-        # Copy everything under the skill folder (SKILL.md, scripts, etc.)
-        # Resource sync is handled below for vibe-prompts to ensure it matches prompts/template_prompts.md
         u = _sync_dir(src_dir, dst_dir, force=force)
         if u:
             updated.extend(u)
         else:
             skipped.append(str(dst_dir))
 
-    # 2) Force-refresh skill scripts (runtime behavior) every install.
-    updated.extend(_sync_dir(src_skills_root / "vibe-prompts" / "scripts", dst_root / "vibe-prompts" / "scripts", force=True))
-    updated.extend(_sync_dir(src_skills_root / "vibe-loop" / "scripts", dst_root / "vibe-loop" / "scripts", force=True))
+    # 2) Force-refresh runtime scripts every install (prevents stale behavior)
+    updated.extend(
+        _sync_dir(
+            src_skills_root / "vibe-prompts" / "scripts",
+            dst_root / "vibe-prompts" / "scripts",
+            force=True,
+        )
+    )
+    updated.extend(
+        _sync_dir(
+            src_skills_root / "vibe-loop" / "scripts",
+            dst_root / "vibe-loop" / "scripts",
+            force=True,
+        )
+    )
 
-    # 3) Validate the catalog before installing (fails fast on malformed fences like ````).
-    from tools.prompt_catalog import load_catalog  # or import prompt_catalog if bootstrap.py is in tools/
-    _ = load_catalog(canonical_catalog)
-
-    # 4) Ensure vibe-prompts/resources/template_prompts.md is synced from canonical prompts/template_prompts.md
+    # 3) Canonical catalog location
     canonical_catalog = repo_root / "prompts" / "template_prompts.md"
     if not canonical_catalog.exists():
         raise FileNotFoundError(f"Canonical catalog missing: {canonical_catalog}")
 
+    # 4) Validate the catalog BEFORE installing it (no package imports; use subprocess)
+    import subprocess
+
+    p = subprocess.run(
+        [sys.executable, str(repo_root / "tools" / "prompt_catalog.py"), str(canonical_catalog), "list"],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+    )
+    if p.returncode != 0:
+        raise RuntimeError(f"Prompt catalog validation failed:\n{p.stderr or p.stdout}")
+
+    # 5) Sync catalog into installed vibe-prompts resources (always refresh)
     dst_catalog = dst_root / "vibe-prompts" / "resources" / "template_prompts.md"
-    if _copy_file(canonical_catalog, dst_catalog, force=True):  # always refresh
+    if _copy_file(canonical_catalog, dst_catalog, force=True):
         updated.append(str(dst_catalog))
 
-    # 3) Ensure key helper scripts are present inside skills (so skills don't depend on your repo layout)
-    # (These files can be referenced by SKILL.md later.)
+    # 6) Ensure key helper scripts are present inside skills (force refresh)
     helper_pairs = [
         (repo_root / "tools" / "agentctl.py", dst_root / "vibe-loop" / "scripts" / "agentctl.py"),
         (repo_root / "tools" / "prompt_catalog.py", dst_root / "vibe-prompts" / "scripts" / "prompt_catalog.py"),
@@ -257,12 +275,12 @@ def install_skills_codex_global(force: bool) -> int:
     print(f"- Skills: {', '.join(skill_names)}")
     if updated:
         print("- Updated:")
-        for p in updated:
-            print(f"  - {p}")
+        for pth in updated:
+            print(f"  - {pth}")
     if skipped:
         print("- No changes:")
-        for p in skipped:
-            print(f"  - {p}")
+        for pth in skipped:
+            print(f"  - {pth}")
 
     return 0
 
