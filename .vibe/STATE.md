@@ -13,7 +13,7 @@
 
 - Stage: 2
 - Checkpoint: 3.1
-- Status: NOT_STARTED  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
+- Status: IN_REVIEW  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
 
 ## Objective (current checkpoint)
 
@@ -33,6 +33,7 @@
 
 ## Work log (current session)
 
+- 2026-01-28: Verified Codex continuous-run skill and agentctl interaction for checkpoint 3.1.
 - 2026-01-28: Advanced checkpoint from 3.0 to 3.1 and reset status to NOT_STARTED.
 - 2026-01-28: Reviewed checkpoint 3.0; acceptance satisfied.
 - 2026-01-28: Documented continuous mode semantics for checkpoint 3.0.
@@ -68,6 +69,53 @@
 
 ## Evidence
 
+- `sed -n '1,80p' skills/codex/vibe-run/SKILL.md`
+  ```
+  ---
+  name: vibe-run
+  description: Continuously run Vibe loops until interrupted, out of tool budget, plan exhausted, or blocked.
+  ---
+
+  Repeat:
+  1) Run:
+     python ~/.codex/skills/vibe-loop/scripts/vibe_next_and_print.py --repo-root . --show-decision
+
+  2) If the decision indicates no work remains (recommended_role == "stop"), stop.
+  3) Execute the printed prompt body verbatim. 
+  4) After completing a loop that changes files, create a git commit before returning to dispatcher (unless no changes).
+  5) Stop if `.vibe/STATE.md` becomes BLOCKED or any BLOCKER issue exists.
+  6) Otherwise, repeat.
+
+  Important interpretation rule (continuous mode):
+  - When a printed loop prompt says “STOP CONDITION / Stop …”, interpret it as:
+    “Stop this loop and return control to the dispatcher.”
+  - Do NOT exit the run unless the dispatcher decision indicates stop (recommended_role == "stop").
+  ```
+- `python3 tools/agentctl.py --repo-root . --format json next`
+  ```
+  {
+    "checkpoint": "3.1",
+    "reason": "Checkpoint status is NOT_STARTED.",
+    "recommended_prompt_id": "prompt.checkpoint_implementation",
+    "recommended_prompt_title": "Checkpoint Implementation Prompt",
+    "recommended_role": "implement",
+    "stage": "2",
+    "status": "NOT_STARTED"
+  }
+  ```
+- `rg -n "Advanced checkpoint" .vibe/STATE.md`
+  ```
+  36:- 2026-01-28: Advanced checkpoint from 3.0 to 3.1 and reset status to NOT_STARTED.
+  39:- 2026-01-28: Advanced checkpoint from 2.2 to 3.0 and reset status to NOT_STARTED.
+  42:- 2026-01-28: Advanced checkpoint from 2.1 to 2.2 and reset status to NOT_STARTED.
+  45:- 2026-01-28: Advanced checkpoint from 2.0 to 2.1 and reset status to NOT_STARTED.
+  52:- 2026-01-27: Advanced checkpoint from 1.2 to 2.0 and reset status to NOT_STARTED.
+  55:- 2026-01-27: Advanced checkpoint from 2.0 to 2.1 and reset status to NOT_STARTED.
+  58:- 2026-01-27: Advanced checkpoint from 2.1 to 2.2 and reset status to NOT_STARTED.
+  61:- 2026-01-27: Advanced checkpoint from 2.2 to 3.0 and reset status to NOT_STARTED.
+  64:- 2026-01-27: Advanced checkpoint from 3.0 to 3.1 and reset status to NOT_STARTED.
+  67:- 2026-01-27: Advanced checkpoint from 3.1 to 4.0 and reset status to NOT_STARTED.
+  ```
 - `rg -n "Continuous mode semantics" docs/concepts.md`
   ```
   39:## Continuous mode semantics
