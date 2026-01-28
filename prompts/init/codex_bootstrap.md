@@ -37,4 +37,3 @@ C) If you can proceed, run the selected loop now.
 
 D) If blocked, ask up to 2 clarifying questions as blocking issues in `.vibe/STATE.md` and stop.
 
-E) Select next loop. Repeat until dispatcher returns stop or blocking.

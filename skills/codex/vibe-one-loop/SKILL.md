@@ -1,29 +1,21 @@
 ---
 name: vibe-one-loop
-description: Run exactly one Vibe workflow loop by calling agentctl to choose the next prompt and printing it from the catalog.
+description: Run exactly one Vibe workflow loop (decide next prompt, execute it, update .vibe/STATE.md), then stop.
 ---
 
-## Procedure (loop relentlessly until blocked or checkpoints are complete)
+## Procedure (single loop only)
 
 1) Run:
    python ~/.codex/skills/vibe-loop/scripts/vibe_next_and_print.py --repo-root . --show-decision
 
-2) Treat the printed prompt body as the active instruction set for this loop.
-   You MUST execute it (read files, run commands, edit files) exactly as it says.
+2) Execute the printed prompt body verbatim.
+   - Do the work described (read files, run commands, edit files).
+   - Update `.vibe/STATE.md` as required by the prompt.
 
-3) If the printed prompt is "Checkpoint Review Prompt":
-   - You MUST produce a PASS/FAIL verdict.
-   - If PASS, you MUST update `.vibe/STATE.md` status to DONE (and add evidence).
-   - If FAIL, you MUST update `.vibe/STATE.md` status to IN_PROGRESS or BLOCKED and add issues.
-
-4) After updating `.vibe/STATE.md`, immediately re-run this procedure if:
-   - there is another checkpoint defined in `.vibe/PLAN.md`,
-   - and `.vibe/STATE.md` does not list a blocking issue.
-   Stop only when a blocking issue appears or the backlog of defined checkpoints is exhausted.
-
-Non-negotiable rule:
-- Printing the prompt is NOT completing the loop. You must do the work described by the prompt.
+3) Stop immediately after completing that one loop.
+- Do not run a second loop.
+- Do not re-run the script unless the printed prompt explicitly requires it.
 
 ## Failure mode
 
-If the script fails, report the error as a blocking issue in `.vibe/STATE.md` and stop.
+If the script fails, report the error and stop.
