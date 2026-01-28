@@ -4,6 +4,7 @@ description: Run exactly one Vibe workflow loop by calling agentctl to choose th
 ---
 
 ## Procedure (loop relentlessly until blocked or checkpoints are complete)
+
 1) Run:
    python ~/.codex/skills/vibe-loop/scripts/vibe_next_and_print.py --repo-root . --show-decision
 
