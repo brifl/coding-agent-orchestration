@@ -1,12 +1,11 @@
 # Vibe Coding-Agent
 
-A lightweight toolkit for running consistent, low-overhead workflows with coding agents
-(OpenAI Codex first; Gemini/Claude next; Copilot later).
+A lightweight toolkit for running consistent, low-overhead workflows with coding agents.
 
 This repo is the **canonical source** for:
 - a minimal repository contract (`AGENTS.md`)
 - a project-local workspace folder (`.vibe/`) for state/plan/history
-- a prompt catalog (`template_prompts.md`) used by tools and (eventually) agent skills
+- a prompt catalog (`template_prompts.md`) used by tools and agent skills
 - bootstrapping and installation scripts that keep things consistent across repos and agents
 
 ## Design goals
@@ -47,14 +46,14 @@ tracking them, you can remove the ignore entry for that repo.
 
 - `prompts/`  
   The prompt catalog and optional per-agent bootstrap prompts. The catalog is the canonical
-  source used by helper tools and (eventually) agent skills.
+  source used by helper tools and agent skills.
 
 - `tools/`  
   Deterministic scripts that support the workflow.
   - `agentctl.py` provides commands like `status`, `validate`, and `next` (the recommended next loop).
 
 - `skills/`  
-  Agent Skills packages (Codex first) that can:
+  Agent Skills packages that can:
   - fetch the right prompt text from the catalog
   - drive a “run one loop, stop” workflow using `agentctl.py`
   - drive a continuous loop workflow using skills
@@ -75,29 +74,20 @@ This will:
 * add `.vibe/` to that repo’s `.gitignore`
 * add a baseline `AGENTS.md` if missing
 
-### 2) Install global Codex skills
+### 2) Install global skills for your agent
 
 ```bash
-python3 tools/bootstrap.py install-skills --global codex
+python3 tools/bootstrap.py install-skills --global --agent <agent_name>
 ```
+Supported agents: `codex`, `gemini`.
 
-This installs/upgrades skills under your Codex global skill directory and syncs the prompt catalog
+This installs/upgrades skills under your agent's global skill directory and syncs the prompt catalog
 into skill resources.
 
-### 3) Start an agent session (Codex)
+### 3) Start an agent session
 
-Open the target repo in VS Code, start a Codex chat, and use the repo’s initialization prompt
-(from `prompts/init/codex_bootstrap.md`) or invoke the installed skills (once added).
-
-Single-loop vs continuous mode:
-- Single-loop runs exactly one loop and stops; use `$vibe-one-loop`.
-- Continuous mode keeps dispatching loops until stop conditions; use `$vibe-run`.
-
-## Agent capability contract
-
-- Codex: executes loops, edits files, runs commands; owns `$vibe-one-loop` and `$vibe-run`.
-- Claude/Gemini: propose, review, and design; may execute only if the tool environment permits.
-- Default rule: only Codex runs `$vibe-run` unless a repo explicitly opts in for other agents.
+Open the target repo, start a chat with your agent, and use the repo’s initialization prompt
+(e.g. from `prompts/init/gemini_bootstrap.md`) or invoke the installed skills.
 
 ## Workflow model (short)
 
@@ -113,10 +103,9 @@ prompt catalog loops.
 
 Priority order:
 
-1. OpenAI Codex (VS Code extension): global skills + deterministic scripts
-2. Gemini: thin adapter prompts/rules that point to the repo contract
-3. Claude: thin adapter prompts/rules that point to the repo contract
-4. Copilot: mirrored Agent Skills layout later
+1. Gemini / OpenAI Codex (VS Code extension): global skills + deterministic scripts
+2. Claude: thin adapter prompts/rules that point to the repo contract
+3. Copilot: mirrored Agent Skills layout later
 
 ## License
 
