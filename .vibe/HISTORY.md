@@ -4,184 +4,65 @@
 
 ## Rules
 
-- This file is **non-authoritative**.
+- This file is **non-authoritative**. It is to provide context on what has been done already.
 - It exists to reduce cognitive load by summarizing completed work and resolved issues.
 - Do not rely on this file for current decisions; always check `.vibe/STATE.md` and `.vibe/PLAN.md`.
+- When writing to this, keep summaries limited to one or two sentences for the stage/decision/issue.
 
 ---
 
 ## Completed stages
 
-### 2026-01-29 — Stage 10: Context Snapshots (completed)
+### 2026-01-26 — Stage 0: Repo scaffold and bootstrap foundations (completed)
 
-- **10.0**: Context schema and snapshot — added `.vibe/CONTEXT.md` and `docs/context_schema.md`.
-- **10.1**: Context capture prompt — added `prompt.context_capture` and consolidation refresh guidance.
-- **10.2**: Context restoration — bootstraps read CONTEXT.md; `agentctl status` includes context summary with `--with-context`.
+Established a canonical repo structure with `.vibe/` as the authoritative workflow state location and an idempotent bootstrap path to initialize and install skills.
 
-### 2026-01-29 — Stage 9: Automated Quality Gates (completed)
+### 2026-01-27 — Stage 1: Prompt catalog and agent control plane (completed)
 
-- **9.0**: Gate configuration schema — defined in `docs/quality_gates.md` and added to `.vibe/config.json`.
-- **9.1**: Gate execution in agentctl — implemented `--run-gates` flag in `agentctl.py`.
-- **9.2**: Pre-built gate templates — created templates for python, typescript, and minimal setups.
-- **Resolved Issues**: Fixed incorrect demo command for checkpoint 9.2.
+Introduced stable prompt IDs with a shared catalog and updated agent control tooling to deterministically recommend the next prompt from `.vibe` state.
 
-### 2026-01-28 — Stage 2: Cross-agent parity for core Vibe workflow (completed)
+### 2026-01-28 — Stage 2: Cross agent parity for core Vibe workflow (completed)
 
-- **2.0**: Agent capability matrix + constraints model — documented capabilities for Codex, Claude, Gemini, Copilot
-- **2.1**: Unified bootstrap prompts for all agents — created bootstrap prompts in `prompts/init/`
-- **2.2**: Core loop execution parity (single-loop) — verified all agents can run single loops, documented manual fallback
+Documented agent capability constraints and unified bootstrap prompts so multiple agents can run the same core loop with consistent expectations.
 
-### 2026-01-28 — Stage 3: Continuous mode + dispatcher parity (completed)
+### 2026-01-28 — Stage 3: Continuous mode and dispatcher parity (completed)
 
-- **3.0**: Continuous-mode semantics finalized — documented in `docs/concepts.md`
-- **3.1**: Continuous run for Codex (reference implementation) — verified `$vibe-run` skill
-- **3.2**: Continuous-mode adaptation for other agents — added pseudo-continuous guidance to bootstraps
+Defined continuous mode semantics and provided reference and adaptation guidance so agents can execute multi loop runs with minimal manual intervention.
 
 ### 2026-01-28 — Stage 4: Base Vibe skills stabilized (completed)
 
-- **4.0**: Base skill surface defined — created `docs/base_skills.md`
-- **4.1**: Publish base skills for all agents — created `docs/agent_skill_packs.md`
+Defined the base skill surface and published agent skill pack documentation to standardize usage across supported agents.
 
 ### 2026-01-28 — Stage 5: Expansion readiness (completed)
 
-- **5.0**: Skill lifecycle and compatibility policy — created `docs/skill_lifecycle.md` with versioning, go/no-go criteria, review checklist
-- **5.1**: Repo-level skill readiness — created `docs/config_schema.md` with JSON schema and future expansion fields
+Established skill lifecycle and compatibility policies and added repo level schema fields to support future expansion without breaking workflow contracts.
 
-### 2026-01-28 — Stage 6: Multi-agent continuous mode verification (completed)
+### 2026-01-28 — Stage 6: Multi agent continuous mode verification (completed)
 
-- **6.0**: Claude Code CLI continuous mode — verified through live session (7+ loop iterations without manual intervention)
-- **6.1**: Gemini Code continuous mode — verified via bootstrap; added Claude/Copilot/Kimi to bootstrap.py agent choices
-- **6.2**: Copilot continuous mode (partial) — documented workarounds in `docs/agent_capabilities.md`
+Verified continuous mode operation across multiple agents and documented partial support and workarounds where full automation is not available.
 
-### 2026-01-28 — Stage 7: Self-hosted agent support (completed)
+### 2026-01-28 — Stage 7: Self hosted agent support (completed)
 
-- **7.0**: Generic agent bootstrap — created `prompts/init/generic_bootstrap.md` and self-hosted configuration guide in `docs/agent_capabilities.md`
-- **7.1**: Kimi 2.5 verification — SKIPPED (no access to Kimi 2.5)
-- **7.2**: IQuest Coder verification — SKIPPED (no access to IQuest Coder)
+Added a generic bootstrap and configuration guidance for self hosted agents and recorded any skipped verifications due to lack of access.
 
-### 2026-01-28 — Stage 8: End-to-end workflow hardening (completed)
+### 2026-01-28 — Stage 8: End to end workflow hardening (completed)
 
-- **8.0**: Consolidation automation — enhanced agentctl.py to recommend consolidation before stage transitions; validation catches stage drift
-- **8.1**: Cross-agent test suite — created `tests/workflow/` with 37 tests covering state parsing, checkpoint advancement, stage transition detection, and consolidation triggering
+Hardened stage transitions and consolidation behavior and added a cross agent workflow test suite to catch regressions.
 
----
+### 2026-01-29 — Stage 9: Automated quality gates (completed)
 
-## Completed checkpoints (legacy)
+Added a quality gate schema, implemented gate execution in agentctl, and provided reusable gate templates.
 
-### 2026-01-26 — Stage 0 / Checkpoint 0.0: Repo scaffold + baseline templates
+### 2026-01-29 — Stage 10: Context snapshots (completed)
 
-- Established canonical repo structure for `coding-agent-orchestration`
-- Introduced `.vibe/` as the single authoritative location for state/plan/history
-- Created baseline templates:
-  - `AGENTS.md` (execution contract)
-  - `VIBE.md` (pointer doc)
-  - `.vibe/STATE.md`, `.vibe/PLAN.md`, `.vibe/HISTORY.md`
-- Result: target repos can be bootstrapped with minimal, consistent structure
-
-**Evidence pointer**
-- Commit: `<initial-structure>`
-- Demo: `python3 tools/bootstrap.py init-repo <repo>`
+Added a context snapshot schema plus capture and restoration flow so runs can be resumed with consistent project context.
 
 ---
 
-### 2026-01-26 — Stage 0 / Checkpoint 0.1: Bootstrap script (init-repo) idempotence
+## Archived details (checkpoint level)
 
-- Implemented `tools/bootstrap.py init-repo`
-- Ensured:
-  - `.vibe/` is created safely
-  - `.vibe/` is added to `.gitignore` exactly once
-  - existing repo files are never overwritten
-- Verified idempotence by repeated runs
+### Resolved issues (archived)
 
-**Evidence pointer**
-- Demo output showing ‘Created’ then ‘Skipped’ on subsequent runs
-
----
-
-### 2026-01-27 — Stage 1 / Checkpoint 1.0: Prompt catalog with stable IDs
-
-- Consolidated all workflow loops into `prompts/template_prompts.md`
-- Added stable IDs (`prompt.*`) to enable deterministic lookup
-- Introduced shared parser `tools/prompt_catalog.py`
-- Updated `clipper.py` to use the shared catalog and stable IDs
-
-**Evidence pointer**
-- `python3 tools/prompt_catalog.py prompts/template_prompts.md list`
-- `python3 tools/prompt_catalog.py prompts/template_prompts.md get prompt.onboarding`
-
----
-
-### 2026-01-27 — Stage 1 / Checkpoint 1.1: `.vibe/`-aware agent control plane
-
-- Reworked `tools/agentctl.py` to:
-  - read `.vibe/STATE.md`, `.vibe/PLAN.md`, `.vibe/HISTORY.md`
-  - emit a deterministic `recommended_prompt_id`
-  - support `status`, `next`, and `validate` commands
-- Validated behavior on a bootstrapped repo
-
-**Evidence pointer**
-- `python3 tools/agentctl.py --repo-root . next --format json`
-
----
-
-### 2026-01-27 — Stage 1 / Checkpoint 1.2: Codex skills MVP + deterministic loop helper
-
-- Added the prompt catalog resource and documentation to `skills/codex/vibe-prompts`.
-- Updated `vibe_next_and_print.py` to respect CODEX_HOME, enforce UTF-8 I/O, and prefer the installed skills layout.
-- Reinstalled the skills globally and confirmed the loop helper / `agentctl next` still produce the expected recommended prompt.
-
-**Evidence pointer**
-- `python3 tools/bootstrap.py install-skills --global --agent codex`
-- `python3 tools/agentctl.py --repo-root . --format json next`
-- `python ~/.codex/skills/vibe-loop/scripts/vibe_next_and_print.py --repo-root . --show-decision`
-
----
-
-## Resolved issues
-
-### 2026-01-28 — ISSUE-001: Stage sync was broken
-
-- **Resolution:** Implemented programmatic fixes in agentctl.py:
-  1. Added `_get_stage_for_checkpoint()` to detect which stage a checkpoint belongs to
-  2. Added `_detect_stage_transition()` to detect when advancing crosses stage boundaries
-  3. Modified `validate` command to detect stage drift (STATE.md stage doesn't match PLAN.md)
-  4. Modified `next` command to recommend consolidation before stage transitions
-  5. Fixed heading regex to accept both `*` and `-` bullet formats
-- **Impact:** Stage advancement is now validated programmatically; stage drift is detected automatically.
-
-### 2026-01-26 — ISSUE-BOOT-001: Ambiguity between root and `.vibe` workflow files
-
-- **Resolution:** Declared `.vibe/` as the only authoritative location and removed fallback logic.
-- **Impact:** Simplified scripts, reduced agent ambiguity, and lowered cognitive overhead.
-
-### 2026-01-27 — ISSUE-001: `vibe_next_and_print.py` assumed the default `~/.codex/skills` path
-
-- **Resolution:** Updated `vibe_next_and_print.py` to prefer the CODEX_HOME-aware skills root, added the catalog resources to the skill tree, and refreshed skill docs/scripts via the bootstrap installer.
-- **Impact:** The helper now works from both the repo and any CODEX_HOME-defined global install, eliminating the previous minor blocker.
-
----
-
-## Archived work log entries
-
-- 2026-01-29: Consolidation: archived Stage 9 to HISTORY, advanced to Stage 10 checkpoint 10.0.
-- 2026-01-29: Reviewed 9.2 - PASS. Deliverables and acceptance criteria met. Demo command is correct.
-- 2026-01-29: Resolved issue with incorrect demo command in PLAN.md for checkpoint 9.2.
-- 2026-01-29: Reviewed 9.2 - FAIL. Demo command in PLAN.md is incorrect.
-- 2026-01-29: Implemented 9.2 - Created quality gate templates for python, typescript and a minimal one. Validated that the templates are correctly structured and can be executed by `agentctl`.
-- 2026-01-29: Reviewed 9.1 — PASS. Gate execution logic is sound.
-- 2026-01-29: Implemented 9.1 - Enhanced `agentctl.py` to support quality gates.
-- 2026-01-29: Reviewed 9.0 — PASS. Deliverables and acceptance criteria met.
-- 2026-01-29: Implemented 9.0 - Created `docs/quality_gates.md` and added schema to `.vibe/config.json`.
-- 2026-01-29: Consolidation: archived Stage 8 to HISTORY, advanced to Stage 9 checkpoint 9.0.
-- 2026-01-28: Implemented 7.0 — created generic_bootstrap.md and self-hosted config guide.
-- 2026-01-28: Consolidation: archived Stage 6 to HISTORY, advanced to Stage 7 checkpoint 7.0.
-- 2026-01-28: Checkpoint 6.1 — Gemini verified continuous mode; added Claude/Copilot/Kimi to bootstrap.py.
-- 2026-01-28: Checkpoint 6.0 — Claude Code continuous mode demonstrated through this session.
-- 2026-01-28: Consolidation: archived Stage 5 to HISTORY, advanced to Stage 6 checkpoint 6.0.
-- 2026-01-28: Implemented checkpoint 5.0 — created docs/skill_lifecycle.md.
-
-## Process notes
-
-- 2026-01-26: Decided to keep workflow state out of version control by default (`.vibe/` in `.gitignore`).
-- 2026-01-27: Adopted stable prompt IDs as the canonical interface between scripts, UI, and agent skills.
-- 2026-01-27: Positioned Codex Agent Skills as the first-class integration point; other agents use thin adapters.
+- 2026-01-26 — ISSUE-BOOT-001: Declared `.vibe/` as the only authoritative workflow location and removed fallback logic.
+- 2026-01-27 — ISSUE-001: Updated `vibe_next_and_print.py` to respect CODEX_HOME aware skills roots.
+- 2026-01-28 — ISSUE-001: Fixed stage sync and transition detection in agentctl and improved heading parsing robustness.
