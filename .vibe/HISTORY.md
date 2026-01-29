@@ -10,7 +10,28 @@
 
 ---
 
-## Completed checkpoints
+## Completed stages
+
+### 2026-01-28 — Stage 2: Cross-agent parity for core Vibe workflow (completed)
+
+- **2.0**: Agent capability matrix + constraints model — documented capabilities for Codex, Claude, Gemini, Copilot
+- **2.1**: Unified bootstrap prompts for all agents — created bootstrap prompts in `prompts/init/`
+- **2.2**: Core loop execution parity (single-loop) — verified all agents can run single loops, documented manual fallback
+
+### 2026-01-28 — Stage 3: Continuous mode + dispatcher parity (completed)
+
+- **3.0**: Continuous-mode semantics finalized — documented in `docs/concepts.md`
+- **3.1**: Continuous run for Codex (reference implementation) — verified `$vibe-run` skill
+- **3.2**: Continuous-mode adaptation for other agents — added pseudo-continuous guidance to bootstraps
+
+### 2026-01-28 — Stage 4: Base Vibe skills stabilized (completed)
+
+- **4.0**: Base skill surface defined — created `docs/base_skills.md`
+- **4.1**: Publish base skills for all agents — created `docs/agent_skill_packs.md`
+
+---
+
+## Completed checkpoints (legacy)
 
 ### 2026-01-26 — Stage 0 / Checkpoint 0.0: Repo scaffold + baseline templates
 
@@ -82,6 +103,16 @@
 ---
 
 ## Resolved issues
+
+### 2026-01-28 — ISSUE-001: Stage sync was broken
+
+- **Resolution:** Implemented programmatic fixes in agentctl.py:
+  1. Added `_get_stage_for_checkpoint()` to detect which stage a checkpoint belongs to
+  2. Added `_detect_stage_transition()` to detect when advancing crosses stage boundaries
+  3. Modified `validate` command to detect stage drift (STATE.md stage doesn't match PLAN.md)
+  4. Modified `next` command to recommend consolidation before stage transitions
+  5. Fixed heading regex to accept both `*` and `-` bullet formats
+- **Impact:** Stage advancement is now validated programmatically; stage drift is detected automatically.
 
 ### 2026-01-26 — ISSUE-BOOT-001: Ambiguity between root and `.vibe` workflow files
 

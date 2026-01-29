@@ -101,6 +101,48 @@ def _parse_plan_checkpoint_ids(plan_text: str) -> list[str]:
     return ids
 
 
+def _get_stage_for_checkpoint(plan_text: str, checkpoint_id: str) -> str | None:
+    """
+    Find the stage number that contains a given checkpoint.
+
+    Looks for stage headings like:
+      ## Stage 2 — Title
+      ## Stage 2 - Title
+
+    Returns the stage number as a string, or None if not found.
+    """
+    lines = plan_text.splitlines()
+    current_stage: str | None = None
+    stage_pat = re.compile(r"(?im)^\s*##\s+Stage\s+(\d+)\b")
+    checkpoint_pat = re.compile(
+        rf"(?im)^\s*#{3,6}\s+(?:\(\s*DONE\s*\)\s+)?{re.escape(checkpoint_id)}\b"
+    )
+
+    for line in lines:
+        stage_match = stage_pat.match(line)
+        if stage_match:
+            current_stage = stage_match.group(1)
+        if checkpoint_pat.match(line):
+            return current_stage
+
+    return None
+
+
+def _detect_stage_transition(
+    plan_text: str, current_checkpoint: str, next_checkpoint: str
+) -> tuple[bool, str | None, str | None]:
+    """
+    Detect if advancing from current_checkpoint to next_checkpoint crosses a stage boundary.
+
+    Returns: (is_stage_change, current_stage, next_stage)
+    """
+    current_stage = _get_stage_for_checkpoint(plan_text, current_checkpoint)
+    next_stage = _get_stage_for_checkpoint(plan_text, next_checkpoint)
+
+    is_change = current_stage != next_stage and current_stage is not None and next_stage is not None
+    return (is_change, current_stage, next_stage)
+
+
 def _is_checkpoint_marked_done(plan_text: str, checkpoint_id: str) -> bool:
     pat = re.compile(rf"(?im)^\s*#{3,6}\s+\(\s*DONE\s*\)\s+{re.escape(checkpoint_id)}\b")
     return bool(pat.search(plan_text))
@@ -340,10 +382,14 @@ def check_plan_for_checkpoint(repo_root: Path, checkpoint_id: str) -> PlanCheck:
         )
 
     def has_heading(name: str) -> bool:
-        # Matches either "- Objective:" bullet style or "Objective" header style.
+        # Matches various heading styles:
+        # - "- Objective:" or "* Objective:" (bullet with colon)
+        # - "- **Objective:**" or "* **Objective:**" (bold bullet with colon inside)
+        # - "**Objective**" or "**Objective:**" (bold header)
+        # - "Objective:" (plain header)
         return bool(
             re.search(
-                rf"(?im)^\s*(?:-+\s*)?(?:\*\*)?\s*{re.escape(name)}\s*(?:\*\*)?\s*(?::)?\s*$",
+                rf"(?im)^\s*(?:[-*]+\s*)?(?:\*\*)?\s*{re.escape(name)}\s*:?\s*(?:\*\*)?\s*:?\s*$",
                 section,
             )
         )
@@ -425,6 +471,16 @@ def validate(repo_root: Path, strict: bool) -> ValidationResult:
         if state.stage and plan_text and not _plan_has_stage(plan_text, state.stage):
             warnings.append(f".vibe/PLAN.md: missing stage section for Stage {state.stage}.")
 
+        # Check for stage drift: STATE.md stage doesn't match checkpoint's actual stage in PLAN.md
+        if plan_text and state.stage:
+            actual_stage = _get_stage_for_checkpoint(plan_text, state.checkpoint)
+            if actual_stage and actual_stage != state.stage:
+                msg = (
+                    f"Stage drift detected: STATE.md says Stage {state.stage}, "
+                    f"but checkpoint {state.checkpoint} is in Stage {actual_stage} in PLAN.md."
+                )
+                errors.append(msg)
+
         plan_check = check_plan_for_checkpoint(repo_root, state.checkpoint)
         if not plan_check.found_checkpoint:
             msg = (
@@ -492,6 +548,19 @@ def _recommend_next(state: StateInfo, repo_root: Path) -> tuple[Role, str]:
 
         if not nxt:
             return ("stop", "All remaining checkpoints are marked (DONE) in .vibe/PLAN.md (plan exhausted).")
+
+        # Check for stage transition - recommend consolidation before advancing to new stage
+        is_stage_change, cur_stage, nxt_stage = _detect_stage_transition(
+            plan_text, state.checkpoint, nxt
+        )
+        if is_stage_change:
+            # Check if STATE.md stage matches the plan's current stage
+            if state.stage != nxt_stage:
+                return (
+                    "consolidation",
+                    f"Stage transition detected: {cur_stage} → {nxt_stage}. "
+                    f"Run consolidation to archive Stage {cur_stage} and update stage pointer before advancing.",
+                )
 
         return ("advance", f"Checkpoint is DONE; next checkpoint is {nxt}.")
 

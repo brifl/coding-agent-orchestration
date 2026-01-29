@@ -7,20 +7,52 @@ and scripts do not assume abilities that an agent cannot reliably provide.
 
 | Agent | File editing | Command execution | Single-loop mode | Continuous mode | Notes |
 | --- | --- | --- | --- | --- | --- |
-| Codex | Yes | Yes | Yes | Yes | Reference implementation for loop execution. |
-| Claude Code | Tool-dependent | Tool-dependent | Yes (manual or tool-assisted) | No (manual re-invocation only) | Default to advisory/review unless tools are explicitly available. |
-| Gemini | Tool-dependent | Tool-dependent | Yes (manual or tool-assisted) | No (manual re-invocation only) | Default to advisory/review unless tools are explicitly available. |
-| Copilot | Tool-dependent | Tool-dependent | Yes (manual or tool-assisted) | No (manual re-invocation only) | Default to advisory/review unless tools are explicitly available. |
+| Codex (GPT 5.2) | Yes | Yes | Yes | Yes | Reference implementation; native skill support via `$skill`. |
+| Claude Code CLI | Yes | Yes | Yes | Yes | Full capabilities via Read/Write/Edit/Bash tools. Invoke agentctl directly. |
+| Gemini Code | Yes | Yes | Yes | Yes | Full capabilities in code assistant mode. |
+| Copilot | Yes | Yes | Yes | Partial | VS Code/CLI mode has full edit/exec; continuous requires manual re-invocation. |
+| Kimi 2.5 | Yes | Yes | Yes | Yes | Self-hosted; full capabilities when tool-enabled. |
+| Claude (web chat) | No | No | Yes (advisory) | No | No file/command access; produces instructions only. |
+| Gemini (web chat) | No | No | Yes (advisory) | No | No file/command access; produces instructions only. |
 
 ## Definitions
 
-- **Tool-dependent**: Capability is available only when the host environment exposes editor and/or
-  command tools to the agent. When unavailable, assume the agent cannot edit or run commands.
-- **Single-loop mode**: Execute exactly one loop and stop. Manual execution is acceptable.
-- **Continuous mode**: Looping without manual re-invocation (supported only by Codex for now).
+- **Yes**: Capability is natively available in the standard deployment.
+- **Partial**: Capability works but may require manual intervention or re-invocation.
+- **No**: Capability is not available; agent produces instructions instead.
+- **Single-loop mode**: Execute exactly one loop and stop.
+- **Continuous mode**: Looping without manual re-invocation until stop condition.
+
+## Agent-specific notes
+
+### Claude Code CLI
+
+- Uses Read/Write/Edit/Bash tools for full file and command access
+- Can invoke `python tools/agentctl.py` directly to get next prompt
+- Continuous mode: invoke agentctl in a loop, execute returned prompts
+- No native skill system; uses direct tool invocation
+
+### Gemini Code
+
+- Full file editing and command execution in code assistant deployments
+- Continuous mode supported via tool-enabled loop execution
+- Web chat version has no tool access (advisory only)
+
+### Copilot
+
+- VS Code integration provides full edit/exec capabilities
+- CLI mode (GitHub Copilot CLI) has command execution
+- Continuous mode requires manual re-invocation between loops
+
+### Kimi 2.5 / IQuest Coder / Other self-hosted
+
+- Capabilities depend on tool configuration
+- When tool-enabled: full file/command/continuous support
+- Can run overnight on long tasks if properly configured
 
 ## Guidance
 
-- If tools are unavailable, the agent should produce instructions or propose diffs instead of editing.
-- Prompts should avoid requiring command execution unless Codex (or a tool-enabled agent) is in use.
-- Continuous mode should be offered only to Codex unless a repo explicitly opts in for other agents.
+- CLI/IDE versions of agents generally have full capabilities
+- Web chat versions are advisory-only (no file/command access)
+- Continuous mode is now supported by multiple agents, not just Codex
+- Use `python tools/agentctl.py next` to get the next prompt for any agent
