@@ -12,26 +12,34 @@
 ## Current focus
 
 - Stage: 10
-- Checkpoint: 10.0
-- Status: DONE  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
+- Checkpoint: 11.0
+- Status: BLOCKED  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
 
 ## Objective (current checkpoint)
 
-Define what context to capture and how to store it.
+Include CONTEXT.md in agent bootstrap flow.
 
 ## Deliverables (current checkpoint)
 
-- `.vibe/CONTEXT.md` — structured context file (decisions, gotchas, key files)
-- Schema in `docs/context_schema.md`
-- Sections: Architecture, Key Decisions, Gotchas, Hot Files, Agent Notes
+- Update bootstrap prompts to read CONTEXT.md after STATE.md
+- agentctl `status` command includes context summary
+- Optional: `--with-context` flag for verbose context display
 
 ## Acceptance (current checkpoint)
 
-- Schema is simple enough for agents to update incrementally
-- Clear separation between ephemeral (session) and persistent (project) context
+- New sessions start with relevant context loaded
+- Agents don't re-discover known gotchas
 
 ## Work log (current session)
 
+- 2026-01-29: Blocked - Stage 10 needs consolidation before starting Stage 11.
+- 2026-01-29: Advanced to checkpoint 11.0.
+- 2026-01-29: Reviewed 10.2 - PASS. Deliverables and acceptance criteria met.
+- 2026-01-29: Implemented 10.2 - Added context-aware bootstrap reads and status output.
+- 2026-01-29: Advanced to checkpoint 10.2.
+- 2026-01-29: Reviewed 10.1 - PASS. Deliverables and acceptance criteria met.
+- 2026-01-29: Implemented 10.1 - Added prompt.context_capture and consolidation guidance.
+- 2026-01-29: Advanced to checkpoint 10.1.
 - 2026-01-29: Reviewed 10.0 - PASS. Deliverables and acceptance criteria met.
 - 2026-01-29: Implemented 10.0 - Added context schema and example CONTEXT.md with persistent vs ephemeral guidance.
 - 2026-01-29: Consolidation: archived Stage 9 to HISTORY, advanced to Stage 10 checkpoint 10.0.
@@ -51,10 +59,14 @@ Define what context to capture and how to store it.
   - Shows Architecture/Key Decisions/Gotchas/Hot Files/Agent Notes sections with realistic content.
 - `docs/context_schema.md`
   - Explicitly separates persistent project context from ephemeral session context.
+- `python tools/prompt_catalog.py prompts/template_prompts.md get prompt.context_capture`
+  - Prompt includes capture/omit guidance and concise output format.
+- `python tools/agentctl.py --repo-root . status --with-context`
+  - Status output includes context summary and full sections when requested.
 
 ## Active issues
 
-- None.
+- BLOCKER: Stage transition to 11.0 without consolidation; align STATE/PLAN before proceeding.
 
 ## Decisions
 

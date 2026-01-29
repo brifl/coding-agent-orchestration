@@ -226,6 +226,9 @@ PROCESS
 4) Sync stage pointer:
    - If advancing to a new stage, update .vibe/STATE.md "Stage:" field
    - Verify checkpoint exists in the stage you're pointing to
+5) Optional context refresh:
+   - If CONTEXT.md is stale or missing Agent Notes, run prompt.context_capture.
+   - Preserve persistent sections; only trim session-only notes.
 
 OUTPUT
 - Stages archived (list)
@@ -236,6 +239,49 @@ OUTPUT
 
 STOP CONDITION
 Stop after docs are aligned, evidence is cleared, and stage pointers are correct.
+```
+
+---
+
+## prompt.context_capture — Context Capture Prompt
+
+```md
+ROLE: Documentarian (concise, factual)
+
+TASK
+Capture current context in `.vibe/CONTEXT.md` so the next session can resume
+without re-discovery. Keep it short and structured.
+
+READ FIRST
+- AGENTS.md (optional if already read this session)
+- .vibe/STATE.md
+- .vibe/PLAN.md
+- .vibe/CONTEXT.md (if it exists)
+
+WHAT TO CAPTURE
+- Architecture: stable system description, major components, data flow.
+- Key Decisions: decisions with dates and brief rationale.
+- Gotchas: pitfalls, edge cases, environment quirks.
+- Hot Files: files or paths that are frequently touched.
+- Agent Notes: session-scoped notes, current checkpoint focus, open threads.
+
+WHAT TO OMIT
+- Long logs, raw command output, or stack traces (summarize instead).
+- Evidence that already lives in STATE/PLAN.
+- Personal opinions or speculative guesses without labels.
+
+PROCESS
+1) If `.vibe/CONTEXT.md` exists, update it in place. Otherwise create it.
+2) Keep persistent sections concise and incrementally updated.
+3) Update Agent Notes with the current checkpoint focus and any open threads.
+4) Do not bloat the file; prefer bullets and short phrases.
+
+OUTPUT FORMAT
+- Files changed
+- Summary of context captured (1-3 bullets)
+
+STOP CONDITION
+Stop after updating `.vibe/CONTEXT.md`.
 ```
 
 ---
@@ -395,8 +441,9 @@ MODE
 READ ORDER
 1) `AGENTS.md` (optional if already read this session)
 2) `.vibe/STATE.md`
-3) `.vibe/PLAN.md`
-4) `.vibe/HISTORY.md` (optional)
+3) `.vibe/CONTEXT.md` (if present)
+4) `.vibe/PLAN.md`
+5) `.vibe/HISTORY.md` (optional)
 
 OUTPUT
 A) Current focus (stage / checkpoint / status / issues count)

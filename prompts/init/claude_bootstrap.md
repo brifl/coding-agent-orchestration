@@ -14,8 +14,9 @@ MODE
 READ ORDER
 1) `AGENTS.md` (optional if already read this session)
 2) `.vibe/STATE.md`
-3) `.vibe/PLAN.md`
-4) `.vibe/HISTORY.md` (optional)
+3) `.vibe/CONTEXT.md` (if present)
+4) `.vibe/PLAN.md`
+5) `.vibe/HISTORY.md` (optional)
 
 EXECUTION
 - Run `python tools/agentctl.py --repo-root . next --format json` to get recommended prompt

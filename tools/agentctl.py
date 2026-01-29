@@ -240,6 +240,78 @@ def _read_text(path: Path) -> str:
     return path.read_text(encoding="utf-8", errors="replace")
 
 
+def _parse_context_sections(text: str) -> dict[str, list[str]]:
+    sections: dict[str, list[str]] = {}
+    current: str | None = None
+    for line in text.splitlines():
+        header = re.match(r"^\s*##\s+(.+?)\s*$", line)
+        if header:
+            current = header.group(1).strip()
+            sections.setdefault(current, [])
+            continue
+        if current is not None:
+            sections[current].append(line.rstrip())
+    return sections
+
+
+def _summarize_context_section(lines: list[str]) -> str | None:
+    idx = 0
+    while idx < len(lines):
+        raw = lines[idx]
+        line = raw.strip()
+        if not line:
+            idx += 1
+            continue
+        if line.startswith(("-", "*")):
+            item = line.lstrip("-* ").strip()
+            if not item:
+                idx += 1
+                continue
+            continuation: list[str] = []
+            j = idx + 1
+            while j < len(lines):
+                nxt = lines[j]
+                if nxt.strip() == "":
+                    j += 1
+                    continue
+                if re.match(r"^\s*[-*]\s+", nxt):
+                    break
+                if nxt.startswith(("  ", "\t")):
+                    continuation.append(nxt.strip())
+                    j += 1
+                    continue
+                break
+            if continuation:
+                item = f"{item} {' '.join(continuation)}".strip()
+            return item
+        return line
+    return None
+
+
+def _context_summary(repo_root: Path) -> tuple[dict[str, str], dict[str, list[str]] | None]:
+    context_path = repo_root / ".vibe" / "CONTEXT.md"
+    if not context_path.exists():
+        return ({}, None)
+
+    text = _read_text(context_path)
+    sections = _parse_context_sections(text)
+
+    summary: dict[str, str] = {}
+    trimmed_sections: dict[str, list[str]] = {}
+    for section_name, lines in sections.items():
+        trimmed = list(lines)
+        while trimmed and not trimmed[0].strip():
+            trimmed.pop(0)
+        while trimmed and not trimmed[-1].strip():
+            trimmed.pop()
+        trimmed_sections[section_name] = trimmed
+        snippet = _summarize_context_section(trimmed)
+        if snippet:
+            summary[section_name] = snippet
+
+    return (summary, trimmed_sections)
+
+
 def _parse_kv_bullets(text: str) -> dict[str, str]:
     """
     Parse simple "- key: value" lines, case-insensitive keys.
@@ -772,6 +844,7 @@ def cmd_status(args: argparse.Namespace) -> int:
     state = load_state(repo_root)
 
     role, reason = _recommend_next(state, repo_root)
+    summary, sections = _context_summary(repo_root)
 
     payload: dict[str, Any] = {
         "stage": state.stage,
@@ -787,7 +860,10 @@ def cmd_status(args: argparse.Namespace) -> int:
         "recommended_next_reason": reason,
         "recommended_prompt_id": PROMPT_MAP[role]["id"],
         "recommended_prompt_title": PROMPT_MAP[role]["title"],
+        "context_summary": summary,
     }
+    if args.with_context and sections is not None:
+        payload["context_sections"] = sections
     print(_render_output(payload, args.format))
     return 0
 
@@ -869,6 +945,11 @@ def build_parser() -> argparse.ArgumentParser:
     pv.set_defaults(fn=cmd_validate)
 
     ps = sub.add_parser("status", help="Print current state summary.")
+    ps.add_argument(
+        "--with-context",
+        action="store_true",
+        help="Include full CONTEXT.md sections when available.",
+    )
     ps.set_defaults(fn=cmd_status)
 
     pn = sub.add_parser("next", help="Recommend the next loop/prompt to run.")
