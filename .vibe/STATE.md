@@ -11,358 +11,55 @@
 
 ## Current focus
 
-- Stage: 2
-- Checkpoint: 2.0
-- Status: NOT_STARTED  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
+- Stage: 8
+- Checkpoint: 8.1
+- Status: DONE  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
 
 ## Objective (current checkpoint)
 
-(Need to rewrite this with the actual) Much of the plan has already been implemented, so please avoid redundant implementations.
+Create a simple test harness to verify workflow correctness across agents.
 
 ## Deliverables (current checkpoint)
 
-- `tools/bootstrap.py install-skills --repo --agent codex`
-- Example repo-local skill: `skills/repo/example-validation/SKILL.md`
+- `tests/workflow/test_agentctl.py` — unit tests for agentctl dispatcher logic
+- `tests/workflow/test_state_parsing.py` — tests for STATE.md parsing
+- `tests/workflow/conftest.py` — fixtures for temporary .vibe directories
 
 ## Acceptance (current checkpoint)
 
-- [ ] Repo-local skills:
-  - do not overwrite global skills
-  - are discoverable by Codex
-- [ ] Precedence rules documented and enforced.
+- [ ] Tests cover: state parsing, checkpoint advancement, stage transition detection, consolidation triggering
+- [ ] All tests pass with `python -m pytest tests/workflow/`
 
 ## Work log (current session)
 
-- 2026-01-27: Bootstrapped this repo as a “real” example repo; populated plan/state.
-- 2026-01-27: Added the vibe-prompts catalog resource, refreshed both skill SKILL.md files, made `vibe_next_and_print.py` obey CODEX_HOME, reinstalled the codex skills, and exercised the `--show-decision` demonstration path.
-- 2026-01-27: Verified `agentctl next --format json` now surfaces `prompt.checkpoint_review`, confirming the scripts output a stable loop recommendation after the install changes.
-- 2026-01-27: Fixed `vibe_next_and_print.py` to exit cleanly when agentctl recommends stop; reinstalled global skills and verified stop output.
-- 2026-01-27: Advanced checkpoint from 1.2 to 2.0 and reset status to NOT_STARTED.
-- 2026-01-27: Added bootstrap prompts for Codex/Claude/Gemini/Copilot and synced prompt catalog entries.
-- 2026-01-27: Reviewed checkpoint 2.0; acceptance satisfied.
-- 2026-01-27: Advanced checkpoint from 2.0 to 2.1 and reset status to NOT_STARTED.
-- 2026-01-27: Documented continuous vs single-loop mode and reinstalled global skills for vibe-run.
-- 2026-01-27: Reviewed checkpoint 2.1; acceptance satisfied.
-- 2026-01-27: Advanced checkpoint from 2.1 to 2.2 and reset status to NOT_STARTED.
-- 2026-01-27: Documented agent capability contract in README.
-- 2026-01-27: Reviewed checkpoint 2.2; acceptance satisfied.
-- 2026-01-27: Advanced checkpoint from 2.2 to 3.0 and reset status to NOT_STARTED.
-- 2026-01-27: Added skill set config support, documented schema, and generated .vibe/config.json via init-repo.
-- 2026-01-27: Reviewed checkpoint 3.0; acceptance satisfied.
-- 2026-01-27: Advanced checkpoint from 3.0 to 3.1 and reset status to NOT_STARTED.
-- 2026-01-27: Added repo-local skill installer, example skill, and precedence documentation.
-- 2026-01-27: Reviewed checkpoint 3.1; acceptance satisfied.
-- 2026-01-27: Advanced checkpoint from 3.1 to 4.0 and reset status to NOT_STARTED.
+- 2026-01-28: Reviewed 8.1 — PASS. All 37 tests pass, coverage complete.
+- 2026-01-28: Implemented 8.1 — created test suite (37 tests, all passing).
+- 2026-01-28: Advanced to checkpoint 8.1 — Cross-agent test suite.
+- 2026-01-28: Reviewed 8.0 — PASS. Both acceptance criteria verified.
+- 2026-01-28: Design loop: 8.0 already implemented (stage transition, consolidation), marking IN_REVIEW.
+- 2026-01-28: Consolidation: archived Stage 7 to HISTORY, advanced to Stage 8 checkpoint 8.0.
+- 2026-01-28: Fixed agentctl.py to handle (SKIPPED) checkpoints in stage detection.
+- 2026-01-28: Skipped 7.1/7.2 per user request — no Kimi/IQuest access.
+- 2026-01-28: Reviewed 7.0 — PASS. Bootstrap is agent-agnostic, config guide is clear.
+- 2026-01-28: Implemented 7.0 — created generic_bootstrap.md and self-hosted config guide.
+- 2026-01-28: Consolidation: archived Stage 6 to HISTORY, advanced to Stage 7 checkpoint 7.0.
+- 2026-01-28: Checkpoint 6.1 — Gemini verified continuous mode; added Claude/Copilot/Kimi to bootstrap.py.
+- 2026-01-28: Checkpoint 6.0 — Claude Code continuous mode demonstrated through this session.
+- 2026-01-28: Consolidation: archived Stage 5 to HISTORY, advanced to Stage 6 checkpoint 6.0.
+- 2026-01-28: Implemented checkpoint 5.0 — created docs/skill_lifecycle.md.
 
 ## Evidence
 
-- `python3 tools/bootstrap.py install-skills --global --agent codex`
-  ```
-  install-skills summary (codex global)
-  - Destination: C:\Users\brian\.codex\skills
-  - Skills: vibe-prompts, vibe-loop
-  - Updated:
-    - C:\Users\brian\.codex\skills\vibe-prompts\SKILL.md
-    - C:\Users\brian\.codex\skills\vibe-loop\SKILL.md
-    - C:\Users\brian\.codex\skills\vibe-loop\scripts\vibe_next_and_print.py
-    - C:\Users\brian\.codex\skills\vibe-prompts\scripts\vibe_get_prompt.py
-    - C:\Users\brian\.codex\skills\vibe-loop\scripts\vibe_next_and_print.py
-    - C:\Users\brian\.codex\skills\vibe-prompts\resources\template_prompts.md
-    - C:\Users\brian\.codex\skills\vibe-loop\scripts\agentctl.py
-    - C:\Users\brian\.codex\skills\vibe-prompts\scripts\prompt_catalog.py
-  ```
-- `python3 ~/.codex/skills/vibe-loop/scripts/vibe_next_and_print.py --repo-root . --show-decision`
-  ```
-  {
-    "checkpoint": "1.2",
-    "reason": "Current checkpoint is last checkpoint in .vibe/PLAN.md (plan exhausted).",
-    "recommended_prompt_id": "stop",
-    "recommended_prompt_title": "Stop (no remaining checkpoints)",
-    "recommended_role": "stop",
-    "stage": "1",
-    "status": "DONE"
-  }
-  ```
-- `python3 tools/bootstrap.py install-skills --global --agent codex`
-  ```
-  install-skills summary (codex global)
-  - Destination: /home/brifl/.codex/skills
-  - Skills: vibe-prompts, vibe-loop, vibe-one-loop, vibe-review-pass, vibe-run
-  - Updated:
-    - /home/brifl/.codex/skills/vibe-prompts/resources/template_prompts.md
-    - /home/brifl/.codex/skills/vibe-prompts/scripts/vibe_get_prompt.py
-    - /home/brifl/.codex/skills/vibe-loop/scripts/vibe_mark_done.py
-    - /home/brifl/.codex/skills/vibe-loop/scripts/vibe_next_and_print.py
-    - /home/brifl/.codex/skills/vibe-prompts/resources/template_prompts.md
-    - /home/brifl/.codex/skills/vibe-loop/scripts/agentctl.py
-    - /home/brifl/.codex/skills/vibe-prompts/scripts/prompt_catalog.py
-  - No changes:
-    - /home/brifl/.codex/skills/vibe-loop
-    - /home/brifl/.codex/skills/vibe-one-loop
-    - /home/brifl/.codex/skills/vibe-review-pass
-    - /home/brifl/.codex/skills/vibe-run
-  ```
-- vibe-run transcript excerpt (this session)
-  ```
-  ROLE: Primary software engineer (checkpoint 2.0 implementation)
-  ROLE: Active reviewer (checkpoint 2.0 review)
-  ROLE: Workflow operator (advance to 2.1)
-  ROLE: Primary software engineer (checkpoint 2.1 implementation)
-  ```
-- Agent capability contract (README)
-  ```
-  ## Agent capability contract
+```
+$ python -m pytest tests/workflow/ -v
+============================= 37 passed in 0.14s ==============================
 
-  - Codex: executes loops, edits files, runs commands; owns `$vibe-one-loop` and `$vibe-run`.
-  - Claude/Gemini: propose, review, and design; may execute only if the tool environment permits.
-  - Default rule: only Codex runs `$vibe-run` unless a repo explicitly opts in for other agents.
-  ```
-- `python3 tools/bootstrap.py init-repo . --skillset minimal`
-  ```
-  init-repo summary
-  - Repo: /mnt/c/src/coding-agent-orchestration
-  - .vibe dir: /mnt/c/src/coding-agent-orchestration/.vibe
-  - .gitignore updated: no
-  - Created:
-    - /mnt/c/src/coding-agent-orchestration/.vibe/config.json
-  - Skipped (already exists):
-    - /mnt/c/src/coding-agent-orchestration/.vibe/STATE.md
-    - /mnt/c/src/coding-agent-orchestration/.vibe/PLAN.md
-    - /mnt/c/src/coding-agent-orchestration/.vibe/HISTORY.md
-    - /mnt/c/src/coding-agent-orchestration/AGENTS.md
-    - /mnt/c/src/coding-agent-orchestration/VIBE.md
-  ```
-- `cat .vibe/config.json`
-  ```
-  {
-    "name": "minimal",
-    "skill_folders": [],
-    "prompt_catalogs": []
-  }
-  ```
-- Skill Sets schema (`docs/concepts.md`)
-  ```
-  ## Skill Sets
-
-  A repo can declare a skill set in `.vibe/config.json` to add optional skills and prompt catalogs
-  without changing behavior when the file is absent.
-
-  Example:
-
-  ```json
-  {
-    "name": "minimal",
-    "skill_folders": [],
-    "prompt_catalogs": []
-  }
-  ```
-
-  Fields:
-  - `name`: label for the skill set (string).
-  - `skill_folders`: additional skill directories to load (array of paths).
-  - `prompt_catalogs`: additional prompt catalog files (array of paths).
-
-  Skill precedence:
-  - Repo-local skills live in `.vibe/skills` and take precedence over global skills with the same name.
-  - Global skills remain in the Codex install directory and are never overwritten by repo-local installs.
-  ```
-- `python3 tools/bootstrap.py install-skills --repo --agent codex`
-  ```
-  install-skills summary (codex repo-local)
-  - Repo: /mnt/c/src/coding-agent-orchestration
-  - Destination: /mnt/c/src/coding-agent-orchestration/.vibe/skills
-  - Skills: example-validation
-  - Updated:
-    - /mnt/c/src/coding-agent-orchestration/.vibe/skills/example-validation/SKILL.md
-  ```
-- `tree .vibe/skills`
-  ```
-  .vibe/skills
-  └── example-validation
-      └── SKILL.md
-
-  2 directories, 1 file
-  ```
-- `python3 ~/.codex/skills/vibe-loop/scripts/vibe_next_and_print.py --repo-root . --show-decision`
-  ```
-  ROLE: Primary software engineer
-
-  TASK
-  Advance the project by EXACTLY ONE checkpoint from .vibe/PLAN.md (the checkpoint currently marked CURRENT in .vibe/STATE.md), then get next instruction.
-
-  GENERAL RULES
-  - Treat .vibe/STATE.md as authoritative for what to do next.
-  - Implement only the current checkpoint's deliverables.
-  - Keep diffs small and focused.
-  - If you discover missing requirements or contradictions, add an issue to .vibe/STATE.md and stop.
-
-  READ FIRST
-  - AGENTS.md
-  - .vibe/STATE.md
-  - .vibe/PLAN.md
-  - README.md (optional, codebase context)
-
-  EXECUTION
-  1) Identify current checkpoint from .vibe/STATE.md.
-  2) Locate that checkpoint entry in .vibe/PLAN.md.
-  3) Implement the deliverables.
-  4) Run the demo commands (or the closest equivalents).
-  5) Update .vibe/STATE.md:
-     - set Status to IN_REVIEW
-     - add a short work log
-     - add evidence snippets or command outputs
-     - add issues if anything failed
-
-  OUTPUT FORMAT
-  - What you changed (files)
-  - Commands you ran + results (short)
-  - Evidence pasted into .vibe/STATE.md
-  - Any new issues created (with severity)
-
-  STOP CONDITION
-  Stop after completing one checkpoint and updating .vibe/STATE.md. Wait for review.
-  {
-    "checkpoint": "1.2",
-    "reason": "Checkpoint status is IN_PROGRESS.",
-    "recommended_prompt_id": "prompt.checkpoint_implementation",
-    "recommended_prompt_title": "Checkpoint Implementation Prompt",
-    "recommended_role": "implement",
-    "stage": "1",
-    "status": "IN_PROGRESS"
-  }
-  ```
-- `python tools/agentctl.py --repo-root . --format json next`
-  ```
-  {
-    "checkpoint": "1.2",
-    "reason": "Checkpoint status is IN_REVIEW.",
-    "recommended_prompt_id": "prompt.checkpoint_review",
-    "recommended_prompt_title": "Checkpoint Review Prompt",
-    "recommended_role": "review",
-    "stage": "1",
-    "status": "IN_REVIEW"
-  }
-  ```
-- `python3 tools/prompt_catalog.py prompts/template_prompts.md get init.codex_bootstrap`
-  ```
-  ROLE
-  You are Codex operating inside the Vibe workflow.
-
-  CONTRACT
-  - Follow `AGENTS.md`.
-  - `.vibe/STATE.md` is authoritative for stage/checkpoint/status/issues.
-  - `.vibe/PLAN.md` defines deliverables/acceptance/demo/evidence.
-
-  MODE
-  - Single-loop: run exactly one loop, then stop; prefer `$vibe-one-loop`.
-  - Continuous: only when asked; use `$vibe-run` to loop until stop conditions.
-  - Do not invent your own looping.
-
-  READ ORDER
-  1) `AGENTS.md`
-  2) `.vibe/STATE.md`
-  3) `.vibe/PLAN.md`
-  4) `.vibe/HISTORY.md` (optional)
-
-  OUTPUT
-  A) Current focus (stage / checkpoint / status / issues count)
-  B) Next loop (design / implement / review / triage / consolidation / improvements)
-  C) If running a loop, do it now and stop afterward.
-  D) If blocked, add up to 2 questions as issues in `.vibe/STATE.md`, then stop.
-  ```
-- `python3 tools/prompt_catalog.py prompts/template_prompts.md get init.claude_bootstrap`
-  ```
-  ROLE
-  You are a coding agent (Claude) joining a Vibe workflow.
-
-  CONTRACT
-  - Follow `AGENTS.md`.
-  - `.vibe/STATE.md` is the current truth.
-  - `.vibe/PLAN.md` lists checkpoints with acceptance criteria.
-
-  MODE
-  - Single-loop: choose one loop only; do not chain.
-  - Continuous mode exists, but only Codex should run it.
-
-  READ ORDER
-  1) `AGENTS.md`
-  2) `.vibe/STATE.md`
-  3) `.vibe/PLAN.md`
-  4) `.vibe/HISTORY.md` (optional)
-
-  OUTPUT
-  A) Current focus (stage / checkpoint / status)
-  B) Next loop choice (design / implement / review / triage / consolidation / improvements) + 2-4 reasons
-  C) Clarifying questions (max 2) if blocking; otherwise "None"
-
-  STOP
-  Stop after A-C.
-  ```
-- `python3 tools/prompt_catalog.py prompts/template_prompts.md get init.gemini_bootstrap`
-  ```
-  ROLE
-  You are a coding agent (Gemini) joining a Vibe workflow.
-
-  CONTRACT
-  - Follow `AGENTS.md`.
-  - `.vibe/STATE.md` is the active pointer (stage/checkpoint/status/issues).
-  - `.vibe/PLAN.md` is the checkpoint backlog with acceptance criteria.
-
-  MODE
-  - Single-loop: pick one loop only; do not chain.
-  - Continuous mode exists, but only Codex should run it.
-
-  READ ORDER
-  1) `AGENTS.md`
-  2) `.vibe/STATE.md`
-  3) `.vibe/PLAN.md`
-  4) `.vibe/HISTORY.md` (optional)
-
-  REQUIRED OUTPUT
-  1) Current focus (stage / checkpoint / status).
-  2) Next loop (design / implement / review / triage / consolidation / improvements).
-  3) Files you will update in that loop.
-  4) Clarifying questions (max 2) if needed; otherwise "None".
-
-  STOP
-  Stop after the output. Do not begin implementation in this message.
-  ```
-- `python3 tools/prompt_catalog.py prompts/template_prompts.md get init.copilot_bootstrap`
-  ```
-  ROLE
-  You are a coding agent (Copilot-style) joining a Vibe workflow.
-
-  CONTRACT
-  - Follow `AGENTS.md`.
-  - `.vibe/STATE.md` is the current truth (stage/checkpoint/status/issues).
-  - `.vibe/PLAN.md` is the checkpoint backlog with acceptance and demo commands.
-
-  MODE
-  - Single-loop: choose one loop only; do not chain.
-  - Continuous mode exists, but only Codex should run it.
-
-  READ ORDER
-  1) `AGENTS.md`
-  2) `.vibe/STATE.md`
-  3) `.vibe/PLAN.md`
-  4) `.vibe/HISTORY.md` (optional)
-
-  REQUIRED OUTPUT
-  1) Current focus (stage / checkpoint / status).
-  2) Next loop (design / implement / review / triage / consolidation / improvements).
-  3) Files you expect to update in that loop.
-  4) Clarifying questions (max 2) if needed; otherwise "None".
-
-  STOP
-  Stop after the output. Do not start implementation in this message.
-  ```
-- Transcript excerpts (example outputs following the bootstraps)
-  ```
-  Codex: Stage 1 / Checkpoint 2.0 / Status IN_REVIEW / Issues 0; Next loop: review.
-  Claude: Stage 1 / Checkpoint 2.0 / Status IN_REVIEW; Next loop: review (needs acceptance verification).
-  Gemini: Stage 1 / Checkpoint 2.0 / Status IN_REVIEW; Next loop: review; Files: .vibe/STATE.md.
-  Copilot: Stage 1 / Checkpoint 2.0 / Status IN_REVIEW; Next loop: review; Files: .vibe/STATE.md.
-  ```
+Tests cover:
+- State parsing (TestParseKvBullets, TestCleanStatus, TestSliceActiveIssuesSection, TestParseIssues)
+- Checkpoint advancement (TestNextCheckpointAfter)
+- Stage transition detection (TestDetectStageTransition, TestGetStageForCheckpoint)
+- Consolidation triggering (TestIsCheckpointMarkedDone)
+```
 
 ## Active issues
 
@@ -370,4 +67,8 @@
 
 ## Decisions
 
+- 2026-01-28: Skipped checkpoints 7.1/7.2 (Kimi/IQuest verification) — no access to these agents; generic bootstrap is sufficient.
+- 2026-01-28: Stage pointer in STATE.md must match the stage containing the checkpoint in PLAN.md. agentctl.py now validates this.
+- 2026-01-28: Evidence should be cleared when advancing to a new stage (consolidation prompt updated).
+- 2026-01-28: All CLI agents (Claude Code, Gemini Code, Copilot) now documented as having full capabilities.
 - 2026-01-27: Use `.vibe/` as the only authoritative location for state/plan/history to reduce ambiguity.

@@ -181,7 +181,7 @@ Stop after resolving blocking / critical issues or after asking questions needed
 ROLE: Engineering lead (mechanical docs maintenance)
 
 TASK
-Bring planning docs back into alignment with the current execution state, and archive stale plan content to reduce cognitive/compute load.
+Bring planning docs back into alignment with the current execution state, archive completed stages, and reduce cognitive/compute load. This prompt MUST run before advancing to a new stage.
 
 SCOPE
 - Allowed files:
@@ -197,34 +197,52 @@ READ FIRST
 - .vibe/HISTORY.md (optional)
 - README.md (optional)
 
+CRITICAL CHECKS (do these first)
+1) Verify .vibe/STATE.md Stage matches the actual stage in .vibe/PLAN.md for the current checkpoint.
+   - If checkpoint 5.0 is under "## Stage 5" in PLAN.md, then STATE.md must say "Stage: 5"
+   - Fix any drift immediately before proceeding.
+2) Run `python tools/agentctl.py --repo-root . validate` to detect issues.
+
 PROCESS
-1) Read: AGENTS.md (optional if already read this session), .vibe/STATE.md, .vibe/PLAN.md, .vibe/HISTORY.md (optional).
-2) Append a dated entry to .vibe/HISTORY.md summarizing:
-   - checkpoints completed since last consolidation (from STATE work log/evidence)
-   - resolved issues
-   - key decisions
-3) Prune .vibe/STATE.md:
-   - Work log: keep only the last 10 entries (move older ones into HISTORY)
-   - Evidence: keep only evidence for the current checkpoint and immediately previous checkpoint
-   - Active issues: keep only unresolved issues; move resolved issues into HISTORY
-4) Prune .vibe/PLAN.md:
-   - Ensure it contains the current stage/checkpoint and the next 1–3 stages only
-   - Remove completed past stages/checkpoints from PLAN (move them to HISTORY)
-5) Ensure .vibe/STATE.md still correctly points to current stage/checkpoint/status.
+1) Archive completed stages to .vibe/HISTORY.md:
+   - For each completed stage, add ONE summary entry with format:
+     "### YYYY-MM-DD — Stage N: [Stage Title] (completed)"
+   - Include: checkpoints completed, key deliverables, resolved issues
+   - Do NOT copy full evidence - just summarize what was accomplished
+
+2) Prune .vibe/STATE.md:
+   - Work log: keep only the last 10 entries; move older to HISTORY
+   - Evidence: CLEAR ALL evidence from previous stages
+     - Keep only evidence for current checkpoint (if any)
+     - Evidence exists to verify acceptance; once reviewed, it's no longer needed
+   - Active issues: keep only unresolved; move resolved to HISTORY
+   - Objective/Deliverables/Acceptance: update to match current checkpoint from PLAN.md
+
+3) Prune .vibe/PLAN.md:
+   - Remove completed stages entirely (they're now in HISTORY)
+   - Keep: current stage + next 1–2 stages only
+   - If a stage has no remaining checkpoints, remove it
+
+4) Sync stage pointer:
+   - If advancing to a new stage, update .vibe/STATE.md "Stage:" field
+   - Verify checkpoint exists in the stage you're pointing to
 
 OUTPUT
-- Summary of doc changes (short)
-- Any inconsistencies found and how you resolved them
+- Stages archived (list)
+- Work log entries moved (count)
+- Evidence cleared (yes/no)
+- Stage pointer updated (old → new, if changed)
+- Any drift/inconsistencies found and fixed
 
 STOP CONDITION
-Stop after docs are aligned and clutter is reduced.
+Stop after docs are aligned, evidence is cleared, and stage pointers are correct.
 ```
 
 ---
 
 ## prompt.process_improvements — Process Improvements Prompt (system uplift)
 
-This is the “improve the vibecoding system itself” loop, rewritten to match how Codex behaves: it needs bounded scope, objective tests, and a concrete “done” that doesn’t sprawl into product work.
+This is the "improve the vibecoding system itself" loop. Keep scope bounded, tests objective, and "done" concrete so it doesn't sprawl into product work.
 
 ```md
 ROLE: Process engineer
@@ -237,6 +255,7 @@ SCOPE
   - prompts/template_prompts.md
   - AGENTS.md (baseline contract in the target repo, if applicable)
   - tools/agentctl.py (and tests for it, if desired)
+  - docs/*.md (capability matrices, concepts, etc.)
   - CI config (e.g., GitHub Actions)
   - .gitignore hygiene for .vibe/
 - Do not implement product features.
@@ -251,8 +270,36 @@ INPUTS (read in order)
 7) README.md (optional, codebase context)
 8) Optional: `./var/process_log.jsonl` (untracked)
 
+DIAGNOSTIC CHECKLIST (run these first)
+Before picking an improvement, diagnose the current state:
+
+1) Run `python tools/agentctl.py --repo-root . validate --strict`
+   - Look for: stage drift, missing checkpoints, invalid status
+
+2) Check STATE.md for bloat:
+   - Work log > 15 entries? → needs consolidation
+   - Evidence section > 50 lines? → needs clearing
+   - Evidence references old checkpoints? → stale, needs clearing
+
+3) Check STATE.md / PLAN.md alignment:
+   - Does STATE.md "Stage: X" match the stage containing "Checkpoint: Y" in PLAN.md?
+   - Example bug: STATE says "Stage: 2, Checkpoint: 5.0" but 5.0 is in Stage 5
+
+4) Check HISTORY.md completeness:
+   - Are completed stages summarized there?
+   - Is it growing unboundedly? (Should be ~1 entry per completed stage)
+
+5) Check capability matrices for accuracy:
+   - Do docs/agent_capabilities.md and prompts/init/capability_map.md match?
+   - Are agent capabilities up to date? (Claude Code CLI, Gemini Code, etc.)
+
+6) Check for prompt ambiguity:
+   - Do prompts have clear STOP CONDITIONS?
+   - Do prompts reference specific file paths consistently?
+
 GOAL
 Pick exactly one improvement that:
+- fixes a diagnosed issue from the checklist above, OR
 - reduces repeated agent overhead, OR
 - makes correctness more reliable, OR
 - makes failures easier to diagnose
@@ -261,11 +308,23 @@ CONSTRAINTS
 - One improvement per run.
 - Must include objective acceptance checks (e.g., a validation command, unit test, or CI step).
 - Must not require significant repo-specific context.
+- Prefer fixing diagnosed issues over speculative improvements.
 
-SUGGESTED IMPROVEMENTS (examples)
-- agentctl: add `--strict` mode; validate .vibe file presence; validate current checkpoint exists; improve error messages
-- CI: add `agentctl validate --strict` step; add ruff/pytest ordering
-- template_prompts.md: reduce ambiguity; add stable IDs; make stop conditions more explicit
+SUGGESTED IMPROVEMENTS (prioritized)
+High priority (fix if found):
+- Stage drift between STATE.md and PLAN.md
+- Evidence bloat (>50 lines or referencing old checkpoints)
+- Work log sprawl (>15 entries without consolidation)
+- Capability matrix inaccuracies
+
+Medium priority:
+- agentctl: improve stage boundary detection; add consolidation triggers
+- prompts: make stop conditions unambiguous; add validation commands
+- CI: add `agentctl validate --strict` step
+
+Low priority:
+- Minor wording improvements
+- Documentation formatting
 
 VALIDATION
 If you modify any script:
@@ -273,11 +332,12 @@ If you modify any script:
 - show exact commands to run
 
 OUTPUT FORMAT (must follow)
-A) Chosen improvement (1 sentence)
-B) Files changed (list)
-C) Acceptance checks (exact commands)
-D) Result summary (brief)
-E) Next recommendation (optional; one bullet)
+A) Diagnostic findings (what issues were found)
+B) Chosen improvement (1 sentence)
+C) Files changed (list)
+D) Acceptance checks (exact commands)
+E) Result summary (brief)
+F) Remaining issues (list any not addressed this run)
 
 STOP CONDITION
 Stop this loop after the improvement is implemented and validated. Return to dispatcher.
@@ -350,7 +410,7 @@ D) If blocked, add up to 2 questions as issues in `.vibe/STATE.md`, then stop.
 
 ```md
 ROLE
-You are a coding agent (Claude) joining a Vibe workflow.
+You are Claude Code CLI joining a Vibe workflow.
 
 CONTRACT
 - Follow `AGENTS.md`.
@@ -358,8 +418,9 @@ CONTRACT
 - `.vibe/PLAN.md` lists checkpoints with acceptance criteria.
 
 MODE
-- Single-loop: choose one loop only; do not chain.
-- Continuous mode exists, but only Codex should run it.
+- Single-loop: execute one loop, update STATE.md, then stop.
+- Continuous: invoke `python tools/agentctl.py next` to get the next prompt, execute it, repeat until stop.
+- You have full file editing and command execution capabilities.
 
 READ ORDER
 1) `AGENTS.md` (optional if already read this session)
@@ -367,13 +428,19 @@ READ ORDER
 3) `.vibe/PLAN.md`
 4) `.vibe/HISTORY.md` (optional)
 
+EXECUTION
+- Run `python tools/agentctl.py --repo-root . next --format json` to get recommended prompt
+- Fetch prompt body: `python tools/prompt_catalog.py prompts/template_prompts.md get <prompt_id>`
+- Execute the prompt, update STATE.md, commit changes
+- For continuous mode: loop until agentctl returns `recommended_role: "stop"`
+
 OUTPUT
 A) Current focus (stage / checkpoint / status)
-B) Next loop choice (design / implement / review / triage / consolidation / improvements) + 2-4 reasons
+B) Next loop choice (design / implement / review / triage / consolidation / improvements)
 C) Clarifying questions (max 2) if blocking; otherwise "None"
 
 STOP
-Stop after A-C.
+Stop after completing one loop and updating STATE.md. For continuous mode, return to agentctl.
 ```
 
 ---
@@ -382,7 +449,7 @@ Stop after A-C.
 
 ```md
 ROLE
-You are a coding agent (Gemini) joining a Vibe workflow.
+You are Gemini Code joining a Vibe workflow.
 
 CONTRACT
 - Follow `AGENTS.md`.
@@ -390,14 +457,21 @@ CONTRACT
 - `.vibe/PLAN.md` is the checkpoint backlog with acceptance criteria.
 
 MODE
-- Single-loop: pick one loop only; do not chain.
-- Continuous mode exists, but only Codex should run it.
+- Single-loop: execute one loop, update STATE.md, then stop.
+- Continuous: invoke `python tools/agentctl.py next` to get the next prompt, execute it, repeat until stop.
+- You have full file editing and command execution capabilities.
 
 READ ORDER
 1) `AGENTS.md` (optional if already read this session)
 2) `.vibe/STATE.md`
 3) `.vibe/PLAN.md`
 4) `.vibe/HISTORY.md` (optional)
+
+EXECUTION
+- Run `python tools/agentctl.py --repo-root . next --format json` to get recommended prompt
+- Fetch prompt body: `python tools/prompt_catalog.py prompts/template_prompts.md get <prompt_id>`
+- Execute the prompt, update STATE.md, commit changes
+- For continuous mode: loop until agentctl returns `recommended_role: "stop"`
 
 REQUIRED OUTPUT
 1) Current focus (stage / checkpoint / status).
@@ -406,7 +480,7 @@ REQUIRED OUTPUT
 4) Clarifying questions (max 2) if needed; otherwise "None".
 
 STOP
-Stop after the output. Do not begin implementation in this message.
+Stop after completing one loop and updating STATE.md. For continuous mode, return to agentctl.
 ```
 
 ---
@@ -415,7 +489,7 @@ Stop after the output. Do not begin implementation in this message.
 
 ```md
 ROLE
-You are a coding agent (Copilot-style) joining a Vibe workflow.
+You are GitHub Copilot joining a Vibe workflow.
 
 CONTRACT
 - Follow `AGENTS.md`.
@@ -423,14 +497,21 @@ CONTRACT
 - `.vibe/PLAN.md` is the checkpoint backlog with acceptance and demo commands.
 
 MODE
-- Single-loop: choose one loop only; do not chain.
-- Continuous mode exists, but only Codex should run it.
+- Single-loop: execute one loop, update STATE.md, then stop.
+- Continuous: invoke `python tools/agentctl.py next` to get the next prompt, execute it, repeat.
+- You have file editing and command execution capabilities in VS Code / CLI mode.
 
 READ ORDER
 1) `AGENTS.md` (optional if already read this session)
 2) `.vibe/STATE.md`
 3) `.vibe/PLAN.md`
 4) `.vibe/HISTORY.md` (optional)
+
+EXECUTION
+- Run `python tools/agentctl.py --repo-root . next --format json` to get recommended prompt
+- Fetch prompt body: `python tools/prompt_catalog.py prompts/template_prompts.md get <prompt_id>`
+- Execute the prompt, update STATE.md, commit changes
+- For continuous mode: loop until agentctl returns `recommended_role: "stop"` or manual stop
 
 REQUIRED OUTPUT
 1) Current focus (stage / checkpoint / status).
@@ -439,5 +520,5 @@ REQUIRED OUTPUT
 4) Clarifying questions (max 2) if needed; otherwise "None".
 
 STOP
-Stop after the output. Do not start implementation in this message.
+Stop after completing one loop and updating STATE.md. For continuous mode, return to agentctl.
 ```

@@ -1,5 +1,5 @@
 ROLE
-You are a coding agent (Claude) joining a Vibe workflow.
+You are Claude Code CLI joining a Vibe workflow.
 
 CONTRACT
 - Follow `AGENTS.md`.
@@ -7,8 +7,9 @@ CONTRACT
 - `.vibe/PLAN.md` lists checkpoints with acceptance criteria.
 
 MODE
-- Single-loop: choose one loop only; do not chain.
-- Continuous mode exists, but only Codex should run it.
+- Single-loop: execute one loop, update STATE.md, then stop.
+- Continuous: invoke `python tools/agentctl.py next` to get the next prompt, execute it, repeat until stop.
+- You have full file editing and command execution capabilities.
 
 READ ORDER
 1) `AGENTS.md` (optional if already read this session)
@@ -16,10 +17,16 @@ READ ORDER
 3) `.vibe/PLAN.md`
 4) `.vibe/HISTORY.md` (optional)
 
+EXECUTION
+- Run `python tools/agentctl.py --repo-root . next --format json` to get recommended prompt
+- Fetch prompt body: `python tools/prompt_catalog.py prompts/template_prompts.md get <prompt_id>`
+- Execute the prompt, update STATE.md, commit changes
+- For continuous mode: loop until agentctl returns `recommended_role: "stop"`
+
 OUTPUT
 A) Current focus (stage / checkpoint / status)
-B) Next loop choice (design / implement / review / triage / consolidation / improvements) + 2-4 reasons
+B) Next loop choice (design / implement / review / triage / consolidation / improvements)
 C) Clarifying questions (max 2) if blocking; otherwise "None"
 
 STOP
-Stop after A-C.
+Stop after completing one loop and updating STATE.md. For continuous mode, return to agentctl.

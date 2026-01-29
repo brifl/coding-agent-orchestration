@@ -10,7 +10,45 @@
 
 ---
 
-## Completed checkpoints
+## Completed stages
+
+### 2026-01-28 — Stage 2: Cross-agent parity for core Vibe workflow (completed)
+
+- **2.0**: Agent capability matrix + constraints model — documented capabilities for Codex, Claude, Gemini, Copilot
+- **2.1**: Unified bootstrap prompts for all agents — created bootstrap prompts in `prompts/init/`
+- **2.2**: Core loop execution parity (single-loop) — verified all agents can run single loops, documented manual fallback
+
+### 2026-01-28 — Stage 3: Continuous mode + dispatcher parity (completed)
+
+- **3.0**: Continuous-mode semantics finalized — documented in `docs/concepts.md`
+- **3.1**: Continuous run for Codex (reference implementation) — verified `$vibe-run` skill
+- **3.2**: Continuous-mode adaptation for other agents — added pseudo-continuous guidance to bootstraps
+
+### 2026-01-28 — Stage 4: Base Vibe skills stabilized (completed)
+
+- **4.0**: Base skill surface defined — created `docs/base_skills.md`
+- **4.1**: Publish base skills for all agents — created `docs/agent_skill_packs.md`
+
+### 2026-01-28 — Stage 5: Expansion readiness (completed)
+
+- **5.0**: Skill lifecycle and compatibility policy — created `docs/skill_lifecycle.md` with versioning, go/no-go criteria, review checklist
+- **5.1**: Repo-level skill readiness — created `docs/config_schema.md` with JSON schema and future expansion fields
+
+### 2026-01-28 — Stage 6: Multi-agent continuous mode verification (completed)
+
+- **6.0**: Claude Code CLI continuous mode — verified through live session (7+ loop iterations without manual intervention)
+- **6.1**: Gemini Code continuous mode — verified via bootstrap; added Claude/Copilot/Kimi to bootstrap.py agent choices
+- **6.2**: Copilot continuous mode (partial) — documented workarounds in `docs/agent_capabilities.md`
+
+### 2026-01-28 — Stage 7: Self-hosted agent support (completed)
+
+- **7.0**: Generic agent bootstrap — created `prompts/init/generic_bootstrap.md` and self-hosted configuration guide in `docs/agent_capabilities.md`
+- **7.1**: Kimi 2.5 verification — SKIPPED (no access to Kimi 2.5)
+- **7.2**: IQuest Coder verification — SKIPPED (no access to IQuest Coder)
+
+---
+
+## Completed checkpoints (legacy)
 
 ### 2026-01-26 — Stage 0 / Checkpoint 0.0: Repo scaffold + baseline templates
 
@@ -82,6 +120,16 @@
 ---
 
 ## Resolved issues
+
+### 2026-01-28 — ISSUE-001: Stage sync was broken
+
+- **Resolution:** Implemented programmatic fixes in agentctl.py:
+  1. Added `_get_stage_for_checkpoint()` to detect which stage a checkpoint belongs to
+  2. Added `_detect_stage_transition()` to detect when advancing crosses stage boundaries
+  3. Modified `validate` command to detect stage drift (STATE.md stage doesn't match PLAN.md)
+  4. Modified `next` command to recommend consolidation before stage transitions
+  5. Fixed heading regex to accept both `*` and `-` bullet formats
+- **Impact:** Stage advancement is now validated programmatically; stage drift is detected automatically.
 
 ### 2026-01-26 — ISSUE-BOOT-001: Ambiguity between root and `.vibe` workflow files
 

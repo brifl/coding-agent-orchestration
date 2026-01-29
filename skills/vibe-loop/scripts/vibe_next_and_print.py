@@ -12,7 +12,7 @@ Deterministic:
 Robust install:
 - Locates the skills root from this script's path.
 - Locates vibe-prompts as a sibling skill folder.
-- Also supports CODEX_HOME if needed.
+- Also supports AGENT_HOME if needed.
 """
 
 from __future__ import annotations
@@ -35,29 +35,29 @@ def _skills_root_from_this_script() -> Path:
     return p.parents[2]
 
 
-def _codex_skills_root_env_fallback() -> Path | None:
+def _agent_skills_root_env_fallback() -> Path | None:
     """
-    If CODEX_HOME is set, Codex uses $CODEX_HOME/skills.
+    If AGENT_HOME is set, the agent uses $AGENT_HOME/skills.
     """
-    codex_home = os.environ.get("CODEX_HOME")
-    if not codex_home:
+    agent_home = os.environ.get("AGENT_HOME")
+    if not agent_home:
         return None
-    return Path(codex_home).expanduser().resolve() / "skills"
+    return Path(agent_home).expanduser().resolve() / "skills"
 
 
 def _looks_like_skills_root(root: Path) -> bool:
     """
     Simple heuristics to ensure the candidate folder contains the required skills.
     """
-    return (root / "vibe-loop").exists() and (root / "vibe-prompts").exists()
+    return any(root.glob("**/vibe-loop")) and any(root.glob("**/vibe-prompts"))
 
 
 def _locate_skills_root() -> Path:
     """
-    Prefer the CODEX_HOME-aware install root but fall back to whichever root contains the skills layout.
+    Prefer the AGENT_HOME-aware install root but fall back to whichever root contains the skills layout.
     """
     candidates: list[Path] = []
-    env_root = _codex_skills_root_env_fallback()
+    env_root = _agent_skills_root_env_fallback()
     if env_root and env_root.exists():
         candidates.append(env_root)
 
@@ -137,15 +137,19 @@ def main() -> int:
         print(f"ERROR: repo root not found: {repo_root}", file=sys.stderr)
         return 2
 
-    # Locate skill install layout (prefers CODEX_HOME when present).
+    # Locate skill install layout (prefers AGENT_HOME when present).
     skills_root = _locate_skills_root()
 
-    agentctl_path = skills_root / "vibe-loop" / "scripts" / "agentctl.py"
+    # The agentctl.py and prompt_catalog.py scripts are in the tools directory,
+    # at the root of the repository, which is the parent of the skills_root.
+    tools_dir = skills_root.parent / "tools"
+
+    agentctl_path = tools_dir / "agentctl.py"
     if not agentctl_path.exists():
         print(f"ERROR: agentctl.py not found at: {agentctl_path}", file=sys.stderr)
         return 2
 
-    prompt_catalog_path = skills_root / "vibe-prompts" / "scripts" / "prompt_catalog.py"
+    prompt_catalog_path = tools_dir / "prompt_catalog.py"
     if not prompt_catalog_path.exists():
         print(f"ERROR: prompt_catalog.py not found at: {prompt_catalog_path}", file=sys.stderr)
         return 2
@@ -153,12 +157,22 @@ def main() -> int:
     if args.catalog:
         catalog_path = Path(args.catalog).expanduser().resolve()
     else:
-        catalog_path = skills_root / "vibe-prompts" / "resources" / "template_prompts.md"
+        # Check for prompts/template_prompts.md in the repo root first
+        repo_catalog_path = skills_root.parent / "prompts" / "template_prompts.md"
+        if repo_catalog_path.exists():
+            catalog_path = repo_catalog_path
+        else:
+            # Fallback to finding vibe-prompts skill
+            vibe_prompts_dir = next(skills_root.glob("**/vibe-prompts"), None)
+            if not vibe_prompts_dir:
+                print(f"ERROR: could not find vibe-prompts skill under {skills_root}", file=sys.stderr)
+                return 2
+            catalog_path = vibe_prompts_dir / "resources" / "template_prompts.md"
 
     if not catalog_path.exists():
         print(f"ERROR: catalog not found at: {catalog_path}", file=sys.stderr)
         print("Hint: reinstall skills to refresh resources:", file=sys.stderr)
-        print("  python3 tools/bootstrap.py install-skills --global --agent codex", file=sys.stderr)
+        print("  python3 tools/bootstrap.py install-skills --global --agent <your_agent>", file=sys.stderr)
         return 2
 
     decision = _run_agentctl(repo_root, agentctl_path)
