@@ -32,6 +32,9 @@ import sys
 from pathlib import Path
 from typing import Iterable
 
+# All supported agents for bulk installation
+ALL_AGENTS = ["codex", "claude", "gemini", "copilot", "kimi", "kilo"]
+
 
 def _repo_root_from_this_file() -> Path:
     # tools/bootstrap.py -> <repo_root>/tools/bootstrap.py
@@ -51,11 +54,11 @@ def _write_text(path: Path, content: str) -> None:
     path.write_text(content, encoding="utf-8")
 
 
-def _copy_if_missing(src: Path, dst: Path) -> bool:
+def _copy_if_missing(src: Path, dst: Path, *, force: bool = False) -> bool:
     """
-    Returns True if created, False if skipped (already exists).
+    Returns True if created/overwritten, False if skipped (already exists and force=False).
     """
-    if dst.exists():
+    if dst.exists() and not force:
         return False
     if not src.exists():
         raise FileNotFoundError(f"Template not found: {src}")
@@ -88,7 +91,7 @@ def _ensure_gitignore_contains(repo_path: Path, lines: Iterable[str]) -> bool:
     return True
 
 
-def init_repo(target_repo: Path, skillset: str | None = None) -> int:
+def init_repo(target_repo: Path, skillset: str | None = None, overwrite: bool = False) -> int:
     repo_root = _repo_root_from_this_file()
 
     if not target_repo.exists():
@@ -96,7 +99,7 @@ def init_repo(target_repo: Path, skillset: str | None = None) -> int:
     if not target_repo.is_dir():
         raise NotADirectoryError(f"Target repo path is not a directory: {target_repo}")
 
-    # 1) .vibe folder + templates (never overwrite)
+    # 1) .vibe folder + templates
     vibe_dir = target_repo / ".vibe"
     vibe_dir.mkdir(parents=True, exist_ok=True)
 
@@ -106,24 +109,24 @@ def init_repo(target_repo: Path, skillset: str | None = None) -> int:
     for name in ("STATE.md", "PLAN.md", "HISTORY.md"):
         src = _template_path(repo_root, f"templates/vibe_folder/{name}")
         dst = vibe_dir / name
-        (created if _copy_if_missing(src, dst) else skipped).append(str(dst))
+        (created if _copy_if_missing(src, dst, force=overwrite) else skipped).append(str(dst))
 
     # 2) .gitignore contains .vibe/
     gi_modified = _ensure_gitignore_contains(target_repo, [".vibe/"])
 
-    # 3) baseline AGENTS.md at repo root (never overwrite)
+    # 3) baseline AGENTS.md at repo root
     agents_src = _template_path(repo_root, "templates/repo_root/AGENTS.md")
     agents_dst = target_repo / "AGENTS.md"
-    if _copy_if_missing(agents_src, agents_dst):
+    if _copy_if_missing(agents_src, agents_dst, force=overwrite):
         created.append(str(agents_dst))
     else:
         skipped.append(str(agents_dst))
 
-    # 4) optional VIBE.md pointer doc (never overwrite)
+    # 4) optional VIBE.md pointer doc
     vibe_md_src = _template_path(repo_root, "templates/repo_root/VIBE.md")
     vibe_md_dst = target_repo / "VIBE.md"
     if vibe_md_src.exists():
-        if _copy_if_missing(vibe_md_src, vibe_md_dst):
+        if _copy_if_missing(vibe_md_src, vibe_md_dst, force=overwrite):
             created.append(str(vibe_md_dst))
         else:
             skipped.append(str(vibe_md_dst))
@@ -148,7 +151,8 @@ def init_repo(target_repo: Path, skillset: str | None = None) -> int:
     print(f"- .vibe dir: {vibe_dir}")
     print(f"- .gitignore updated: {'yes' if gi_modified else 'no'}")
     if created:
-        print("- Created:")
+        label = "Created/Overwritten:" if overwrite else "Created:"
+        print(f"- {label}")
         for p in created:
             print(f"  - {p}")
     if skipped:
@@ -358,24 +362,60 @@ def _build_parser() -> argparse.ArgumentParser:
     initp = sub.add_parser("init-repo", help="Bootstrap a target repo with AGENTS.md and .vibe templates")
     initp.add_argument("path", type=str, help="Path to the target repo root")
     initp.add_argument("--skillset", type=str, help="Optional skillset name to seed .vibe/config.json")
+    initp.add_argument("--overwrite", action="store_true", help="Overwrite existing template files (STATE.md, PLAN.md, HISTORY.md, AGENTS.md, VIBE.md)")
 
     isp = sub.add_parser("install-skills", help="Install skills for a given agent/tool")
     isp.add_argument("--global", dest="global_install", action="store_true", help="Install to user/global location")
     isp.add_argument("--repo", dest="repo_install", action="store_true", help="Install into .vibe/skills in the repo")
-    isp.add_argument("--agent", choices=("codex", "claude", "gemini", "copilot", "kimi", "kilo"), required=True, help="Which agent to install for")
+    isp.add_argument("--agent", choices=("all", "codex", "claude", "gemini", "copilot", "kimi", "kilo"), required=True, help="Which agent to install for (use 'all' to install for all agents)")
     isp.add_argument("--force", action="store_true", help="Force overwrite of SKILL.md and other files")
     return p
+
+
+def _install_skills_all(global_install: bool, repo_install: bool, force: bool) -> int:
+    """Install skills for all agents. Returns 0 if all succeeded, 1 if any failed."""
+    errors: list[tuple[str, str]] = []
+    
+    for agent in ALL_AGENTS:
+        print(f"\n{'='*60}")
+        print(f"Installing skills for: {agent}")
+        print(f"{'='*60}")
+        try:
+            if global_install:
+                result = install_skills_agent_global(agent=agent, force=force)
+            else:
+                result = install_skills_agent_repo(agent=agent, target_repo=Path.cwd().resolve(), force=force)
+            if result != 0:
+                errors.append((agent, f"Return code: {result}"))
+        except Exception as e:
+            errors.append((agent, str(e)))
+    
+    print(f"\n{'='*60}")
+    print("Bulk installation complete")
+    print(f"{'='*60}")
+    
+    if errors:
+        print(f"\nFailed installations ({len(errors)}/{len(ALL_AGENTS)}):")
+        for agent, error in errors:
+            print(f"  - {agent}: {error}")
+        return 1
+    
+    print(f"\nAll {len(ALL_AGENTS)} agents installed successfully.")
+    return 0
 
 
 def main(argv: list[str]) -> int:
     args = _build_parser().parse_args(argv)
     try:
         if args.cmd == "init-repo":
-            return init_repo(Path(args.path).expanduser().resolve(), skillset=args.skillset)
+            return init_repo(Path(args.path).expanduser().resolve(), skillset=args.skillset, overwrite=args.overwrite)
 
         if args.cmd == "install-skills":
             if args.global_install == args.repo_install:
                 raise ValueError("Choose exactly one of --global or --repo for install-skills.")
+            
+            if args.agent == "all":
+                return _install_skills_all(global_install=args.global_install, repo_install=args.repo_install, force=args.force)
             
             if args.global_install:
                 return install_skills_agent_global(agent=args.agent, force=args.force)
