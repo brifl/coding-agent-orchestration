@@ -109,7 +109,8 @@ def init_repo(target_repo: Path, skillset: str | None = None, overwrite: bool = 
     for name in ("STATE.md", "PLAN.md", "HISTORY.md"):
         src = _template_path(repo_root, f"templates/vibe_folder/{name}")
         dst = vibe_dir / name
-        (created if _copy_if_missing(src, dst, force=overwrite) else skipped).append(str(dst))
+        # Never overwrite workflow files - they contain important project state
+        (created if _copy_if_missing(src, dst, force=False) else skipped).append(str(dst))
 
     # 2) .gitignore contains .vibe/
     gi_modified = _ensure_gitignore_contains(target_repo, [".vibe/"])
@@ -362,13 +363,13 @@ def _build_parser() -> argparse.ArgumentParser:
     initp = sub.add_parser("init-repo", help="Bootstrap a target repo with AGENTS.md and .vibe templates")
     initp.add_argument("path", type=str, help="Path to the target repo root")
     initp.add_argument("--skillset", type=str, help="Optional skillset name to seed .vibe/config.json")
-    initp.add_argument("--overwrite", action="store_true", help="Overwrite existing template files (STATE.md, PLAN.md, HISTORY.md, AGENTS.md, VIBE.md)")
 
     isp = sub.add_parser("install-skills", help="Install skills for a given agent/tool")
     isp.add_argument("--global", dest="global_install", action="store_true", help="Install to user/global location")
     isp.add_argument("--repo", dest="repo_install", action="store_true", help="Install into .vibe/skills in the repo")
     isp.add_argument("--agent", choices=("all", "codex", "claude", "gemini", "copilot", "kimi", "kilo"), required=True, help="Which agent to install for (use 'all' to install for all agents)")
     isp.add_argument("--force", action="store_true", help="Force overwrite of SKILL.md and other files")
+    isp.add_argument("--overwrite", action="store_true", help="Overwrite existing AGENTS.md and VIBE.md (does NOT overwrite STATE.md, PLAN.md, or HISTORY.md)")
     return p
 
 
