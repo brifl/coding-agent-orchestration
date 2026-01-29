@@ -24,6 +24,14 @@ PROCEDURE (follow exactly)
    - Do NOT start another loop.
    - Stop and wait.
 
+VCS RULES (hard)
+- Stay on the current branch.
+- Do not create/switch/delete branches unless explicitly instructed.
+- Before setting `.vibe/STATE.md` Status to `IN_REVIEW`, ensure:
+  - `git status --porcelain` is clean, and
+  - you created at least one commit for the checkpoint (`<id>: <imperative summary>`).
+- If branch/commit is not possible due to repo policy, record a BLOCKER issue in `.vibe/STATE.md` and stop.
+
 RULES
 - Do not run more than one loop.
 - Do not continue past a STOP CONDITION.

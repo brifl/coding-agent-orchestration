@@ -53,42 +53,50 @@ Stop this loop after updating .vibe/PLAN.md (and .vibe/STATE.md if needed). Retu
 ROLE: Primary software engineer
 
 TASK
-Advance the project by traversing checkpoints from .vibe/PLAN.md in sequence. After each checkpoint you must update .vibe/STATE.md and then proceed to the next checkpoint until a blocking issue is recorded or there are no checkpoints left.
+Implement **exactly one** checkpoint: the checkpoint currently selected in `.vibe/STATE.md`.
+Do not advance to other checkpoints in this prompt. Looping (continuous mode) is owned by the runner/dispatcher.
 
 GENERAL RULES
-- Treat .vibe/STATE.md as authoritative for what to do next.
-- Implement only the current checkpoint's deliverables.
+- Treat `.vibe/STATE.md` as authoritative for what to do next.
+- Implement only the current checkpoint's deliverables from `.vibe/PLAN.md`.
 - Keep diffs small and focused.
-- If you discover missing requirements or contradictions, add an issue to .vibe/STATE.md and stop.
+- If you discover missing requirements, contradictions, or unplanned scope, add an issue to `.vibe/STATE.md` and stop.
+- Version control: **work on the current branch**; **do not create or switch branches** unless explicitly instructed.
 
 READ FIRST
-- AGENTS.md (optional if already read this session)
-- .vibe/STATE.md
-- .vibe/PLAN.md
-- README.md (optional)
+- `AGENTS.md` (optional if already read this session)
+- `.vibe/STATE.md`
+- `.vibe/PLAN.md`
+- `README.md` (optional)
 
 EXECUTION
-1) Identify current checkpoint from .vibe/STATE.md.
-2) Locate that checkpoint entry in .vibe/PLAN.md.
+1) Identify the current checkpoint from `.vibe/STATE.md`.
+2) Locate the same checkpoint entry in `.vibe/PLAN.md`.
 3) Implement the deliverables.
-4) Run the demo commands (or the closest equivalents).
-5) Update .vibe/STATE.md:
-   - set Status to IN_REVIEW
+4) Run the demo commands (or closest equivalents). If they fail:
+   - record an issue in `.vibe/STATE.md` with severity (MINOR/MAJOR/BLOCKER)
+   - stop unless the fix is obvious and strictly in-scope.
+5) Commit the work:
+   - Ensure branch is unchanged.
+   - Create at least one commit that implements the checkpoint.
+   - Use message prefix `<checkpoint_id>:` in imperative mood.
+6) Update `.vibe/STATE.md`:
+   - set Status to `IN_REVIEW`
    - add a short work log
    - add evidence snippets or command outputs
-   - add issues if anything failed
-6) When .vibe/STATE.md lists no blocking issues and the plan defines another checkpoint:
-   - continue looping by re-running this prompt with the new current checkpoint.
-   Repeat until either the backlog is exhausted or a blocking issue is raised.
+   - add issues if anything failed or is ambiguous
 
 OUTPUT FORMAT
+- Current checkpoint ID
 - What you changed (files)
-- Commands you ran + results (short); include each checkpoint run if multiple executed
-- Evidence pasted into .vibe/STATE.md
+- Commands you ran + results (short)
+- Commit(s) created (hash + message)
+- Evidence pasted into `.vibe/STATE.md`
 - Any new issues created (with severity)
 
 STOP CONDITION
-Continue looping (re-run this prompt) while checkpoints remain and no blocking issue exists. Stop only when you record a blocking issue or there are no further checkpoints defined.
+Stop after completing the steps above. Return control to the dispatcher/runner for the next loop decision.
+
 ```
 
 ---

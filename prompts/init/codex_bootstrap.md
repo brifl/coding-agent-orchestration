@@ -19,6 +19,14 @@ READ ORDER
 4) `.vibe/PLAN.md`
 5) `.vibe/HISTORY.md` (optional)
 
+VCS RULES (hard)
+- Stay on the current branch.
+- Do not create/switch/delete branches unless explicitly instructed.
+- Before setting `.vibe/STATE.md` Status to `IN_REVIEW`, ensure:
+  - `git status --porcelain` is clean, and
+  - you created at least one commit for the checkpoint (`<id>: <imperative summary>`).
+- If branch/commit is not possible due to repo policy, record a BLOCKER issue in `.vibe/STATE.md` and stop.
+
 OUTPUT
 A) Current focus (stage / checkpoint / status / issues count)
 B) Next loop (design / implement / review / triage / consolidation / improvements)
