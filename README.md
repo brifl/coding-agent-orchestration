@@ -1,111 +1,150 @@
-# Vibe Coding-Agent
+# Vibe Coding-Agent Orchestration
 
-A lightweight toolkit for running consistent, low-overhead workflows with coding agents.
+A practical system for running coding agents with predictable loops, explicit state, and low overhead.
+This repository is the canonical reference implementation of the workflow.
 
-This repo is the **canonical source** for:
-- a minimal repository contract (`AGENTS.md`)
-- a project-local workspace folder (`.vibe/`) for state/plan/history
-- a prompt catalog (`template_prompts.md`) used by tools and agent skills
-- bootstrapping and installation scripts that keep things consistent across repos and agents
+## Why this exists
 
-## Design goals
+Agent work gets messy without a shared contract. This system makes the workflow explicit:
+- **State lives in files** so any agent can pick up where the last one left off.
+- **Next actions are deterministic** (chosen by tooling, not improv).
+- **Small checkpoints** keep scope bounded and reviewable.
+- **Context snapshots** reduce repeated rediscovery between sessions.
 
-- **Low cognitive overhead**: every target repo follows the same layout.
-- **Deterministic control**: scripts decide the next workflow step; the agent executes it.
-- **Separation of concerns**:
-  - repo contract can drift per project
-  - project state/plan are always project-specific
-  - reusable workflows live here
+## The mental model
 
-## Target repo layout
+Everything runs off four files in `.vibe/`:
 
-A bootstrapped repo looks like:
+- `.vibe/STATE.md` -- the current truth (stage, checkpoint, status, issues).
+- `.vibe/PLAN.md` -- a backlog of checkpoints with objective/deliverables/acceptance.
+- `.vibe/HISTORY.md` -- non-authoritative rollups and archived logs.
+- `.vibe/CONTEXT.md` -- short-lived context snapshot (decisions, gotchas, hot files, notes).
 
-```md
+Agents do **not** invent workflows. They run the prompt loop recommended by `agentctl.py`.
 
-<repo>/
-AGENTS.md          # repo-specific execution contract (can drift)
-.vibe/             # project-local working state (gitignored)
-STATE.md         # current stage/checkpoint/status
-PLAN.md          # checkpoint backlog with acceptance/demo/evidence
-HISTORY.md       # rollups + archive
-.gitignore         # contains ".vibe/"
+## How work progresses
+
+1) `agentctl.py next` chooses the next loop (implement, review, triage, consolidation, etc.).
+2) The loop prompt is fetched from `prompts/template_prompts.md` and executed.
+3) The agent updates `.vibe/STATE.md` with evidence and status changes.
+4) Repeat until the plan is exhausted or blocked.
+
+Stages are expected to be consolidated before moving to the next stage.
+
+## Repository layout (authoritative)
 
 ```
+<repo>/
+  AGENTS.md               # repo-specific execution contract (can drift)
+  .vibe/
+    STATE.md              # current stage/checkpoint/status/issues
+    PLAN.md               # checkpoint backlog
+    HISTORY.md            # rollups and archived work
+    CONTEXT.md            # snapshot of key context
+  prompts/                # prompt catalog + bootstrap prompts
+  tools/                  # deterministic workflow tools
+  templates/              # repo bootstrap + checkpoint/gate templates
+  skills/                 # agent skill packages (Codex reference)
+```
 
-### Why `.vibe/` is gitignored
+`.vibe/` is ignored by default to avoid constant churn. If your repo benefits from versioning
+workflow state, remove the ignore entry locally.
 
-`STATE.md` and `PLAN.md` are inherently project-specific and frequently rewritten. For most workflows,
-keeping them out of version control reduces noise and merge friction. If a project benefits from
-tracking them, you can remove the ignore entry for that repo.
+## Core tooling
 
-## What’s in this repo
+### `tools/agentctl.py`
+The control plane for the workflow. Key commands:
 
-- `templates/`  
-  Files copied into target repos during bootstrap (AGENTS baseline and `.vibe` templates).
+- `status` -- current stage/checkpoint + issue summary (use `--with-context` for full context).
+- `next` -- deterministic recommendation for the next loop prompt.
+- `validate` -- invariants for STATE/PLAN/HISTORY consistency.
+- `add-checkpoint` -- insert a checkpoint from a template into PLAN.md.
 
-- `prompts/`  
-  The prompt catalog and optional per-agent bootstrap prompts. The catalog is the canonical
-  source used by helper tools and agent skills.
+### `tools/prompt_catalog.py`
+Lists and retrieves prompts from `prompts/template_prompts.md` by stable ID.
 
-- `tools/`  
-  Deterministic scripts that support the workflow.
-  - `agentctl.py` provides commands like `status`, `validate`, and `next` (the recommended next loop).
+### `tools/checkpoint_templates.py`
+Lists, previews, and instantiates checkpoint templates from `templates/checkpoints/`.
 
-- `skills/`  
-  Agent Skills packages that can:
-  - fetch the right prompt text from the catalog
-  - drive a “run one loop, stop” workflow using `agentctl.py`
-  - drive a continuous loop workflow using skills
+## Workflow loops (what they do)
 
-## Quick start
+Loops are defined in `prompts/template_prompts.md` and chosen by `agentctl.py`:
 
-### 1) Bootstrap a repo
+- **Implementation** -- build the current checkpoint.
+- **Review** -- verify acceptance; mark DONE or add issues.
+- **Triage** -- resolve or clarify issues with minimal scope.
+- **Consolidation** -- archive completed stages, prune logs/evidence, sync stage pointer.
+- **Process improvements** -- improve the orchestration system itself (bounded scope).
 
-From this repo:
+## Context snapshots
 
-```bash
+Stage 10 introduced `.vibe/CONTEXT.md` to capture only the critical context:
+
+- Architecture (high-level system shape)
+- Key decisions (dated)
+- Gotchas (pitfalls and traps)
+- Hot files (high-traffic files/paths)
+- Agent notes (session-scoped)
+
+Use `prompt.context_capture` to update it at session end or after stage boundaries.
+Bootstrap prompts now read CONTEXT.md after STATE.md to reduce rediscovery.
+
+## Quality gates
+
+Stage 9 added deterministic quality gates to `agentctl.py`:
+
+- Configure gates in `.vibe/config.json`.
+- Run gates with `agentctl.py next --run-gates`.
+- Templates for gates live in `templates/gates/`.
+
+This keeps objective checks close to the workflow instead of ad-hoc "please run tests".
+
+## Checkpoint templates
+
+Stage 11 added checkpoint templates to reduce planning boilerplate:
+
+- Templates live in `templates/checkpoints/`.
+- Use `tools/checkpoint_templates.py list|preview|instantiate`.
+- Use `agentctl add-checkpoint --template <name> --params ...` to insert into PLAN.md.
+
+Templates cover common patterns (feature, bug, refactor, endpoint, coverage) and
+include sensible default acceptance criteria.
+
+## Bootstrapping and skills
+
+### Bootstrap a repo
+
+```
 python3 tools/bootstrap.py init-repo /path/to/your/repo
 ```
 
-This will:
+This creates `.vibe/`, adds `.vibe/` to `.gitignore`, and installs a baseline `AGENTS.md`.
 
-* create `/path/to/your/repo/.vibe/` with templates
-* add `.vibe/` to that repo’s `.gitignore`
-* add a baseline `AGENTS.md` if missing
+### Install global skills
 
-### 2) Install global skills for your agent
-
-```bash
+```
 python3 tools/bootstrap.py install-skills --global --agent <agent_name>
 ```
-Supported agents: `codex`, `gemini`, `kilo`.
 
-This installs/upgrades skills under your agent's global skill directory and syncs the prompt catalog
-into skill resources.
+Supported agents: `codex`, `claude`, `gemini`, `copilot`, `kimi`, `kilo`.
 
-### 3) Start an agent session
+Codex is the reference implementation for continuous mode. Other agents rely on
+manual bootstraps found in `prompts/init/`.
 
-Open the target repo, start a chat with your agent, and use the repo’s initialization prompt
-(e.g. from `prompts/init/gemini_bootstrap.md`) or invoke the installed skills.
+## Single-loop vs continuous
 
-## Workflow model (short)
+- **Single loop**: run one loop and stop (use `$vibe-one-loop` or manual prompts).
+- **Continuous**: loop until `agentctl` returns `recommended_role == "stop"`.
 
-* `AGENTS.md` defines the contract and precedence rules.
-* `.vibe/STATE.md` is the current truth (what we are doing now).
-* `.vibe/PLAN.md` is the backlog of checkpoints with acceptance criteria.
-* `.vibe/HISTORY.md` is non-authoritative rollups.
+Codex's `$vibe-run` skill implements continuous mode. It must keep looping until
+the dispatcher says stop--never just one cycle.
 
-The “next step” is chosen deterministically (via `agentctl.py next`) and executed using the
-prompt catalog loops.
+## How to start a session
 
-## Agent support roadmap
-
-Priority order:
-
-1. Gemini / OpenAI Codex (VS Code extension): global skills + deterministic scripts
-2. Claude: thin adapter prompts/rules that point to the repo contract
-3. Copilot: mirrored Agent Skills layout later
+1) Open the target repo.
+2) Use the appropriate bootstrap prompt in `prompts/init/`.
+3) Run the loop recommended by `agentctl.py`.
+4) Update `.vibe/STATE.md` and repeat until done.
 
 ## License
 
