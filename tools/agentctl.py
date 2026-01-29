@@ -92,10 +92,11 @@ def _parse_plan_checkpoint_ids(plan_text: str) -> list[str]:
       ### 1.2 — Title
       ### 1.2 - Title
       ### (DONE) 1.2 — Title
+      ### (SKIPPED) 1.2 — Title
     """
     ids: list[str] = []
-    # capture (DONE) optionally, then capture the numeric id X.Y
-    pat = re.compile(r"(?im)^\s*#{3,6}\s+(?:\(\s*DONE\s*\)\s+)?(?P<id>\d+\.\d+)\b")
+    # capture (DONE) or (SKIPPED) optionally, then capture the numeric id X.Y
+    pat = re.compile(r"(?im)^\s*#{3,6}\s+(?:\(\s*(?:DONE|SKIPPED)\s*\)\s+)?(?P<id>\d+\.\d+)\b")
     for m in pat.finditer(plan_text):
         ids.append(m.group("id"))
     return ids
@@ -115,7 +116,7 @@ def _get_stage_for_checkpoint(plan_text: str, checkpoint_id: str) -> str | None:
     current_stage: str | None = None
     stage_pat = re.compile(r"(?im)^\s*##\s+Stage\s+(\d+)\b")
     checkpoint_pat = re.compile(
-        rf"(?im)^\s*#{3,6}\s+(?:\(\s*DONE\s*\)\s+)?{re.escape(checkpoint_id)}\b"
+        rf"(?im)^\s*#{{3,6}}\s+(?:\(\s*(?:DONE|SKIPPED)\s*\)\s+)?{re.escape(checkpoint_id)}\b"
     )
 
     for line in lines:
@@ -144,7 +145,8 @@ def _detect_stage_transition(
 
 
 def _is_checkpoint_marked_done(plan_text: str, checkpoint_id: str) -> bool:
-    pat = re.compile(rf"(?im)^\s*#{3,6}\s+\(\s*DONE\s*\)\s+{re.escape(checkpoint_id)}\b")
+    """Check if a checkpoint is marked as (DONE) or (SKIPPED) in the plan."""
+    pat = re.compile(rf"(?im)^\s*#{{3,6}}\s+\(\s*(?:DONE|SKIPPED)\s*\)\s+{re.escape(checkpoint_id)}\b")
     return bool(pat.search(plan_text))
 
 
@@ -400,8 +402,8 @@ def check_plan_for_checkpoint(repo_root: Path, checkpoint_id: str) -> PlanCheck:
     has_evidence = has_heading("Evidence")
 
     # Demo commands: accept either explicit heading or code-ish lines
-    has_demo_heading = bool(re.search(r"(?im)^\s*(?:-+\s*)?Demo commands\b", section))
-    has_commandish = bool(re.search(r"(?im)^\s*-\s*`.+`", section)) or ("```" in section)
+    has_demo_heading = bool(re.search(r"(?im)^\s*(?:[-*]+\s*)?Demo commands\b", section))
+    has_commandish = bool(re.search(r"(?im)^\s*[-*]\s*`.+`", section)) or ("```" in section)
     has_demo = has_demo_heading and has_commandish or has_commandish
 
     warnings: list[str] = []

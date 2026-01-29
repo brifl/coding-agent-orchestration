@@ -44,11 +44,110 @@ and scripts do not assume abilities that an agent cannot reliably provide.
 - CLI mode (GitHub Copilot CLI) has command execution
 - Continuous mode requires manual re-invocation between loops
 
+#### Copilot Continuous Mode Workaround
+
+Copilot cannot natively loop without user intervention. To achieve pseudo-continuous execution:
+
+**Option 1: Manual Re-invocation (recommended)**
+
+```bash
+# 1. Get next action
+python tools/agentctl.py --repo-root . --format json next
+
+# 2. Get the prompt body
+python tools/prompt_catalog.py prompts/template_prompts.md get <prompt_id>
+
+# 3. Paste the prompt to Copilot, let it execute
+# 4. Repeat from step 1 until agentctl returns "stop"
+```
+
+**Option 2: VS Code Task Automation**
+
+Create `.vscode/tasks.json`:
+```json
+{
+  "version": "2.0.0",
+  "tasks": [{
+    "label": "vibe-next",
+    "type": "shell",
+    "command": "python tools/agentctl.py --repo-root . --format json next"
+  }]
+}
+```
+Then trigger the task between loops with `Ctrl+Shift+P` → "Run Task" → "vibe-next".
+
+**What works with Copilot:**
+- Single-loop execution (full file editing, command execution)
+- STATE.md updates within a loop
+- Review, implementation, and triage loops
+
+**What requires manual intervention:**
+- Advancing to next loop (must re-invoke agentctl)
+- Crossing stage boundaries (must run consolidation manually)
+- Context continuity (re-read AGENTS.md/STATE.md each session)
+
 ### Kimi 2.5 / IQuest Coder / Other self-hosted
 
 - Capabilities depend on tool configuration
 - When tool-enabled: full file/command/continuous support
 - Can run overnight on long tasks if properly configured
+
+#### Self-Hosted Agent Configuration Guide
+
+To use a self-hosted agent with the Vibe workflow:
+
+**1. Tool Requirements**
+
+Your agent must have access to:
+- **File operations**: Read, write, edit files (especially `.vibe/STATE.md`)
+- **Command execution**: Run Python scripts (`agentctl.py`, `prompt_catalog.py`)
+- **UTF-8 handling**: All workflow files are UTF-8 encoded
+
+**2. Bootstrap Setup**
+
+Use the generic bootstrap prompt:
+```bash
+cat prompts/init/generic_bootstrap.md
+```
+
+Paste this into your agent at the start of each session.
+
+**3. Skill Installation (optional)**
+
+If your agent supports a skill/plugin system:
+```bash
+python tools/bootstrap.py install-skills --global --agent kimi
+# or: --agent <your-agent-name>
+```
+
+This installs to `~/.<agent>/skills/`.
+
+**4. Continuous Mode**
+
+For overnight or long-running execution:
+```bash
+# Your agent should loop:
+while true:
+    result = run("python tools/agentctl.py --repo-root . --format json next")
+    if result.recommended_role == "stop":
+        break
+    prompt = run(f"python tools/prompt_catalog.py prompts/template_prompts.md get {result.recommended_prompt_id}")
+    execute(prompt)
+```
+
+**5. Error Handling**
+
+Configure your agent to:
+- Stop on BLOCKED status or BLOCKER issues
+- Commit changes after each checkpoint (optional)
+- Log progress to a file for later review
+
+**6. Resource Limits**
+
+Consider setting:
+- Maximum loops per session (e.g., 20)
+- Context window management (re-read STATE.md periodically)
+- Timeout per loop (e.g., 30 minutes)
 
 ## Guidance
 

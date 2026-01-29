@@ -29,6 +29,23 @@
 - **4.0**: Base skill surface defined — created `docs/base_skills.md`
 - **4.1**: Publish base skills for all agents — created `docs/agent_skill_packs.md`
 
+### 2026-01-28 — Stage 5: Expansion readiness (completed)
+
+- **5.0**: Skill lifecycle and compatibility policy — created `docs/skill_lifecycle.md` with versioning, go/no-go criteria, review checklist
+- **5.1**: Repo-level skill readiness — created `docs/config_schema.md` with JSON schema and future expansion fields
+
+### 2026-01-28 — Stage 6: Multi-agent continuous mode verification (completed)
+
+- **6.0**: Claude Code CLI continuous mode — verified through live session (7+ loop iterations without manual intervention)
+- **6.1**: Gemini Code continuous mode — verified via bootstrap; added Claude/Copilot/Kimi to bootstrap.py agent choices
+- **6.2**: Copilot continuous mode (partial) — documented workarounds in `docs/agent_capabilities.md`
+
+### 2026-01-28 — Stage 7: Self-hosted agent support (completed)
+
+- **7.0**: Generic agent bootstrap — created `prompts/init/generic_bootstrap.md` and self-hosted configuration guide in `docs/agent_capabilities.md`
+- **7.1**: Kimi 2.5 verification — SKIPPED (no access to Kimi 2.5)
+- **7.2**: IQuest Coder verification — SKIPPED (no access to IQuest Coder)
+
 ---
 
 ## Completed checkpoints (legacy)
