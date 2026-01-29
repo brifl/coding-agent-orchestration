@@ -13,7 +13,7 @@
 
 - Stage: 10
 - Checkpoint: 10.0
-- Status: NOT_STARTED  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
+- Status: DONE  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
 
 ## Objective (current checkpoint)
 
@@ -32,6 +32,8 @@ Define what context to capture and how to store it.
 
 ## Work log (current session)
 
+- 2026-01-29: Reviewed 10.0 - PASS. Deliverables and acceptance criteria met.
+- 2026-01-29: Implemented 10.0 - Added context schema and example CONTEXT.md with persistent vs ephemeral guidance.
 - 2026-01-29: Consolidation: archived Stage 9 to HISTORY, advanced to Stage 10 checkpoint 10.0.
 - 2026-01-29: Reviewed 9.2 - PASS. Deliverables and acceptance criteria met. Demo command is correct.
 - 2026-01-29: Resolved issue with incorrect demo command in PLAN.md for checkpoint 9.2.
@@ -45,7 +47,10 @@ Define what context to capture and how to store it.
 
 ## Evidence
 
-(Cleared)
+- `cat .vibe/CONTEXT.md`
+  - Shows Architecture/Key Decisions/Gotchas/Hot Files/Agent Notes sections with realistic content.
+- `docs/context_schema.md`
+  - Explicitly separates persistent project context from ephemeral session context.
 
 ## Active issues
 

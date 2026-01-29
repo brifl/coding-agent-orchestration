@@ -7,7 +7,8 @@ All future skills must layer on top of this foundation without breaking it.
 
 - **vibe-prompts**: provides prompt catalog access and prompt lookup.
 - **vibe-loop**: runs a single workflow loop using `agentctl` to select the next prompt.
-- **vibe-run**: continuous loop runner (Codex reference implementation).
+- **vibe-run**: continuous loop runner (Codex reference implementation); it keeps looping
+  until the dispatcher returns `recommended_role == "stop"`.
 - **agentctl semantics**: deterministic `next`, `status`, and validation behaviors that
   drive loop selection and state transitions.
 
