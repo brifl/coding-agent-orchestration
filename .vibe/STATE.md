@@ -11,27 +11,28 @@
 
 ## Current focus
 
-- Stage: 8
-- Checkpoint: 8.1
-- Status: DONE  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
+- Stage: 9
+- Checkpoint: 9.0
+- Status: NOT_STARTED  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
 
 ## Objective (current checkpoint)
 
-Create a simple test harness to verify workflow correctness across agents.
+Define a schema for specifying quality gates per checkpoint or globally.
 
 ## Deliverables (current checkpoint)
 
-- `tests/workflow/test_agentctl.py` — unit tests for agentctl dispatcher logic
-- `tests/workflow/test_state_parsing.py` — tests for STATE.md parsing
-- `tests/workflow/conftest.py` — fixtures for temporary .vibe directories
+- `docs/quality_gates.md` — gate types, configuration, and examples
+- Schema addition to `.vibe/config.json` for gate definitions
+- Gate types: `test`, `lint`, `typecheck`, `custom`
 
 ## Acceptance (current checkpoint)
 
-- [ ] Tests cover: state parsing, checkpoint advancement, stage transition detection, consolidation triggering
-- [ ] All tests pass with `python -m pytest tests/workflow/`
+- [ ] Schema supports: command to run, pass/fail criteria, optional vs required gates
+- [ ] Documentation covers common use cases (pytest, ruff, mypy)
 
 ## Work log (current session)
 
+- 2026-01-29: Consolidation: archived Stage 8 to HISTORY, advanced to Stage 9 checkpoint 9.0.
 - 2026-01-28: Reviewed 8.1 — PASS. All 37 tests pass, coverage complete.
 - 2026-01-28: Implemented 8.1 — created test suite (37 tests, all passing).
 - 2026-01-28: Advanced to checkpoint 8.1 — Cross-agent test suite.
@@ -41,25 +42,10 @@ Create a simple test harness to verify workflow correctness across agents.
 - 2026-01-28: Fixed agentctl.py to handle (SKIPPED) checkpoints in stage detection.
 - 2026-01-28: Skipped 7.1/7.2 per user request — no Kimi/IQuest access.
 - 2026-01-28: Reviewed 7.0 — PASS. Bootstrap is agent-agnostic, config guide is clear.
-- 2026-01-28: Implemented 7.0 — created generic_bootstrap.md and self-hosted config guide.
-- 2026-01-28: Consolidation: archived Stage 6 to HISTORY, advanced to Stage 7 checkpoint 7.0.
-- 2026-01-28: Checkpoint 6.1 — Gemini verified continuous mode; added Claude/Copilot/Kimi to bootstrap.py.
-- 2026-01-28: Checkpoint 6.0 — Claude Code continuous mode demonstrated through this session.
-- 2026-01-28: Consolidation: archived Stage 5 to HISTORY, advanced to Stage 6 checkpoint 6.0.
-- 2026-01-28: Implemented checkpoint 5.0 — created docs/skill_lifecycle.md.
 
 ## Evidence
 
-```
-$ python -m pytest tests/workflow/ -v
-============================= 37 passed in 0.14s ==============================
-
-Tests cover:
-- State parsing (TestParseKvBullets, TestCleanStatus, TestSliceActiveIssuesSection, TestParseIssues)
-- Checkpoint advancement (TestNextCheckpointAfter)
-- Stage transition detection (TestDetectStageTransition, TestGetStageForCheckpoint)
-- Consolidation triggering (TestIsCheckpointMarkedDone)
-```
+(Cleared — new stage)
 
 ## Active issues
 

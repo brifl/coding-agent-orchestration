@@ -46,6 +46,11 @@
 - **7.1**: Kimi 2.5 verification — SKIPPED (no access to Kimi 2.5)
 - **7.2**: IQuest Coder verification — SKIPPED (no access to IQuest Coder)
 
+### 2026-01-28 — Stage 8: End-to-end workflow hardening (completed)
+
+- **8.0**: Consolidation automation — enhanced agentctl.py to recommend consolidation before stage transitions; validation catches stage drift
+- **8.1**: Cross-agent test suite — created `tests/workflow/` with 37 tests covering state parsing, checkpoint advancement, stage transition detection, and consolidation triggering
+
 ---
 
 ## Completed checkpoints (legacy)
@@ -142,6 +147,15 @@
 - **Impact:** The helper now works from both the repo and any CODEX_HOME-defined global install, eliminating the previous minor blocker.
 
 ---
+
+## Archived work log entries
+
+- 2026-01-28: Implemented 7.0 — created generic_bootstrap.md and self-hosted config guide.
+- 2026-01-28: Consolidation: archived Stage 6 to HISTORY, advanced to Stage 7 checkpoint 7.0.
+- 2026-01-28: Checkpoint 6.1 — Gemini verified continuous mode; added Claude/Copilot/Kimi to bootstrap.py.
+- 2026-01-28: Checkpoint 6.0 — Claude Code continuous mode demonstrated through this session.
+- 2026-01-28: Consolidation: archived Stage 5 to HISTORY, advanced to Stage 6 checkpoint 6.0.
+- 2026-01-28: Implemented checkpoint 5.0 — created docs/skill_lifecycle.md.
 
 ## Process notes
 
