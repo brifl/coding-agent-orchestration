@@ -1,0 +1,26 @@
+{
+  "quality_gates": {
+    "global": [
+      {
+        "name": "Unit Tests (pytest)",
+        "command": "pytest",
+        "required": true
+      },
+      {
+        "name": "Linter (ruff)",
+        "command": "ruff check .",
+        "required": true
+      },
+      {
+        "name": "Type Check (mypy)",
+        "command": "mypy .",
+        "required": true
+      }
+    ]
+  },
+  "dependencies": {
+    "pytest": "pip install pytest",
+    "ruff": "pip install ruff",
+    "mypy": "pip install mypy"
+  }
+}

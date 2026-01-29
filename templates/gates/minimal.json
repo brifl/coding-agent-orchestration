@@ -1,0 +1,14 @@
+{
+  "quality_gates": {
+    "global": [
+      {
+        "name": "Syntax Check",
+        "command": "python -m py_compile .",
+        "required": true
+      }
+    ]
+  },
+  "dependencies": {
+    "python": "Python is expected to be installed."
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "quality_gates": {
+    "global": [
+      {
+        "name": "Unit Tests (vitest)",
+        "command": "vitest run",
+        "required": true
+      },
+      {
+        "name": "Linter (eslint)",
+        "command": "eslint .",
+        "required": true
+      },
+      {
+        "name": "Type Check (tsc)",
+        "command": "tsc --noEmit",
+        "required": true
+      }
+    ]
+  },
+  "dependencies": {
+    "vitest": "npm install -D vitest",
+    "eslint": "npm install -D eslint",
+    "typescript": "npm install -D typescript"
+  }
+}

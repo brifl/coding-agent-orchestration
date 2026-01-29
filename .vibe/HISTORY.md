@@ -12,6 +12,13 @@
 
 ## Completed stages
 
+### 2026-01-29 — Stage 9: Automated Quality Gates (completed)
+
+- **9.0**: Gate configuration schema — defined in `docs/quality_gates.md` and added to `.vibe/config.json`.
+- **9.1**: Gate execution in agentctl — implemented `--run-gates` flag in `agentctl.py`.
+- **9.2**: Pre-built gate templates — created templates for python, typescript, and minimal setups.
+- **Resolved Issues**: Fixed incorrect demo command for checkpoint 9.2.
+
 ### 2026-01-28 — Stage 2: Cross-agent parity for core Vibe workflow (completed)
 
 - **2.0**: Agent capability matrix + constraints model — documented capabilities for Codex, Claude, Gemini, Copilot
@@ -81,7 +88,7 @@
 - Verified idempotence by repeated runs
 
 **Evidence pointer**
-- Demo output showing “Created” then “Skipped” on subsequent runs
+- Demo output showing ‘Created’ then ‘Skipped’ on subsequent runs
 
 ---
 

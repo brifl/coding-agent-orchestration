@@ -20,6 +20,7 @@ from __future__ import annotations
 import argparse
 import json
 import re
+import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Iterable, Literal
@@ -505,6 +506,117 @@ def validate(repo_root: Path, strict: bool) -> ValidationResult:
     )
 
 
+@dataclass(frozen=True)
+class Gate:
+    name: str
+    command: str
+    gate_type: str
+    required: bool = False
+    pass_criteria: dict[str, Any] | None = None
+
+
+@dataclass(frozen=True)
+class GateResult:
+    gate: Gate
+    passed: bool
+    stdout: str
+    stderr: str
+    exit_code: int
+
+
+@dataclass(frozen=True)
+class GateConfig:
+    gates: list[Gate]
+
+
+def load_gate_config(repo_root: Path, checkpoint_id: str | None) -> GateConfig:
+    config_path = repo_root / ".vibe" / "config.json"
+    if not config_path.exists():
+        return GateConfig(gates=[])
+
+    try:
+        config_data = json.loads(_read_text(config_path))
+        gate_data = config_data.get("quality_gates", {})
+    except (json.JSONDecodeError, IOError):
+        return GateConfig(gates=[])
+
+    all_gates: list[Gate] = []
+    
+    # Global gates
+    for g in gate_data.get("global", []):
+        all_gates.append(
+            Gate(
+                name=g.get("name", "Unnamed Gate"),
+                command=g.get("command", ""),
+                gate_type=g.get("type", "custom"),
+                required=g.get("required", False),
+                pass_criteria=g.get("pass_criteria"),
+            )
+        )
+
+    # Checkpoint-specific gates
+    if checkpoint_id and "checkpoints" in gate_data and checkpoint_id in gate_data["checkpoints"]:
+        for g in gate_data["checkpoints"][checkpoint_id]:
+            all_gates.append(
+                Gate(
+                    name=g.get("name", "Unnamed Gate"),
+                    command=g.get("command", ""),
+                    gate_type=g.get("type", "custom"),
+                    required=g.get("required", False),
+                    pass_criteria=g.get("pass_criteria"),
+                )
+            )
+
+    return GateConfig(gates=all_gates)
+
+
+def run_gates(repo_root: Path, checkpoint_id: str | None) -> list[GateResult]:
+    gate_config = load_gate_config(repo_root, checkpoint_id)
+    if not gate_config.gates:
+        return []
+
+    results: list[GateResult] = []
+    for gate in gate_config.gates:
+        if not gate.command:
+            results.append(GateResult(gate=gate, passed=False, stdout="", stderr="Gate command is empty.", exit_code=-1))
+            continue
+
+        try:
+            # Using shell=True for simplicity, but be aware of security implications
+            # In a real-world scenario, you might want to parse the command and args
+            process = subprocess.run(
+                gate.command,
+                shell=True,
+                capture_output=True,
+                text=True,
+                cwd=repo_root,
+                timeout=300,  # 5-minute timeout
+            )
+            stdout = process.stdout.strip()
+            stderr = process.stderr.strip()
+            exit_code = process.returncode
+
+            passed = True
+            if gate.pass_criteria:
+                if "exit_code" in gate.pass_criteria and exit_code != gate.pass_criteria["exit_code"]:
+                    passed = False
+                if passed and "stdout_contains" in gate.pass_criteria and gate.pass_criteria["stdout_contains"] not in stdout:
+                    passed = False
+                if passed and "stderr_contains" in gate.pass_criteria and gate.pass_criteria["stderr_contains"] not in stderr:
+                    passed = False
+            elif exit_code != 0:
+                passed = False
+
+            results.append(GateResult(gate=gate, passed=passed, stdout=stdout, stderr=stderr, exit_code=exit_code))
+
+        except subprocess.TimeoutExpired as e:
+            results.append(GateResult(gate=gate, passed=False, stdout="", stderr=f"Timeout: {e}", exit_code=-1))
+        except Exception as e:
+            results.append(GateResult(gate=gate, passed=False, stdout="", stderr=f"Execution failed: {e}", exit_code=-1))
+
+    return results
+
+
 def _top_issue_severity(issues: tuple[Issue, ...]) -> str | None:
     if not issues:
         return None
@@ -684,6 +796,33 @@ def cmd_next(args: argparse.Namespace) -> int:
     repo_root = Path(args.repo_root)
     state = load_state(repo_root)
 
+    if args.run_gates and state.status in {"NOT_STARTED", "IN_PROGRESS"}:
+        gate_results = run_gates(repo_root, state.checkpoint)
+        failed_required_gates = [r for r in gate_results if not r.passed and r.gate.required]
+
+        if failed_required_gates:
+            payload: dict[str, Any] = {
+                "recommended_role": "implement",
+                "recommended_prompt_id": PROMPT_MAP["implement"]["id"],
+                "recommended_prompt_title": PROMPT_MAP["implement"]["title"],
+                "reason": "Required quality gates failed.",
+                "stage": state.stage,
+                "checkpoint": state.checkpoint,
+                "status": state.status,
+                "gate_results": [
+                    {
+                        "name": r.gate.name,
+                        "passed": r.passed,
+                        "stdout": r.stdout,
+                        "stderr": r.stderr,
+                        "exit_code": r.exit_code,
+                    }
+                    for r in gate_results
+                ],
+            }
+            print(_render_output(payload, args.format))
+            return 1
+
     role, reason = _recommend_next(state, repo_root)
 
     payload: dict[str, Any] = {
@@ -695,6 +834,21 @@ def cmd_next(args: argparse.Namespace) -> int:
         "checkpoint": state.checkpoint,
         "status": state.status,
     }
+    
+    if args.run_gates and state.status in {"NOT_STARTED", "IN_PROGRESS"}:
+        gate_results = run_gates(repo_root, state.checkpoint)
+        payload["gate_results"] = [
+            {
+                "name": r.gate.name,
+                "passed": r.passed,
+                "stdout": r.stdout,
+                "stderr": r.stderr,
+                "exit_code": r.exit_code,
+            }
+            for r in gate_results
+        ]
+
+
     print(_render_output(payload, args.format))
     return 0
 
@@ -718,6 +872,11 @@ def build_parser() -> argparse.ArgumentParser:
     ps.set_defaults(fn=cmd_status)
 
     pn = sub.add_parser("next", help="Recommend the next loop/prompt to run.")
+    pn.add_argument(
+        "--run-gates",
+        action="store_true",
+        help="Run quality gates before recommending next action.",
+    )
     pn.set_defaults(fn=cmd_next)
 
     return p
