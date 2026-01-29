@@ -12,6 +12,12 @@
 
 ## Completed stages
 
+### 2026-01-29 — Stage 10: Context Snapshots (completed)
+
+- **10.0**: Context schema and snapshot — added `.vibe/CONTEXT.md` and `docs/context_schema.md`.
+- **10.1**: Context capture prompt — added `prompt.context_capture` and consolidation refresh guidance.
+- **10.2**: Context restoration — bootstraps read CONTEXT.md; `agentctl status` includes context summary with `--with-context`.
+
 ### 2026-01-29 — Stage 9: Automated Quality Gates (completed)
 
 - **9.0**: Gate configuration schema — defined in `docs/quality_gates.md` and added to `.vibe/config.json`.
@@ -157,6 +163,16 @@
 
 ## Archived work log entries
 
+- 2026-01-29: Consolidation: archived Stage 9 to HISTORY, advanced to Stage 10 checkpoint 10.0.
+- 2026-01-29: Reviewed 9.2 - PASS. Deliverables and acceptance criteria met. Demo command is correct.
+- 2026-01-29: Resolved issue with incorrect demo command in PLAN.md for checkpoint 9.2.
+- 2026-01-29: Reviewed 9.2 - FAIL. Demo command in PLAN.md is incorrect.
+- 2026-01-29: Implemented 9.2 - Created quality gate templates for python, typescript and a minimal one. Validated that the templates are correctly structured and can be executed by `agentctl`.
+- 2026-01-29: Reviewed 9.1 — PASS. Gate execution logic is sound.
+- 2026-01-29: Implemented 9.1 - Enhanced `agentctl.py` to support quality gates.
+- 2026-01-29: Reviewed 9.0 — PASS. Deliverables and acceptance criteria met.
+- 2026-01-29: Implemented 9.0 - Created `docs/quality_gates.md` and added schema to `.vibe/config.json`.
+- 2026-01-29: Consolidation: archived Stage 8 to HISTORY, advanced to Stage 9 checkpoint 9.0.
 - 2026-01-28: Implemented 7.0 — created generic_bootstrap.md and self-hosted config guide.
 - 2026-01-28: Consolidation: archived Stage 6 to HISTORY, advanced to Stage 7 checkpoint 7.0.
 - 2026-01-28: Checkpoint 6.1 — Gemini verified continuous mode; added Claude/Copilot/Kimi to bootstrap.py.

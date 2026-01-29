@@ -1,0 +1,22 @@
+name: add-test-coverage
+title: Add test coverage
+description: Increase test coverage for a target module.
+parameters:
+  - name: module_path
+    description: Module or package needing coverage
+    required: true
+  - name: focus
+    description: Behaviors or cases to prioritize
+    required: false
+    default: critical paths
+objective: Increase coverage for {{module_path}} focusing on {{focus}}.
+deliverables:
+  - New tests covering {{focus}} in {{module_path}}.
+  - Updated fixtures or mocks if required.
+acceptance:
+  - Coverage increases for {{module_path}}.
+  - Tests are deterministic and pass in CI.
+demo_commands:
+  - "`python -m pytest -k {{module_path}}`"
+evidence:
+  - Coverage report excerpt for {{module_path}}.

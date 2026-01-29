@@ -1,0 +1,22 @@
+name: refactor-module
+title: Refactor module
+description: Improve internal structure without changing behavior.
+parameters:
+  - name: module_path
+    description: Module or package to refactor
+    required: true
+  - name: goal
+    description: Refactor goal (e.g., simplify API, reduce duplication)
+    required: false
+    default: simplify structure
+objective: Refactor {{module_path}} to {{goal}} without behavior changes.
+deliverables:
+  - Refactored code in {{module_path}} with the same external behavior.
+  - Updated tests or fixtures if needed.
+acceptance:
+  - Existing tests pass without changes to expected outputs.
+  - Code structure is simpler or more maintainable.
+demo_commands:
+  - "`python -m pytest -k {{module_path}}`"
+evidence:
+  - Test output confirming behavior parity.

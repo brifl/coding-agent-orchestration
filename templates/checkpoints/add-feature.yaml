@@ -1,0 +1,22 @@
+name: add-feature
+title: Add feature
+description: Implement a new feature with tests.
+parameters:
+  - name: name
+    description: Short name of the feature
+    required: true
+  - name: module_path
+    description: Module or package to update
+    required: false
+    default: src
+objective: Implement {{name}} in {{module_path}} with tests.
+deliverables:
+  - Core implementation for {{name}} in {{module_path}}.
+  - Tests covering expected behavior and edge cases.
+acceptance:
+  - New tests pass and cover the feature behavior.
+  - No regressions in existing test suite.
+demo_commands:
+  - "`python -m pytest -k {{name}}`"
+evidence:
+  - Test output showing coverage for {{name}}.

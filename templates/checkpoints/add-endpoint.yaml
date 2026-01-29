@@ -1,0 +1,28 @@
+name: add-endpoint
+title: Add API endpoint
+description: Add a new HTTP endpoint with routing and contract updates.
+parameters:
+  - name: endpoint
+    description: API path, e.g. /users
+    required: true
+  - name: method
+    description: HTTP method (GET, POST, etc.)
+    required: false
+    default: GET
+  - name: module_path
+    description: Module or router path to update
+    required: false
+    default: src/api/routes
+objective: Add the {{method}} {{endpoint}} endpoint and wire it into {{module_path}}.
+deliverables:
+  - Implement handler for {{method}} {{endpoint}}.
+  - Register route in {{module_path}}.
+  - Update OpenAPI spec or API contract for {{endpoint}}.
+acceptance:
+  - Endpoint responds with expected status and schema.
+  - OpenAPI spec matches the implementation.
+  - Routing changes are covered by tests.
+demo_commands:
+  - "`python -m pytest -k {{endpoint}}`"
+evidence:
+  - Test output showing the new endpoint coverage.

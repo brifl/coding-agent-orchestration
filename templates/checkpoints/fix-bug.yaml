@@ -1,0 +1,22 @@
+name: fix-bug
+title: Fix bug
+description: Resolve a defect and add a regression test.
+parameters:
+  - name: issue
+    description: Issue or ticket identifier
+    required: true
+  - name: area
+    description: Affected module or component
+    required: false
+    default: src
+objective: Fix bug {{issue}} in {{area}} and add a regression test.
+deliverables:
+  - Root cause identified and fixed for {{issue}}.
+  - Regression test preventing recurrence.
+acceptance:
+  - Repro steps for {{issue}} no longer fail.
+  - Regression test added and passing.
+demo_commands:
+  - "`python -m pytest -k {{issue}}`"
+evidence:
+  - Test output showing the regression test passing.

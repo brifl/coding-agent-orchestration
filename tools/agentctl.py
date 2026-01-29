@@ -21,9 +21,12 @@ import argparse
 import json
 import re
 import subprocess
+import sys
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Iterable, Literal
+
+import checkpoint_templates
 
 ALLOWED_STATUS = {
     "NOT_STARTED",
@@ -101,6 +104,44 @@ def _parse_plan_checkpoint_ids(plan_text: str) -> list[str]:
     for m in pat.finditer(plan_text):
         ids.append(m.group("id"))
     return ids
+
+
+def _find_stage_bounds(plan_text: str, stage: str) -> tuple[int | None, int | None]:
+    lines = plan_text.splitlines(keepends=True)
+    stage_pat = re.compile(rf"(?im)^##\s+Stage\s+{re.escape(stage)}\b")
+    start_idx = None
+    end_idx = None
+
+    for idx, line in enumerate(lines):
+        if start_idx is None and stage_pat.match(line):
+            start_idx = idx
+            continue
+        if start_idx is not None and re.match(r"(?im)^##\s+Stage\s+\d+\b", line):
+            end_idx = idx
+            break
+
+    if start_idx is None:
+        return (None, None)
+
+    if end_idx is None:
+        end_idx = len(lines)
+
+    # Convert line indices to character offsets
+    start_offset = sum(len(l) for l in lines[:start_idx])
+    end_offset = sum(len(l) for l in lines[:end_idx])
+    return (start_offset, end_offset)
+
+
+def _next_checkpoint_id_for_stage(plan_text: str, stage: str) -> str:
+    ids = [
+        cid
+        for cid in _parse_plan_checkpoint_ids(plan_text)
+        if _get_stage_for_checkpoint(plan_text, cid) == stage and cid.startswith(f"{stage}.")
+    ]
+    if not ids:
+        return f"{stage}.0"
+    max_minor = max(int(cid.split(".", 1)[1]) for cid in ids)
+    return f"{stage}.{max_minor + 1}"
 
 
 def _get_stage_for_checkpoint(plan_text: str, checkpoint_id: str) -> str | None:
@@ -929,6 +970,104 @@ def cmd_next(args: argparse.Namespace) -> int:
     return 0
 
 
+def _parse_cli_params(raw: list[str]) -> dict[str, str]:
+    params: dict[str, str] = {}
+    idx = 0
+    while idx < len(raw):
+        token = raw[idx]
+        if not token.startswith("--"):
+            idx += 1
+            continue
+        key = token[2:]
+        if not key:
+            idx += 1
+            continue
+        if idx + 1 >= len(raw):
+            raise ValueError(f"Missing value for --{key}")
+        params[key] = raw[idx + 1]
+        idx += 2
+    return params
+
+
+def _extract_add_checkpoint_params(raw_args: list[str]) -> list[str]:
+    if not raw_args:
+        return []
+    try:
+        idx = raw_args.index("add-checkpoint")
+    except ValueError:
+        return []
+
+    params: list[str] = []
+    skip_next = False
+    it = iter(enumerate(raw_args[idx + 1 :], start=idx + 1))
+    for _, token in it:
+        if skip_next:
+            skip_next = False
+            continue
+        if token == "--template":
+            skip_next = True
+            continue
+        if token.startswith("--template="):
+            continue
+        params.append(token)
+    return params
+
+
+def cmd_add_checkpoint(args: argparse.Namespace) -> int:
+    repo_root = Path(args.repo_root)
+    state = load_state(repo_root)
+    if not state.stage:
+        print("STATE.md is missing a Stage; cannot add checkpoint.")
+        return 2
+
+    template_path = Path("templates") / "checkpoints" / f"{args.template}.yaml"
+    if not template_path.exists():
+        print(f"Template not found: {template_path}")
+        return 2
+
+    try:
+        template = checkpoint_templates._load_yaml(template_path)
+        params = _parse_cli_params(args.params)
+        values = checkpoint_templates._build_values(template, params)
+        lines = checkpoint_templates._render_checkpoint_lines(template, values)
+    except Exception as exc:
+        print(f"Failed to render template: {exc}")
+        return 2
+
+    plan_path = repo_root / ".vibe" / "PLAN.md"
+    if not plan_path.exists():
+        print(f"PLAN.md not found at {plan_path}")
+        return 2
+    plan_text = _read_text(plan_path)
+
+    stage = state.stage
+    start, end = _find_stage_bounds(plan_text, stage)
+    if start is None or end is None:
+        stage_block = f"\n## Stage {stage}\n\n**Stage objective:**\nTBD\n\n"
+        plan_text = plan_text.rstrip() + stage_block
+        start, end = _find_stage_bounds(plan_text, stage)
+        if start is None or end is None:
+            print(f"Unable to create stage {stage} in PLAN.md.")
+            return 2
+
+    new_id = _next_checkpoint_id_for_stage(plan_text, stage)
+    title = lines[0].lstrip("# ").strip()
+    lines[0] = f"### {new_id} — {title}"
+
+    block = "\n".join(lines).rstrip() + "\n\n---\n"
+    insert_at = end
+    updated = plan_text[:insert_at].rstrip() + "\n\n" + block + plan_text[insert_at:]
+    plan_path.write_text(updated, encoding="utf-8")
+
+    plan_check = check_plan_for_checkpoint(repo_root, new_id)
+    if not plan_check.found_checkpoint or plan_check.warnings:
+        print(f"Inserted checkpoint {new_id} failed schema checks.")
+        return 2
+
+    print(f"Inserted checkpoint {new_id} from template {args.template}.")
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="agentctl", description="Control-plane helper for vibecoding loops.")
     p.add_argument("--repo-root", default=".", help="Path to repository root (default: .)")
@@ -960,12 +1099,22 @@ def build_parser() -> argparse.ArgumentParser:
     )
     pn.set_defaults(fn=cmd_next)
 
+    pc = sub.add_parser("add-checkpoint", help="Insert a checkpoint from a template into PLAN.md.")
+    pc.add_argument("--template", required=True, help="Template name (file stem).")
+    pc.add_argument("params", nargs=argparse.REMAINDER, help="Template parameters.")
+    pc.set_defaults(fn=cmd_add_checkpoint)
+
     return p
 
 
 def main(argv: Iterable[str] | None = None) -> int:
     parser = build_parser()
-    args = parser.parse_args(list(argv) if argv is not None else None)
+    raw_args = list(argv) if argv is not None else list(sys.argv[1:])
+    args, unknown = parser.parse_known_args(raw_args)
+    if args.cmd == "add-checkpoint":
+        args.params = _extract_add_checkpoint_params(raw_args or [])
+    elif unknown:
+        parser.error(f"unrecognized arguments: {' '.join(unknown)}")
     return int(args.fn(args))
 
 
