@@ -1,20 +1,25 @@
 # Context Schema
 
-This document defines the schema for the `.vibe/CONTEXT.md` file.
+This document defines the schema for the `.vibe/CONTEXT.md` file. The schema
+separates persistent project context from ephemeral session notes.
 
-## Sections
+## Structure
 
-### Architecture
-A high-level overview of the project's architecture.
+### Persistent (project) context
+The following sections should be stable over time and updated incrementally:
 
-### Key Decisions
-A log of important decisions made during the project.
+- **Architecture**: High-level overview of the system and major components.
+- **Key Decisions**: Important decisions with date and rationale.
+- **Gotchas**: Known pitfalls, edge cases, or workflow traps.
+- **Hot Files**: Files or paths that are frequently edited or critical.
 
-### Gotchas
-A list of potential pitfalls or unexpected behaviors.
+### Ephemeral (session) context
+This section is session-scoped and should be cleared/rotated when stale:
 
-### Hot Files
-A list of files that are frequently modified or important to the project.
+- **Agent Notes**: Temporary notes, current checkpoint focus, or open threads.
 
-### Agent Notes
-A place for the agent to leave notes for itself or for other agents.
+## Formatting guidance
+
+- Keep entries short and scannable (bullets preferred).
+- Add dates to decisions or time-sensitive notes.
+- Avoid duplicating information that already lives in STATE/PLAN.
