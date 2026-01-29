@@ -16,7 +16,8 @@ All agents use the same prompt catalog and bootstraps:
 - **Prompt pack**: bundled into the Codex skill resources.
 - **Invocation pattern**:
   1) Run `$vibe-one-loop` for single-loop execution.
-  2) Run `$vibe-run` for continuous execution.
+  2) Run `$vibe-run` for continuous execution (do not stop after one loop;
+     it repeats until the dispatcher returns `recommended_role == "stop"`).
 
 ## Claude Code
 
@@ -56,5 +57,5 @@ All agents use the same prompt catalog and bootstraps:
 
 ## Differences (explicit)
 
-- Codex supports continuous mode with `$vibe-run`.
+- Codex supports continuous mode with `$vibe-run` (loops until dispatcher stop).
 - Other agents rely on manual or tool-enabled execution of single loops.
