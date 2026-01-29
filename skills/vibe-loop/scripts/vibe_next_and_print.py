@@ -140,18 +140,22 @@ def main() -> int:
     # Locate skill install layout (prefers AGENT_HOME when present).
     skills_root = _locate_skills_root()
 
-    # The agentctl.py and prompt_catalog.py scripts are in the tools directory,
-    # at the root of the repository, which is the parent of the skills_root.
-    tools_dir = skills_root.parent / "tools"
+    # Prefer repo-local tools when available to keep decisions aligned with the repo.
+    repo_tools_dir = repo_root / "tools"
+    fallback_tools_dir = skills_root.parent / "tools"
 
-    agentctl_path = tools_dir / "agentctl.py"
-    if not agentctl_path.exists():
-        print(f"ERROR: agentctl.py not found at: {agentctl_path}", file=sys.stderr)
+    agentctl_candidates = [repo_tools_dir / "agentctl.py", fallback_tools_dir / "agentctl.py"]
+    prompt_candidates = [repo_tools_dir / "prompt_catalog.py", fallback_tools_dir / "prompt_catalog.py"]
+
+    agentctl_path = next((p for p in agentctl_candidates if p.exists()), None)
+    prompt_catalog_path = next((p for p in prompt_candidates if p.exists()), None)
+
+    if agentctl_path is None:
+        print("ERROR: agentctl.py not found in repo or skills tools.", file=sys.stderr)
         return 2
 
-    prompt_catalog_path = tools_dir / "prompt_catalog.py"
-    if not prompt_catalog_path.exists():
-        print(f"ERROR: prompt_catalog.py not found at: {prompt_catalog_path}", file=sys.stderr)
+    if prompt_catalog_path is None:
+        print("ERROR: prompt_catalog.py not found in repo or skills tools.", file=sys.stderr)
         return 2
 
     if args.catalog:

@@ -32,7 +32,7 @@ Allow templates to be inserted directly into PLAN.md.
 
 ## Work log (current session)
 
-- 2026-01-29: Blocked - Dispatcher disagreement on stage transition; needs consolidation gating.
+- 2026-01-29: Resolved ISSUE-002 (dispatcher mismatch) by preferring repo-local tools in vibe_next_and_print.
 - 2026-01-29: Reviewed 11.2 - PASS. Deliverables and acceptance criteria met.
 - 2026-01-29: Implemented 11.2 - Added agentctl add-checkpoint command and stage insertion logic.
 - 2026-01-29: Advanced to checkpoint 11.2.
@@ -55,15 +55,10 @@ Allow templates to be inserted directly into PLAN.md.
   - Inserts a templated checkpoint and reports the new id (demo run on a temp repo copy).
 - `python tools/agentctl.py --repo-root <temp> validate`
   - Inserted checkpoint passes validation checks.
+- `python /home/brifl/.codex/skills/vibe-loop/scripts/vibe_next_and_print.py --repo-root . --show-decision`
+  - Decision JSON now matches repo agentctl (no consolidation mismatch).
 
 ## Active issues
-
-- [BLOCKER] ISSUE-002:: `vibe_next_and_print.py` recommends advance, but `agentctl next` recommends consolidation before Stage 12.
-  - Severity: BLOCKER
-  - Owner: agent
-  - Notes:
-    - Consolidation is correct
-    - Review logic and ensure consistent
 
 - [BLOCKER] ISSUE-002: Bootstrap `--overwrite` does not reliably replace AGENTS.md and VIBE.md
   - Severity: BLOCKER
