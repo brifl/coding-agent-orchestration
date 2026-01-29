@@ -12,25 +12,30 @@
 ## Current focus
 
 - Stage: 8
-- Checkpoint: 8.0
-- Status: IN_REVIEW  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
+- Checkpoint: 8.1
+- Status: DONE  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
 
 ## Objective (current checkpoint)
 
-Make consolidation trigger automatically at stage boundaries.
+Create a simple test harness to verify workflow correctness across agents.
 
 ## Deliverables (current checkpoint)
 
-- agentctl.py enhancement: recommend consolidation before stage transitions
-- Clear indication in dispatcher output when consolidation is needed
+- `tests/workflow/test_agentctl.py` — unit tests for agentctl dispatcher logic
+- `tests/workflow/test_state_parsing.py` — tests for STATE.md parsing
+- `tests/workflow/conftest.py` — fixtures for temporary .vibe directories
 
 ## Acceptance (current checkpoint)
 
-- [ ] agentctl never recommends advancing to a new stage without consolidation first
-- [ ] Validation catches stage drift
+- [ ] Tests cover: state parsing, checkpoint advancement, stage transition detection, consolidation triggering
+- [ ] All tests pass with `python -m pytest tests/workflow/`
 
 ## Work log (current session)
 
+- 2026-01-28: Reviewed 8.1 — PASS. All 37 tests pass, coverage complete.
+- 2026-01-28: Implemented 8.1 — created test suite (37 tests, all passing).
+- 2026-01-28: Advanced to checkpoint 8.1 — Cross-agent test suite.
+- 2026-01-28: Reviewed 8.0 — PASS. Both acceptance criteria verified.
 - 2026-01-28: Design loop: 8.0 already implemented (stage transition, consolidation), marking IN_REVIEW.
 - 2026-01-28: Consolidation: archived Stage 7 to HISTORY, advanced to Stage 8 checkpoint 8.0.
 - 2026-01-28: Fixed agentctl.py to handle (SKIPPED) checkpoints in stage detection.
@@ -45,21 +50,15 @@ Make consolidation trigger automatically at stage boundaries.
 
 ## Evidence
 
-**Consolidation recommended at stage boundary:**
 ```
-$ python tools/agentctl.py --repo-root . --format json next
-# (when checkpoint 7.2 was DONE, before advancing to 8.0)
-{
-  "recommended_role": "consolidation",
-  "reason": "Stage transition detected: 7 → 8. Run consolidation to archive Stage 7..."
-}
-```
+$ python -m pytest tests/workflow/ -v
+============================= 37 passed in 0.14s ==============================
 
-**Stage drift detection in validate:**
-```
-$ python tools/agentctl.py --repo-root . validate
-ok: True
-state: {"stage": "8", "checkpoint": "8.0", ...}
+Tests cover:
+- State parsing (TestParseKvBullets, TestCleanStatus, TestSliceActiveIssuesSection, TestParseIssues)
+- Checkpoint advancement (TestNextCheckpointAfter)
+- Stage transition detection (TestDetectStageTransition, TestGetStageForCheckpoint)
+- Consolidation triggering (TestIsCheckpointMarkedDone)
 ```
 
 ## Active issues

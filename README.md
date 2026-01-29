@@ -79,7 +79,7 @@ This will:
 ```bash
 python3 tools/bootstrap.py install-skills --global --agent <agent_name>
 ```
-Supported agents: `codex`, `gemini`.
+Supported agents: `codex`, `gemini`, `kilo`.
 
 This installs/upgrades skills under your agent's global skill directory and syncs the prompt catalog
 into skill resources.
