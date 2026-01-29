@@ -58,7 +58,40 @@ Allow templates to be inserted directly into PLAN.md.
 
 ## Active issues
 
-- BLOCKER: `vibe_next_and_print.py` recommends advance, but `agentctl next` recommends consolidation before Stage 12.
+- [BLOCKER] ISSUE-002:: `vibe_next_and_print.py` recommends advance, but `agentctl next` recommends consolidation before Stage 12.
+  - Severity: BLOCKER
+  - Owner: agent
+  - Notes:
+    - Consolidation is correct
+    - Review logic and ensure consistent
+
+- [BLOCKER] ISSUE-002: Bootstrap `--overwrite` does not reliably replace AGENTS.md and VIBE.md
+  - Severity: BLOCKER
+  - Owner: agent
+  - Notes:
+    - `bootstrap.py --overwrite` should deterministically overwrite repo-canonical docs (`AGENTS.md`, `VIBE.md`) but currently skips or partially updates.
+    - Need: define canonical source path(s) for these docs
+    - implement true overwrite (byte-for-byte or explicitly defined transform)
+    - log what was overwritten
+    - add a regression test that fails when overwrite does not occur
+
+- [BLOCKER] ISSUE-003: Duplicate `template_prompts.md` sources cause drift; enforce single canonical catalog in `prompts/`
+  - Severity: BLOCKER
+  - Owner: agent
+  - Notes:
+    - There should be exactly one maintained prompt catalog (canonical) under `prompts/` and all tools/skills must resolve/read that copy only
+    - Need: remove/stop-reading the non-canonical copy
+    - update resolver/installer/skills to consume `prompts/template_prompts.md` exclusively
+    - add validation that fails if a second catalog is present or referenced
+
+- [BLOCKER] ISSUE-004: Replace Kimi with Kilo in all agent references and parity groupings
+  - Severity: BLOCKER
+  - Owner: agent|human
+  - Notes:
+    - Kilo was intended to supersede/encapsulate Kimi
+    - Need: remove Kimi references across docs/config/bootstrap/verification notes
+    - ensure Kilo appears wherever Codex/Copilot/Claude/Gemini are enumerated
+    - make capability/parity language consistent so the support matrix is unambiguous
 
 ## Decisions
 
