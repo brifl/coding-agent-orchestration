@@ -11,12 +11,87 @@
 
 ---
 
+## Stage 12A — Priority stage insertion (no renumbering)
+
+**Stage objective:**
+Allow inserting a stage “between” existing numbered stages (e.g., 12A between 12 and 13) without renumbering, and ensure the dispatcher prioritizes it (after BLOCKER issues).
+
+### 12A.0 — Stage ID scheme and ordering semantics
+
+* **Objective:**
+  Define a deterministic stage identifier scheme that supports insertions (e.g., `12A`, `12B`) and document ordering rules.
+* **Deliverables:**
+  * `docs/stage_ordering.md` — stage ID format + ordering rules + examples
+  * Stage ID grammar: `<int><optional alpha suffix>` (examples: `12`, `12A`, `12B`, `13`)
+  * Ordering definition: numeric first, then suffix (empty suffix sorts before A/B/…)
+* **Acceptance:**
+  * A human can add `Stage 12A` to PLAN.md and it will be treated as between 12 and 13
+  * Ordering rules are unambiguous and testable
+* **Demo commands:**
+  * `cat docs/stage_ordering.md`
+* **Evidence:**
+  * Example ordering list (e.g., `11, 12, 12A, 12B, 13`)
+
+---
+
+### 12A.1 — Control plane support (dispatcher + agentctl)
+
+* **Objective:**
+  Ensure all “choose next work” code respects stage ordering and picks inserted stages before later numbered stages, while still prioritizing BLOCKER issues above all stages.
+* **Deliverables:**
+  * Update `tools/agentctl.py` stage selection logic to use the new stage ordering key
+  * Update `tools/vibe_next_and_print.py` to use the same ordering function/key
+  * Single shared stage ordering implementation (one module/function) used by both
+* **Acceptance:**
+  * With Stage 12 complete and Stage 12A present and NOT_STARTED, `agentctl next` chooses 12A before 13
+  * With any BLOCKER issue present, dispatcher chooses issues/triage before any stage, including 12A
+  * `agentctl next` and `vibe_next_and_print.py` agree on the recommendation
+* **Demo commands:**
+  * `python tools/agentctl.py --repo-root . next`
+  * `python tools/vibe_next_and_print.py --repo-root .`
+* **Evidence:**
+  * Matching output from both tools showing 12A selected
+
+---
+
+### 12A.2 — Validation and fail-fast rules for stage IDs
+
+* **Objective:**
+  Fail fast on invalid stage IDs and ensure STATE/PLAN consistency still holds with suffix stages.
+* **Deliverables:**
+  * Validation update: stage pointer in `.vibe/STATE.md` must match an existing PLAN stage ID (including suffix IDs like `12A`)
+  * Validation update: detect duplicate stage IDs and malformed IDs
+  * Clear error messages identifying file + offending line
+* **Acceptance:**
+  * Invalid IDs (e.g., `Stage PRE13`, `Stage 12-1`, `Stage 12.A`) fail validation with actionable errors
+  * Valid suffix IDs pass validation and are selectable
+* **Demo commands:**
+  * `python tools/agentctl.py --repo-root . validate`
+* **Evidence:**
+  * Example validation error output showing file + line
+
+---
+
+### 12A.3 — Regression tests for ordering and selection
+
+* **Objective:**
+  Lock in deterministic behavior across future refactors.
+* **Deliverables:**
+  * Unit tests for stage ID parsing + ordering
+  * Integration test ensuring `agentctl next` prefers `12A` over `13` when `12` is complete
+  * Integration test ensuring BLOCKER issues override stage ordering
+* **Acceptance:**
+  * Tests fail if ordering regresses or tools disagree
+* **Demo commands:**
+  * `<your test runner command>`
+* **Evidence:**
+  * Passing test output
+---
+
 ## Stage 13 — Skill Library Foundation
 
 **Stage objective:**
 Treat skills as first-class, reusable artifacts with proper metadata, discovery, and management.
-
-
 
 ### 13.0 — Skill manifest schema
 
