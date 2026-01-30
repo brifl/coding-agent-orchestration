@@ -126,7 +126,7 @@ This creates `.vibe/`, adds `.vibe/` to `.gitignore`, and installs a baseline `A
 python3 tools/bootstrap.py install-skills --global --agent <agent_name>
 ```
 
-Supported agents: `codex`, `claude`, `gemini`, `copilot`, `kimi`, `kilo`.
+Supported agents: `codex`, `claude`, `gemini`, `copilot`, `kilo`.
 
 Codex is the reference implementation for continuous mode. Other agents rely on
 manual bootstraps found in `prompts/init/`.

@@ -20,7 +20,7 @@ All future skills must layer on top of this foundation without breaking it.
 | Claude Code | Manual/Tool-dependent | Manual/Tool-dependent | Not supported | Use single-loop prompts or manual instructions. |
 | Gemini | Manual/Tool-dependent | Manual/Tool-dependent | Not supported | Use single-loop prompts or manual instructions. |
 | Copilot | Manual/Tool-dependent | Manual/Tool-dependent | Not supported | Use single-loop prompts or manual instructions. |
-| Kilo | Manual/Tool-dependent | Manual/Tool-dependent | Not supported | Use single-loop prompts or manual instructions. |
+| Kilo | Full | Full | See agent_capabilities.md | Self-hosted; full capabilities when tool-enabled. |
 
 ## Non-goals
 

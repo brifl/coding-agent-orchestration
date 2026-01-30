@@ -33,7 +33,7 @@ from pathlib import Path
 from typing import Iterable
 
 # All supported agents for bulk installation
-ALL_AGENTS = ["codex", "claude", "gemini", "copilot", "kimi", "kilo"]
+ALL_AGENTS = ["codex", "claude", "gemini", "copilot", "kilo"]
 
 # Canonical doc templates for init-repo
 CANONICAL_AGENTS_TEMPLATE = Path("templates/repo_root/AGENTS.md")
@@ -392,7 +392,7 @@ def _build_parser() -> argparse.ArgumentParser:
     isp = sub.add_parser("install-skills", help="Install skills for a given agent/tool")
     isp.add_argument("--global", dest="global_install", action="store_true", help="Install to user/global location")
     isp.add_argument("--repo", dest="repo_install", action="store_true", help="Install into .vibe/skills in the repo")
-    isp.add_argument("--agent", choices=("all", "codex", "claude", "gemini", "copilot", "kimi", "kilo"), required=True, help="Which agent to install for (use 'all' to install for all agents)")
+    isp.add_argument("--agent", choices=("all", "codex", "claude", "gemini", "copilot", "kilo"), required=True, help="Which agent to install for (use 'all' to install for all agents)")
     isp.add_argument("--force", action="store_true", help="Force overwrite of SKILL.md and other files")
     return p
 

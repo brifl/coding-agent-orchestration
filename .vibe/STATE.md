@@ -11,70 +11,49 @@
 
 ## Current focus
 
-- Stage: 11
-- Checkpoint: 11.2
-- Status: BLOCKED  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
+- Stage: 12
+- Checkpoint: 12.2
+- Status: NOT_STARTED  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
 
 ## Objective (current checkpoint)
 
-Allow templates to be inserted directly into PLAN.md.
+Update bootstrap and agentctl to use the resource resolver.
 
 ## Deliverables (current checkpoint)
 
-- `agentctl add-checkpoint --template <name> --params ...` command
-- Automatic stage detection (add to current stage or create new)
-- Validation that inserted checkpoint follows schema
+- `bootstrap.py` uses resolver for skill installation
+- `agentctl.py` uses resolver for prompt lookup
+- `--global` and `--local` flags where disambiguation needed
 
 ## Acceptance (current checkpoint)
 
-- Templates can be added without manual editing
-- Inserted checkpoints pass `agentctl validate`
+- Existing functionality preserved
+- New resolution logic is transparent to users
 
 ## Work log (current session)
 
+- 2026-01-29: Advanced to checkpoint 12.2.
+- 2026-01-29: Reviewed 12.1 - PASS. Deliverables and acceptance criteria met.
+- 2026-01-29: Implemented 12.1 - Implemented resource resolver and verified with demo commands.
+- 2026-01-29: Advanced to checkpoint 12.1.
+- 2026-01-29: Reviewed 12.0 - PASS. Deliverables and acceptance criteria met.
+- 2026-01-29: Implemented 12.0 - Defined and documented the global vs repo-local resource model.
+- 2026-01-29: Resolved ISSUE-005: Corrected the status of checkpoint 11.2 to DONE, as it was already reviewed and passed.
+- 2026-01-29: Resolved ISSUE-004: Replaced Kimi with Kilo in all agent references and parity groupings.
 - 2026-01-30: Resolved ISSUE-002 (bootstrap overwrite) and ISSUE-003 (prompt catalog canonicalization) with overwrite logging, catalog validation, resolver fix, and tests.
 - 2026-01-29: Resolved ISSUE-002 (dispatcher mismatch) by preferring repo-local tools in vibe_next_and_print.
 - 2026-01-29: Reviewed 11.2 - PASS. Deliverables and acceptance criteria met.
 - 2026-01-29: Implemented 11.2 - Added agentctl add-checkpoint command and stage insertion logic.
 - 2026-01-29: Advanced to checkpoint 11.2.
-- 2026-01-29: Reviewed 11.1 - PASS. Deliverables and acceptance criteria met.
-- 2026-01-29: Implemented 11.1 - Added core checkpoint templates and instantiate command.
-- 2026-01-29: Advanced to checkpoint 11.1.
-- 2026-01-29: Reviewed 11.0 - PASS. Deliverables and acceptance criteria met.
-- 2026-01-29: Implemented 11.0 - Added checkpoint template schema, catalog tool, and example template.
-- 2026-01-29: Consolidation: archived Stage 10 to HISTORY, pruned PLAN/STATE for Stage 11.
-- 2026-01-29: Reviewed 10.2 - PASS. Deliverables and acceptance criteria met.
-- 2026-01-29: Implemented 10.2 - Added context-aware bootstrap reads and status output.
-- 2026-01-29: Reviewed 10.1 - PASS. Deliverables and acceptance criteria met.
-- 2026-01-29: Implemented 10.1 - Added prompt.context_capture and consolidation guidance.
-- 2026-01-29: Reviewed 10.0 - PASS. Deliverables and acceptance criteria met.
-- 2026-01-29: Implemented 10.0 - Added context schema and example CONTEXT.md with persistent vs ephemeral guidance.
 
 ## Evidence
 
-- `python3 -m pytest -s tests/workflow/test_bootstrap.py tests/workflow/test_prompt_catalog_validation.py`
-- `python tools/agentctl.py --repo-root <temp> add-checkpoint --template add-feature --name "user-auth"`
-  - Inserts a templated checkpoint and reports the new id (demo run on a temp repo copy).
-- `python tools/agentctl.py --repo-root <temp> validate`
-  - Inserted checkpoint passes validation checks.
-- `python /home/brifl/.codex/skills/vibe-loop/scripts/vibe_next_and_print.py --repo-root . --show-decision`
-  - Decision JSON now matches repo agentctl (no consolidation mismatch).
+(No evidence)
 
 ## Active issues
 
-- [BLOCKER] ISSUE-004: Replace Kimi with Kilo in all agent references and parity groupings
-  - Severity: BLOCKER
-  - Owner: agent
-  - Notes:
-    - Kilo was intended to supersede/encapsulate Kimi
-    - Need: remove Kimi references across docs/config/bootstrap/verification notes
-    - ensure Kilo appears wherever Codex/Copilot/Claude/Gemini are enumerated
-    - make capability/parity language consistent so the support matrix is unambiguous
+(No active issues)
 
 ## Decisions
 
-- 2026-01-28: Skipped checkpoints 7.1/7.2 (Kimi/IQuest verification) — no access to these agents; generic bootstrap is sufficient.
-- 2026-01-28: Stage pointer in STATE.md must match the stage containing the checkpoint in PLAN.md. agentctl.py now validates this.
-- 2026-01-28: Evidence should be cleared when advancing to a new stage (consolidation prompt updated).
-- 2026-01-28: All CLI agents (Claude Code, Gemini Code, Copilot) now documented as having full capabilities.
-- 2026-01-27: Use `.vibe/` as the only authoritative location for state/plan/history to reduce ambiguity.
+(No decisions)

@@ -11,7 +11,7 @@ capability matrix in `docs/agent_capabilities.md` and should stay in sync.
 | Claude Code CLI | yes | yes | yes | yes |
 | Gemini Code | yes | yes | yes | yes |
 | Copilot | yes | yes | yes | partial |
-| Kimi 2.5 | yes | yes | yes | yes |
+| Kilo | yes | yes | yes | yes |
 | Claude (web) | no | no | advisory | no |
 | Gemini (web) | no | no | advisory | no |
 

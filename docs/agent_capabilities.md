@@ -11,7 +11,7 @@ and scripts do not assume abilities that an agent cannot reliably provide.
 | Claude Code CLI | Yes | Yes | Yes | Yes | Full capabilities via Read/Write/Edit/Bash tools. Invoke agentctl directly. |
 | Gemini Code | Yes | Yes | Yes | Yes | Full capabilities in code assistant mode. |
 | Copilot | Yes | Yes | Yes | Partial | VS Code/CLI mode has full edit/exec; continuous requires manual re-invocation. |
-| Kimi 2.5 | Yes | Yes | Yes | Yes | Self-hosted; full capabilities when tool-enabled. |
+| Kilo | Yes | Yes | Yes | Yes | Self-hosted; full capabilities when tool-enabled. |
 | Claude (web chat) | No | No | Yes (advisory) | No | No file/command access; produces instructions only. |
 | Gemini (web chat) | No | No | Yes (advisory) | No | No file/command access; produces instructions only. |
 
@@ -86,7 +86,7 @@ Then trigger the task between loops with `Ctrl+Shift+P` → "Run Task" → "vibe
 - Crossing stage boundaries (must run consolidation manually)
 - Context continuity (re-read AGENTS.md/STATE.md each session)
 
-### Kimi 2.5 / IQuest Coder / Other self-hosted
+### Kilo / Self-hosted
 
 - Capabilities depend on tool configuration
 - When tool-enabled: full file/command/continuous support
@@ -116,7 +116,7 @@ Paste this into your agent at the start of each session.
 
 If your agent supports a skill/plugin system:
 ```bash
-python tools/bootstrap.py install-skills --global --agent kimi
+python tools/bootstrap.py install-skills --global --agent kilo
 # or: --agent <your-agent-name>
 ```
 

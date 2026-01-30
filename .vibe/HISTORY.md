@@ -13,9 +13,13 @@
 
 ## Completed stages
 
+### 2026-01-29 — Stage 11: Checkpoint Templates (completed)
+
+Enabled reusable checkpoint patterns for common tasks, reducing boilerplate and ensuring consistency. This included a template schema, a core library of templates, and integration with `agentctl` for direct insertion into `PLAN.md`.
+
 ### 2026-01-26 — Stage 0: Repo scaffold and bootstrap foundations (completed)
 
-Established a canonical repo structure with `.vibe/` as the authoritative workflow state location and an idempotent bootstrap path to initialize and install skills.
+Established a canonical repo structure with `.vibe/` as the only authoritative workflow state location and an idempotent bootstrap path to initialize and install skills.
 
 ### 2026-01-27 — Stage 1: Prompt catalog and agent control plane (completed)
 
