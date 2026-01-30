@@ -11,27 +11,28 @@
 
 ## Current focus
 
-- Stage: 13
-- Checkpoint: 13.0
-- Status: NOT_STARTED  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
+- Stage: 12A
+- Checkpoint: 12A.0
+- Status: IN_REVIEW  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
 
 ## Objective (current checkpoint)
 
-Define a standard manifest format for skills.
+Define a deterministic stage identifier scheme that supports insertions (e.g., `12A`, `12B`) and document ordering rules.
 
 ## Deliverables (current checkpoint)
 
-- `docs/skill_manifest.md` — schema documentation
-- `SKILL.yaml` or `SKILL.json` manifest format
-- Fields: name, version, description, agents, dependencies, entry points
+- `docs/stage_ordering.md` — stage ID format + ordering rules + examples
+- Stage ID grammar: `<int><optional alpha suffix>` (examples: `12`, `12A`, `12B`, `13`)
+- Ordering definition: numeric first, then suffix (empty suffix sorts before A/B/…)
 
 ## Acceptance (current checkpoint)
 
-- Schema supports: multi-agent compatibility, version constraints, capability requirements
-- Existing skills can be migrated to new format
+- A human can add `Stage 12A` to PLAN.md and it will be treated as between 12 and 13
+- Ordering rules are unambiguous and testable
 
 ## Work log (current session)
 
+- 2026-01-30: Added stage ordering documentation for suffix-based stage IDs.
 - 2026-01-29: Consolidated Stage 12, pruned logs, and advanced to 13.0.
 - 2026-01-29: Reviewed 12.2 - PASS. Deliverables and acceptance criteria met.
 - 2026-01-29: Implemented 12.2 - Updated bootstrap.py and agentctl.py to use the resource resolver. Verified changes with demo commands.
@@ -45,7 +46,7 @@ Define a standard manifest format for skills.
 
 ## Evidence
 
-(No evidence)
+- `cat docs/stage_ordering.md`
 
 ## Active issues
 
