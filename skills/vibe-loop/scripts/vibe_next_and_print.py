@@ -158,7 +158,19 @@ def main() -> int:
         print("ERROR: prompt_catalog.py not found in repo or skills tools.", file=sys.stderr)
         return 2
 
-    if args.catalog:
+    decision = _run_agentctl(repo_root, agentctl_path)
+    prompt_id = decision.get("recommended_prompt_id")
+    if not prompt_id:
+        print(f"ERROR: agentctl decision missing recommended_prompt_id: {decision}", file=sys.stderr)
+        return 2
+
+    if args.show_decision:
+        print(json.dumps(decision, indent=2, sort_keys=True), file=sys.stderr)
+
+    catalog_path_str = decision.get("prompt_catalog_path")
+    if catalog_path_str:
+        catalog_path = Path(catalog_path_str)
+    elif args.catalog:
         catalog_path = Path(args.catalog).expanduser().resolve()
     else:
         # Check for prompts/template_prompts.md in the repo root first
@@ -178,15 +190,6 @@ def main() -> int:
         print("Hint: reinstall skills to refresh resources:", file=sys.stderr)
         print("  python3 tools/bootstrap.py install-skills --global --agent <your_agent>", file=sys.stderr)
         return 2
-
-    decision = _run_agentctl(repo_root, agentctl_path)
-    prompt_id = decision.get("recommended_prompt_id")
-    if not prompt_id:
-        print(f"ERROR: agentctl decision missing recommended_prompt_id: {decision}", file=sys.stderr)
-        return 2
-
-    if args.show_decision:
-        print(json.dumps(decision, indent=2, sort_keys=True), file=sys.stderr)
 
     if decision.get("recommended_role") == "stop" or prompt_id == "stop":
         return 0

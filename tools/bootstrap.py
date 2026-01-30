@@ -32,8 +32,16 @@ import sys
 from pathlib import Path
 from typing import Iterable
 
+# Add parent dir to path to allow sibling imports
+_tools_dir = Path(__file__).parent.resolve()
+if str(_tools_dir) not in sys.path:
+    sys.path.insert(0, str(_tools_dir))
+
+from resource_resolver import find_resource
+
 # All supported agents for bulk installation
 ALL_AGENTS = ["codex", "claude", "gemini", "copilot", "kilo"]
+
 
 # Canonical doc templates for init-repo
 CANONICAL_AGENTS_TEMPLATE = Path("templates/repo_root/AGENTS.md")
@@ -242,9 +250,6 @@ def install_skills_agent_global(agent: str, force: bool) -> int:
     dst_root = _default_agent_global_dir(agent)
     dst_root.mkdir(parents=True, exist_ok=True)
 
-    # Generic skills are in skills/
-    src_skills_root = repo_root / "skills"
-
     # Expected skill folders (we install only these by name)
     skill_names = ["vibe-prompts", "vibe-loop"]
 
@@ -253,10 +258,11 @@ def install_skills_agent_global(agent: str, force: bool) -> int:
 
     # 1) Sync skill folders
     for name in skill_names:
-        src_dir = src_skills_root / name
+        src_dir = find_resource("skill", name, agent=agent)
+        if not src_dir or not src_dir.exists():
+            raise FileNotFoundError(f"Skill folder for '{name}' not found.")
+
         dst_dir = dst_root / name
-        if not src_dir.exists():
-            raise FileNotFoundError(f"Skill folder missing: {src_dir}")
         u = _sync_dir(src_dir, dst_dir, force=force)
         if u:
             updated.extend(u)
@@ -266,14 +272,14 @@ def install_skills_agent_global(agent: str, force: bool) -> int:
     # 2) Force-refresh runtime scripts every install (prevents stale behavior)
     updated.extend(
         _sync_dir(
-            src_skills_root / "vibe-prompts" / "scripts",
+            find_resource("skill", "vibe-prompts", agent=agent) / "scripts",
             dst_root / "vibe-prompts" / "scripts",
             force=True,
         )
     )
     updated.extend(
         _sync_dir(
-            src_skills_root / "vibe-loop" / "scripts",
+            find_resource("skill", "vibe-loop", agent=agent) / "scripts",
             dst_root / "vibe-loop" / "scripts",
             force=True,
         )

@@ -13,53 +13,55 @@
 
 ## Completed stages
 
-### 2026-01-29 — Stage 11: Checkpoint Templates (completed)
+### 2026-01-29 — Stage 12: Global vs Repo-Local Separation (completed)
+
+Established clear boundaries between global and repo-local resources, implemented a resource resolver, and updated core tools to use it, enabling skill reuse with project customization. This included checkpoints 12.0, 12.1, and 12.2.
+
+### 2026-01-29 ?" Stage 11: Checkpoint Templates (completed)
 
 Enabled reusable checkpoint patterns for common tasks, reducing boilerplate and ensuring consistency. This included a template schema, a core library of templates, and integration with `agentctl` for direct insertion into `PLAN.md`.
 
-### 2026-01-26 — Stage 0: Repo scaffold and bootstrap foundations (completed)
+### 2026-01-29 — Stage 10: Context snapshots (completed)
 
-Established a canonical repo structure with `.vibe/` as the only authoritative workflow state location and an idempotent bootstrap path to initialize and install skills.
-
-### 2026-01-27 — Stage 1: Prompt catalog and agent control plane (completed)
-
-Introduced stable prompt IDs with a shared catalog and updated agent control tooling to deterministically recommend the next prompt from `.vibe` state.
-
-### 2026-01-28 — Stage 2: Cross agent parity for core Vibe workflow (completed)
-
-Documented agent capability constraints and unified bootstrap prompts so multiple agents can run the same core loop with consistent expectations.
-
-### 2026-01-28 — Stage 3: Continuous mode and dispatcher parity (completed)
-
-Defined continuous mode semantics and provided reference and adaptation guidance so agents can execute multi loop runs with minimal manual intervention.
-
-### 2026-01-28 — Stage 4: Base Vibe skills stabilized (completed)
-
-Defined the base skill surface and published agent skill pack documentation to standardize usage across supported agents.
-
-### 2026-01-28 — Stage 5: Expansion readiness (completed)
-
-Established skill lifecycle and compatibility policies and added repo level schema fields to support future expansion without breaking workflow contracts.
-
-### 2026-01-28 — Stage 6: Multi agent continuous mode verification (completed)
-
-Verified continuous mode operation across multiple agents and documented partial support and workarounds where full automation is not available.
-
-### 2026-01-28 — Stage 7: Self hosted agent support (completed)
-
-Added a generic bootstrap and configuration guidance for self hosted agents and recorded any skipped verifications due to lack of access.
-
-### 2026-01-28 — Stage 8: End to end workflow hardening (completed)
-
-Hardened stage transitions and consolidation behavior and added a cross agent workflow test suite to catch regressions.
+Added a context snapshot schema plus capture and restoration flow so runs can be resumed with consistent project context.
 
 ### 2026-01-29 — Stage 9: Automated quality gates (completed)
 
 Added a quality gate schema, implemented gate execution in agentctl, and provided reusable gate templates.
 
-### 2026-01-29 — Stage 10: Context snapshots (completed)
+### 2026-01-28 — Stage 8: End to end workflow hardening (completed)
 
-Added a context snapshot schema plus capture and restoration flow so runs can be resumed with consistent project context.
+Hardened stage transitions and consolidation behavior and added a cross agent workflow test suite to catch regressions.
+
+### 2026-01-28 — Stage 7: Self hosted agent support (completed)
+
+Added a generic bootstrap and configuration guidance for self hosted agents and recorded any skipped verifications due to lack of access.
+
+### 2026-01-28 — Stage 6: Multi agent continuous mode verification (completed)
+
+Verified continuous mode operation across multiple agents and documented partial support and workarounds where full automation is not available.
+
+### 2026-01-28 — Stage 5: Expansion readiness (completed)
+
+Established skill lifecycle and compatibility policies and added repo level schema fields to support future expansion without breaking workflow contracts.
+
+### 2026-01-28 — Stage 4: Base Vibe skills stabilized (completed)
+
+Defined the base skill surface and published agent skill pack documentation to standardize usage across supported agents.
+
+### 2026-01-28 — Stage 3: Continuous mode and dispatcher parity (completed)
+
+Defined continuous mode semantics and provided reference and adaptation guidance so agents can execute multi loop runs with minimal manual intervention.
+
+### 2026-01-28 — Stage 2: Cross agent parity for core Vibe workflow (completed)
+
+Documented agent capability constraints and unified bootstrap prompts so multiple agents can run the same core loop with consistent expectations.
+
+### 2026-01-27 — Stage 1: Prompt catalog and agent control plane (completed)
+
+Introduced stable prompt IDs with a shared catalog and updated agent control tooling to deterministically recommend the next prompt from `.vibe` state.
+
+### 2026-01-26 ?" Stage 0: Repo scaffold and bootstrap foundations (completed)
 
 ---
 

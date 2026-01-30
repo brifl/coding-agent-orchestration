@@ -11,95 +11,12 @@
 
 ---
 
-## Stage 12 — Global vs Repo-Local Separation
-
-**Stage objective:**
-Establish clear boundaries between global (user-level) and repo-local (project-level) resources, enabling skill reuse while allowing project customization.
-
-### 12.0 — Separation architecture
-
-* **Objective:**
-  Define and document the global vs repo-local resource model.
-
-* **Deliverables:**
-
-  * `docs/resource_model.md` — where things live, precedence rules, discovery order
-  * Clear definitions: global = `~/.<agent>/`, repo-local = `.vibe/`
-  * Precedence: repo-local overrides global (explicit shadow)
-
-* **Acceptance:**
-
-  * Document covers: skills, prompts, config, state
-  * Git-ignore strategy documented (`.vibe/` ignored, global not in repo)
-
-* **Demo commands:**
-
-  * `cat docs/resource_model.md`
-
-* **Evidence:**
-
-  * Architecture diagram or table showing resource locations
-
----
-
-### 12.1 — Discovery and resolution
-
-* **Objective:**
-  Implement resource discovery that respects precedence.
-
-* **Deliverables:**
-
-  * `tools/resource_resolver.py` — finds resources by name across locations
-  * Resolution order: repo-local → global → built-in
-  * Clear error messages when resource not found
-
-* **Acceptance:**
-
-  * Resolver finds skills/prompts from correct location
-  * Shadowing works (repo-local skill overrides global)
-
-* **Demo commands:**
-
-  * `python tools/resource_resolver.py skill vibe-loop --show-path`
-  * `python tools/resource_resolver.py prompt prompt.consolidation --show-path`
-
-* **Evidence:**
-
-  * Output showing resolution from different locations
-
----
-
-### 12.2 — Bootstrap and agentctl integration
-
-* **Objective:**
-  Update bootstrap and agentctl to use the resource resolver.
-
-* **Deliverables:**
-
-  * `bootstrap.py` uses resolver for skill installation
-  * `agentctl.py` uses resolver for prompt lookup
-  * `--global` and `--local` flags where disambiguation needed
-
-* **Acceptance:**
-
-  * Existing functionality preserved
-  * New resolution logic is transparent to users
-
-* **Demo commands:**
-
-  * `python tools/bootstrap.py install-skills --global --agent claude`
-  * `python tools/agentctl.py --repo-root . next` (uses resolved prompts)
-
-* **Evidence:**
-
-  * Before/after showing same behavior with new resolver
-
----
-
 ## Stage 13 — Skill Library Foundation
 
 **Stage objective:**
 Treat skills as first-class, reusable artifacts with proper metadata, discovery, and management.
+
+
 
 ### 13.0 — Skill manifest schema
 

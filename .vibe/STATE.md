@@ -11,27 +11,30 @@
 
 ## Current focus
 
-- Stage: 12
-- Checkpoint: 12.2
+- Stage: 13
+- Checkpoint: 13.0
 - Status: NOT_STARTED  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
 
 ## Objective (current checkpoint)
 
-Update bootstrap and agentctl to use the resource resolver.
+Define a standard manifest format for skills.
 
 ## Deliverables (current checkpoint)
 
-- `bootstrap.py` uses resolver for skill installation
-- `agentctl.py` uses resolver for prompt lookup
-- `--global` and `--local` flags where disambiguation needed
+- `docs/skill_manifest.md` — schema documentation
+- `SKILL.yaml` or `SKILL.json` manifest format
+- Fields: name, version, description, agents, dependencies, entry points
 
 ## Acceptance (current checkpoint)
 
-- Existing functionality preserved
-- New resolution logic is transparent to users
+- Schema supports: multi-agent compatibility, version constraints, capability requirements
+- Existing skills can be migrated to new format
 
 ## Work log (current session)
 
+- 2026-01-29: Consolidated Stage 12, pruned logs, and advanced to 13.0.
+- 2026-01-29: Reviewed 12.2 - PASS. Deliverables and acceptance criteria met.
+- 2026-01-29: Implemented 12.2 - Updated bootstrap.py and agentctl.py to use the resource resolver. Verified changes with demo commands.
 - 2026-01-29: Advanced to checkpoint 12.2.
 - 2026-01-29: Reviewed 12.1 - PASS. Deliverables and acceptance criteria met.
 - 2026-01-29: Implemented 12.1 - Implemented resource resolver and verified with demo commands.
@@ -39,12 +42,6 @@ Update bootstrap and agentctl to use the resource resolver.
 - 2026-01-29: Reviewed 12.0 - PASS. Deliverables and acceptance criteria met.
 - 2026-01-29: Implemented 12.0 - Defined and documented the global vs repo-local resource model.
 - 2026-01-29: Resolved ISSUE-005: Corrected the status of checkpoint 11.2 to DONE, as it was already reviewed and passed.
-- 2026-01-29: Resolved ISSUE-004: Replaced Kimi with Kilo in all agent references and parity groupings.
-- 2026-01-30: Resolved ISSUE-002 (bootstrap overwrite) and ISSUE-003 (prompt catalog canonicalization) with overwrite logging, catalog validation, resolver fix, and tests.
-- 2026-01-29: Resolved ISSUE-002 (dispatcher mismatch) by preferring repo-local tools in vibe_next_and_print.
-- 2026-01-29: Reviewed 11.2 - PASS. Deliverables and acceptance criteria met.
-- 2026-01-29: Implemented 11.2 - Added agentctl add-checkpoint command and stage insertion logic.
-- 2026-01-29: Advanced to checkpoint 11.2.
 
 ## Evidence
 

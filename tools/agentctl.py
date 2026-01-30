@@ -26,7 +26,12 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Iterable, Literal
 
+_tools_dir = Path(__file__).parent.resolve()
+if str(_tools_dir) not in sys.path:
+    sys.path.insert(0, str(_tools_dir))
+
 import checkpoint_templates
+from resource_resolver import find_resource
 
 ALLOWED_STATUS = {
     "NOT_STARTED",
@@ -886,6 +891,7 @@ def cmd_status(args: argparse.Namespace) -> int:
 
     role, reason = _recommend_next(state, repo_root)
     summary, sections = _context_summary(repo_root)
+    prompt_catalog_path = find_resource("prompt", "template_prompts.md")
 
     payload: dict[str, Any] = {
         "stage": state.stage,
@@ -902,6 +908,7 @@ def cmd_status(args: argparse.Namespace) -> int:
         "recommended_prompt_id": PROMPT_MAP[role]["id"],
         "recommended_prompt_title": PROMPT_MAP[role]["title"],
         "context_summary": summary,
+        "prompt_catalog_path": str(prompt_catalog_path) if prompt_catalog_path else None,
     }
     if args.with_context and sections is not None:
         payload["context_sections"] = sections
@@ -912,6 +919,7 @@ def cmd_status(args: argparse.Namespace) -> int:
 def cmd_next(args: argparse.Namespace) -> int:
     repo_root = Path(args.repo_root)
     state = load_state(repo_root)
+    prompt_catalog_path = find_resource("prompt", "template_prompts.md")
 
     if args.run_gates and state.status in {"NOT_STARTED", "IN_PROGRESS"}:
         gate_results = run_gates(repo_root, state.checkpoint)
@@ -926,6 +934,7 @@ def cmd_next(args: argparse.Namespace) -> int:
                 "stage": state.stage,
                 "checkpoint": state.checkpoint,
                 "status": state.status,
+                "prompt_catalog_path": str(prompt_catalog_path) if prompt_catalog_path else None,
                 "gate_results": [
                     {
                         "name": r.gate.name,
@@ -950,6 +959,7 @@ def cmd_next(args: argparse.Namespace) -> int:
         "stage": state.stage,
         "checkpoint": state.checkpoint,
         "status": state.status,
+        "prompt_catalog_path": str(prompt_catalog_path) if prompt_catalog_path else None,
     }
     
     if args.run_gates and state.status in {"NOT_STARTED", "IN_PROGRESS"}:
