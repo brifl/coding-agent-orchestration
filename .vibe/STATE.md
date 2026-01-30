@@ -11,27 +11,36 @@
 
 ## Current focus
 
-- Stage: 12A
-- Checkpoint: 12A.0
-- Status: IN_REVIEW  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
+- Stage: 13
+- Checkpoint: 13.0
+- Status: NOT_STARTED  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
 
 ## Objective (current checkpoint)
 
-Define a deterministic stage identifier scheme that supports insertions (e.g., `12A`, `12B`) and document ordering rules.
+Define a standard manifest format for skills.
 
 ## Deliverables (current checkpoint)
 
-- `docs/stage_ordering.md` — stage ID format + ordering rules + examples
-- Stage ID grammar: `<int><optional alpha suffix>` (examples: `12`, `12A`, `12B`, `13`)
-- Ordering definition: numeric first, then suffix (empty suffix sorts before A/B/…)
+- `docs/skill_manifest.md` — schema documentation
+- `SKILL.yaml` or `SKILL.json` manifest format
+- Fields: name, version, description, agents, dependencies, entry points
 
 ## Acceptance (current checkpoint)
 
-- A human can add `Stage 12A` to PLAN.md and it will be treated as between 12 and 13
-- Ordering rules are unambiguous and testable
+- Schema supports: multi-agent compatibility, version constraints, capability requirements
+- Existing skills can be migrated to new format
 
 ## Work log (current session)
 
+- 2026-01-30: Consolidated Stage 12A; advanced to Stage 13.0.
+- 2026-01-30: Reviewed 12A.3 - PASS. Deliverables and acceptance criteria met.
+- 2026-01-30: Added stage ordering unit + integration tests (12A.3).
+- 2026-01-30: Advanced to checkpoint 12A.3.
+- 2026-01-30: Implemented 12A.2 stage ID validation and duplicate detection.
+- 2026-01-30: Advanced to checkpoint 12A.2.
+- 2026-01-30: Implemented 12A.1 stage ordering logic updates.
+- 2026-01-30: Advanced to checkpoint 12A.1.
+- 2026-01-30: Reviewed 12A.0 - PASS. Deliverables and acceptance criteria met.
 - 2026-01-30: Added stage ordering documentation for suffix-based stage IDs.
 - 2026-01-29: Consolidated Stage 12, pruned logs, and advanced to 13.0.
 - 2026-01-29: Reviewed 12.2 - PASS. Deliverables and acceptance criteria met.
@@ -46,11 +55,14 @@ Define a deterministic stage identifier scheme that supports insertions (e.g., `
 
 ## Evidence
 
-- `cat docs/stage_ordering.md`
+(No evidence)
 
 ## Active issues
 
-(No active issues)
+- [MAJOR] ISSUE-005: Agents not working from current branch
+  - Severity: MAJOR
+  - Owner: agent
+  - Notes: Agents running vibe-loop or other skills should not create branches. They should always work from the current branch and commit to the current branch. This is documented in prompts, but it is not followed consistently. This creates drift, branch clutter, and merge issues when these branches are created.
 
 ## Decisions
 
