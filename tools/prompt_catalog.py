@@ -130,6 +130,7 @@ def parse_catalog(text: str) -> List[CatalogEntry]:
 
 
 def load_catalog(path: Path) -> List[CatalogEntry]:
+    _validate_catalog_path(path)
     return parse_catalog(path.read_text(encoding="utf-8"))
 
 
@@ -142,6 +143,27 @@ def _normalize_header(s: str) -> str:
     s = unicodedata.normalize("NFKC", s)
     s = s.translate(_ZERO_WIDTH)
     return s
+
+
+def _validate_catalog_path(catalog_path: Path) -> None:
+    """
+    Enforce a single canonical prompt catalog under prompts/.
+    """
+    if catalog_path.parent.name != "prompts":
+        return
+    if catalog_path.name != "template_prompts.md":
+        raise ValueError(
+            f"Non-canonical prompt catalog path: {catalog_path}. "
+            "Use prompts/template_prompts.md."
+        )
+    matches = sorted(p for p in catalog_path.parent.glob("*template_prompts*.md") if p.is_file())
+    if len(matches) > 1:
+        extras = [p.name for p in matches if p.name != "template_prompts.md"]
+        extra_list = ", ".join(extras) if extras else "additional catalog(s)"
+        raise ValueError(
+            f"Multiple prompt catalogs detected in {catalog_path.parent}: {extra_list}. "
+            "Keep only template_prompts.md."
+        )
 
 
 def find_entry(entries: List[CatalogEntry], key_or_title: str) -> Optional[CatalogEntry]:

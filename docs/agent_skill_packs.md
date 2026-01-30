@@ -8,7 +8,6 @@ skills directly. Each pack provides instructions, prompt locations, and invocati
 All agents use the same prompt catalog and bootstraps:
 - Bootstraps: `prompts/init/*.md`
 - Loop catalog: `prompts/template_prompts.md`
-- Optional manual prompts: `prompts/manual_template_prompts.md`
 
 ## Codex (reference)
 

@@ -9,8 +9,8 @@ Commands:
     - Ensures <path> exists and is a directory.
     - Creates <path>/.vibe/ and installs STATE/PLAN/HISTORY templates (only if missing).
     - Adds ".vibe/" to <path>/.gitignore (idempotent).
-    - Installs a baseline <path>/AGENTS.md (only if missing).
-    - Optionally installs <path>/VIBE.md (only if missing) if a template exists.
+    - Installs a baseline <path>/AGENTS.md (only if missing unless --overwrite).
+    - Optionally installs <path>/VIBE.md (only if missing unless --overwrite) if a template exists.
 
   install-skills --global --agent <agent_name>
     - Installs/updates skills for the specified agent into ~/.<agent_name>/skills
@@ -35,6 +35,10 @@ from typing import Iterable
 # All supported agents for bulk installation
 ALL_AGENTS = ["codex", "claude", "gemini", "copilot", "kimi", "kilo"]
 
+# Canonical doc templates for init-repo
+CANONICAL_AGENTS_TEMPLATE = Path("templates/repo_root/AGENTS.md")
+CANONICAL_VIBE_TEMPLATE = Path("templates/repo_root/VIBE.md")
+
 
 def _repo_root_from_this_file() -> Path:
     # tools/bootstrap.py -> <repo_root>/tools/bootstrap.py
@@ -54,16 +58,18 @@ def _write_text(path: Path, content: str) -> None:
     path.write_text(content, encoding="utf-8")
 
 
-def _copy_if_missing(src: Path, dst: Path, *, force: bool = False) -> bool:
+def _copy_if_missing(src: Path, dst: Path, *, force: bool = False) -> str:
     """
-    Returns True if created/overwritten, False if skipped (already exists and force=False).
+    Returns one of: "created", "overwritten", "skipped".
     """
-    if dst.exists() and not force:
-        return False
+    existed = dst.exists()
+    if existed and not force:
+        return "skipped"
     if not src.exists():
         raise FileNotFoundError(f"Template not found: {src}")
-    _write_text(dst, _read_text(src))
-    return True
+    dst.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copyfile(src, dst)
+    return "overwritten" if existed else "created"
 
 
 def _ensure_gitignore_contains(repo_path: Path, lines: Iterable[str]) -> bool:
@@ -104,31 +110,42 @@ def init_repo(target_repo: Path, skillset: str | None = None, overwrite: bool = 
     vibe_dir.mkdir(parents=True, exist_ok=True)
 
     created = []
+    overwritten = []
     skipped = []
 
     for name in ("STATE.md", "PLAN.md", "HISTORY.md"):
         src = _template_path(repo_root, f"templates/vibe_folder/{name}")
         dst = vibe_dir / name
         # Never overwrite workflow files - they contain important project state
-        (created if _copy_if_missing(src, dst, force=False) else skipped).append(str(dst))
+        result = _copy_if_missing(src, dst, force=False)
+        if result == "created":
+            created.append(str(dst))
+        else:
+            skipped.append(str(dst))
 
     # 2) .gitignore contains .vibe/
     gi_modified = _ensure_gitignore_contains(target_repo, [".vibe/"])
 
     # 3) baseline AGENTS.md at repo root
-    agents_src = _template_path(repo_root, "templates/repo_root/AGENTS.md")
+    agents_src = _template_path(repo_root, str(CANONICAL_AGENTS_TEMPLATE))
     agents_dst = target_repo / "AGENTS.md"
-    if _copy_if_missing(agents_src, agents_dst, force=overwrite):
+    result = _copy_if_missing(agents_src, agents_dst, force=overwrite)
+    if result == "created":
         created.append(str(agents_dst))
+    elif result == "overwritten":
+        overwritten.append(str(agents_dst))
     else:
         skipped.append(str(agents_dst))
 
     # 4) optional VIBE.md pointer doc
-    vibe_md_src = _template_path(repo_root, "templates/repo_root/VIBE.md")
+    vibe_md_src = _template_path(repo_root, str(CANONICAL_VIBE_TEMPLATE))
     vibe_md_dst = target_repo / "VIBE.md"
     if vibe_md_src.exists():
-        if _copy_if_missing(vibe_md_src, vibe_md_dst, force=overwrite):
+        result = _copy_if_missing(vibe_md_src, vibe_md_dst, force=overwrite)
+        if result == "created":
             created.append(str(vibe_md_dst))
+        elif result == "overwritten":
+            overwritten.append(str(vibe_md_dst))
         else:
             skipped.append(str(vibe_md_dst))
 
@@ -152,9 +169,12 @@ def init_repo(target_repo: Path, skillset: str | None = None, overwrite: bool = 
     print(f"- .vibe dir: {vibe_dir}")
     print(f"- .gitignore updated: {'yes' if gi_modified else 'no'}")
     if created:
-        label = "Created/Overwritten:" if overwrite else "Created:"
-        print(f"- {label}")
+        print("- Created:")
         for p in created:
+            print(f"  - {p}")
+    if overwritten:
+        print("- Overwritten:")
+        for p in overwritten:
             print(f"  - {p}")
     if skipped:
         print("- Skipped (already exists):")
@@ -363,13 +383,17 @@ def _build_parser() -> argparse.ArgumentParser:
     initp = sub.add_parser("init-repo", help="Bootstrap a target repo with AGENTS.md and .vibe templates")
     initp.add_argument("path", type=str, help="Path to the target repo root")
     initp.add_argument("--skillset", type=str, help="Optional skillset name to seed .vibe/config.json")
+    initp.add_argument(
+        "--overwrite",
+        action="store_true",
+        help="Overwrite existing AGENTS.md and VIBE.md (does NOT overwrite STATE.md, PLAN.md, or HISTORY.md)",
+    )
 
     isp = sub.add_parser("install-skills", help="Install skills for a given agent/tool")
     isp.add_argument("--global", dest="global_install", action="store_true", help="Install to user/global location")
     isp.add_argument("--repo", dest="repo_install", action="store_true", help="Install into .vibe/skills in the repo")
     isp.add_argument("--agent", choices=("all", "codex", "claude", "gemini", "copilot", "kimi", "kilo"), required=True, help="Which agent to install for (use 'all' to install for all agents)")
     isp.add_argument("--force", action="store_true", help="Force overwrite of SKILL.md and other files")
-    isp.add_argument("--overwrite", action="store_true", help="Overwrite existing AGENTS.md and VIBE.md (does NOT overwrite STATE.md, PLAN.md, or HISTORY.md)")
     return p
 
 

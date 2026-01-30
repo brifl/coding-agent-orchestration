@@ -2,8 +2,6 @@
 
 This repo uses the Vibe coding-agent workflow.
 
-**Important** There are multiple instances of files with the same name as this one in this repo. The others are for templating, bootstrapping, or simple examples. This is a real one. This is left to provide a real example of what these look like in use. Use it to actually guide the coding agent. If you _are_ a coding agent, this one's for you!
-
 ## Start here (read order)
 
 1) `AGENTS.md` (execution contract)

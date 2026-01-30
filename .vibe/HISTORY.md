@@ -66,3 +66,5 @@ Added a context snapshot schema plus capture and restoration flow so runs can be
 - 2026-01-26 — ISSUE-BOOT-001: Declared `.vibe/` as the only authoritative workflow location and removed fallback logic.
 - 2026-01-27 — ISSUE-001: Updated `vibe_next_and_print.py` to respect CODEX_HOME aware skills roots.
 - 2026-01-28 — ISSUE-001: Fixed stage sync and transition detection in agentctl and improved heading parsing robustness.
+- 2026-01-30 — ISSUE-002: Fixed bootstrap `init-repo --overwrite` to use canonical templates, byte-for-byte overwrite, logging, and regression test.
+- 2026-01-30 — ISSUE-003: Removed duplicate prompt catalog and enforced canonical `prompts/template_prompts.md` validation plus resolver fix.
