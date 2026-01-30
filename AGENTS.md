@@ -1,7 +1,5 @@
 # AGENTS.md — Execution Contract (Repo Baseline)
 
-**Important** There are multiple instances of files with the same name as this one in this repo. The others are for templating, bootstrapping, or simple examples. This is a real one. This is left to provide a real example of what these look like in use. Use it to actually guide the coding agent. If you _are_ a coding agent, this one's for you!
-
 ## Purpose
 
 This file defines the working contract for coding agents and humans collaborating in this repository.
@@ -27,7 +25,7 @@ When instructions conflict, follow this order:
 ### Read order at the start of a session
 
 At the start of any new session (or when context is unclear), the agent must:
-1. Read `AGENTS.md`
+1. Read `AGENTS.md` (optional if already read this session)
 2. Read `.vibe/STATE.md`
 3. Read `.vibe/PLAN.md`
 4. Optionally read `.vibe/HISTORY.md` if needed
@@ -36,7 +34,7 @@ At the start of any new session (or when context is unclear), the agent must:
 
 - Do **one coherent unit of work** at a time (typically one checkpoint step).
 - Prefer **small, reviewable diffs**.
-- When ambiguity affects correctness, ask **1–2 clarifying questions max**, then stop.
+- When ambiguity affects correctness, ask **1–2 clarifying questions max** as issues in `.vibe/STATE.md`, then stop.
 
 ### Output discipline
 
@@ -81,15 +79,33 @@ Stop and ask for input (as issue) if any of the following occurs:
 
 ## Version control policy (required)
 
-- Work on a feature branch unless explicitly told otherwise.
-- Commit as you go:
-  - Create at least one commit per completed checkpoint.
-  - Additional commits are allowed for discrete sub-steps (e.g., “fix parser”, “tighten prompts”).
-- Commit messages:
-  - Use imperative mood.
-  - Prefix with the checkpoint ID, e.g. "1.2: Fix prompt_catalog fence parsing".
-- Do not commit broken builds/tests unless the checkpoint explicitly allows it.
-- After setting Status to IN_REVIEW, ensure the branch contains the commits needed to satisfy the checkpoint.
+### Branch discipline (hard rule)
+
+- Work on the **current branch**.
+- **Do not create, switch, or delete branches** unless the user explicitly instructs you to.
+  - Forbidden without explicit instruction: `git checkout -b`, `git switch -c`, `git switch <branch>`, `git checkout <branch>`, `git branch -d`, `git rebase`, `git cherry-pick`, `git merge`.
+- If you discover the current branch is unsuitable for committing (e.g., protected branch policy, detached HEAD, or missing upstream),
+  - record a **BLOCKER** issue in `.vibe/STATE.md` describing what you found and what instruction you need,
+  - then stop.
+
+### Commit discipline (hard rule)
+
+- If you change tracked files, you must produce commits.
+- **Before setting Status to `IN_REVIEW`**, ensure:
+  - `git status --porcelain` is empty (clean working tree), and
+  - at least one commit exists that implements the checkpoint deliverables.
+- Minimum standard: **≥ 1 commit per completed checkpoint** (more is fine if each commit is a coherent step).
+
+### Commit messages
+
+- Use imperative mood.
+- Prefix with the checkpoint ID, e.g. `11.1: Add fix-bug checkpoint template`.
+- Avoid “WIP” commits unless explicitly asked; prefer small, complete commits.
+
+### Safety
+
+- Do not push, open PRs, or change remotes unless explicitly instructed.
+- Do not commit knowingly broken builds/tests unless the checkpoint explicitly allows it and `.vibe/STATE.md` records the rationale.
 
 ## Definitions
 

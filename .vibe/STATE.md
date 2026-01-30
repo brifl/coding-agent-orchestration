@@ -32,6 +32,7 @@ Allow templates to be inserted directly into PLAN.md.
 
 ## Work log (current session)
 
+- 2026-01-30: Resolved ISSUE-002 (bootstrap overwrite) and ISSUE-003 (prompt catalog canonicalization) with overwrite logging, catalog validation, resolver fix, and tests.
 - 2026-01-29: Resolved ISSUE-002 (dispatcher mismatch) by preferring repo-local tools in vibe_next_and_print.
 - 2026-01-29: Reviewed 11.2 - PASS. Deliverables and acceptance criteria met.
 - 2026-01-29: Implemented 11.2 - Added agentctl add-checkpoint command and stage insertion logic.
@@ -51,6 +52,7 @@ Allow templates to be inserted directly into PLAN.md.
 
 ## Evidence
 
+- `python3 -m pytest -s tests/workflow/test_bootstrap.py tests/workflow/test_prompt_catalog_validation.py`
 - `python tools/agentctl.py --repo-root <temp> add-checkpoint --template add-feature --name "user-auth"`
   - Inserts a templated checkpoint and reports the new id (demo run on a temp repo copy).
 - `python tools/agentctl.py --repo-root <temp> validate`
@@ -60,28 +62,9 @@ Allow templates to be inserted directly into PLAN.md.
 
 ## Active issues
 
-- [BLOCKER] ISSUE-002: Bootstrap `--overwrite` does not reliably replace AGENTS.md and VIBE.md
-  - Severity: BLOCKER
-  - Owner: agent
-  - Notes:
-    - `bootstrap.py --overwrite` should deterministically overwrite repo-canonical docs (`AGENTS.md`, `VIBE.md`) but currently skips or partially updates.
-    - Need: define canonical source path(s) for these docs
-    - implement true overwrite (byte-for-byte or explicitly defined transform)
-    - log what was overwritten
-    - add a regression test that fails when overwrite does not occur
-
-- [BLOCKER] ISSUE-003: Duplicate `template_prompts.md` sources cause drift; enforce single canonical catalog in `prompts/`
-  - Severity: BLOCKER
-  - Owner: agent
-  - Notes:
-    - There should be exactly one maintained prompt catalog (canonical) under `prompts/` and all tools/skills must resolve/read that copy only
-    - Need: remove/stop-reading the non-canonical copy
-    - update resolver/installer/skills to consume `prompts/template_prompts.md` exclusively
-    - add validation that fails if a second catalog is present or referenced
-
 - [BLOCKER] ISSUE-004: Replace Kimi with Kilo in all agent references and parity groupings
   - Severity: BLOCKER
-  - Owner: agent|human
+  - Owner: agent
   - Notes:
     - Kilo was intended to supersede/encapsulate Kimi
     - Need: remove Kimi references across docs/config/bootstrap/verification notes

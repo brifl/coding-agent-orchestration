@@ -162,7 +162,7 @@ def main() -> int:
         catalog_path = Path(args.catalog).expanduser().resolve()
     else:
         # Check for prompts/template_prompts.md in the repo root first
-        repo_catalog_path = skills_root.parent / "prompts" / "template_prompts.md"
+        repo_catalog_path = repo_root / "prompts" / "template_prompts.md"
         if repo_catalog_path.exists():
             catalog_path = repo_catalog_path
         else:
