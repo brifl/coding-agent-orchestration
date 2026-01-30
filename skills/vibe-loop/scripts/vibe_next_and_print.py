@@ -72,6 +72,19 @@ def _locate_skills_root() -> Path:
     return script_root
 
 
+def _load_stage_ordering(repo_root: Path):
+    tools_dir = repo_root / "tools"
+    if not tools_dir.exists():
+        return None
+    if str(tools_dir) not in sys.path:
+        sys.path.insert(0, str(tools_dir))
+    try:
+        import stage_ordering  # type: ignore
+    except Exception:
+        return None
+    return stage_ordering
+
+
 def _run_agentctl(repo_root: Path, agentctl_path: Path) -> dict:
     cmd = [
         sys.executable,
@@ -137,6 +150,8 @@ def main() -> int:
         print(f"ERROR: repo root not found: {repo_root}", file=sys.stderr)
         return 2
 
+    stage_ordering = _load_stage_ordering(repo_root)
+
     # Locate skill install layout (prefers AGENT_HOME when present).
     skills_root = _locate_skills_root()
 
@@ -159,6 +174,11 @@ def main() -> int:
         return 2
 
     decision = _run_agentctl(repo_root, agentctl_path)
+    if stage_ordering and decision.get("stage"):
+        try:
+            stage_ordering.stage_sort_key(decision["stage"])
+        except Exception as exc:
+            print(f"WARNING: invalid stage id in decision: {exc}", file=sys.stderr)
     prompt_id = decision.get("recommended_prompt_id")
     if not prompt_id:
         print(f"ERROR: agentctl decision missing recommended_prompt_id: {decision}", file=sys.stderr)

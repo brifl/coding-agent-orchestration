@@ -32,6 +32,13 @@ if str(_tools_dir) not in sys.path:
 
 import checkpoint_templates
 from resource_resolver import find_resource
+from stage_ordering import (
+    CHECKPOINT_ID_PATTERN,
+    STAGE_ID_PATTERN,
+    is_valid_stage_id,
+    normalize_checkpoint_id,
+    normalize_stage_id,
+)
 
 ALLOWED_STATUS = {
     "NOT_STARTED",
@@ -99,21 +106,28 @@ def _parse_plan_checkpoint_ids(plan_text: str) -> list[str]:
 
     Recognizes headings like:
       ### 1.2 — Title
-      ### 1.2 - Title
+      ### 12A.1 - Title
       ### (DONE) 1.2 — Title
-      ### (SKIPPED) 1.2 — Title
+      ### (SKIPPED) 12B.3 — Title
     """
     ids: list[str] = []
-    # capture (DONE) or (SKIPPED) optionally, then capture the numeric id X.Y
-    pat = re.compile(r"(?im)^\s*#{3,6}\s+(?:\(\s*(?:DONE|SKIPPED)\s*\)\s+)?(?P<id>\d+\.\d+)\b")
+    # capture (DONE) or (SKIPPED) optionally, then capture the checkpoint id X.Y (with optional stage suffix)
+    pat = re.compile(
+        rf"(?im)^\s*#{{3,6}}\s+(?:\(\s*(?:DONE|SKIPPED)\s*\)\s+)?(?P<id>{CHECKPOINT_ID_PATTERN})\b"
+    )
     for m in pat.finditer(plan_text):
-        ids.append(m.group("id"))
+        raw_id = m.group("id")
+        try:
+            ids.append(normalize_checkpoint_id(raw_id))
+        except ValueError:
+            ids.append(raw_id)
     return ids
 
 
 def _find_stage_bounds(plan_text: str, stage: str) -> tuple[int | None, int | None]:
     lines = plan_text.splitlines(keepends=True)
     stage_pat = re.compile(rf"(?im)^##\s+Stage\s+{re.escape(stage)}\b")
+    next_stage_pat = re.compile(rf"(?im)^##\s+Stage\s+{STAGE_ID_PATTERN}\b")
     start_idx = None
     end_idx = None
 
@@ -121,7 +135,7 @@ def _find_stage_bounds(plan_text: str, stage: str) -> tuple[int | None, int | No
         if start_idx is None and stage_pat.match(line):
             start_idx = idx
             continue
-        if start_idx is not None and re.match(r"(?im)^##\s+Stage\s+\d+\b", line):
+        if start_idx is not None and next_stage_pat.match(line):
             end_idx = idx
             break
 
@@ -138,15 +152,16 @@ def _find_stage_bounds(plan_text: str, stage: str) -> tuple[int | None, int | No
 
 
 def _next_checkpoint_id_for_stage(plan_text: str, stage: str) -> str:
+    stage_norm = normalize_stage_id(stage) if is_valid_stage_id(stage) else stage
     ids = [
         cid
         for cid in _parse_plan_checkpoint_ids(plan_text)
-        if _get_stage_for_checkpoint(plan_text, cid) == stage and cid.startswith(f"{stage}.")
+        if _get_stage_for_checkpoint(plan_text, cid) == stage_norm and cid.startswith(f"{stage_norm}.")
     ]
     if not ids:
-        return f"{stage}.0"
+        return f"{stage_norm}.0"
     max_minor = max(int(cid.split(".", 1)[1]) for cid in ids)
-    return f"{stage}.{max_minor + 1}"
+    return f"{stage_norm}.{max_minor + 1}"
 
 
 def _get_stage_for_checkpoint(plan_text: str, checkpoint_id: str) -> str | None:
@@ -155,21 +170,25 @@ def _get_stage_for_checkpoint(plan_text: str, checkpoint_id: str) -> str | None:
 
     Looks for stage headings like:
       ## Stage 2 — Title
-      ## Stage 2 - Title
+      ## Stage 12A - Title
 
     Returns the stage number as a string, or None if not found.
     """
     lines = plan_text.splitlines()
     current_stage: str | None = None
-    stage_pat = re.compile(r"(?im)^\s*##\s+Stage\s+(\d+)\b")
+    stage_pat = re.compile(rf"(?im)^\s*##\s+Stage\s+(?P<stage>{STAGE_ID_PATTERN})\b")
+    try:
+        checkpoint_norm = normalize_checkpoint_id(checkpoint_id)
+    except ValueError:
+        checkpoint_norm = checkpoint_id
     checkpoint_pat = re.compile(
-        rf"(?im)^\s*#{{3,6}}\s+(?:\(\s*(?:DONE|SKIPPED)\s*\)\s+)?{re.escape(checkpoint_id)}\b"
+        rf"(?im)^\s*#{{3,6}}\s+(?:\(\s*(?:DONE|SKIPPED)\s*\)\s+)?{re.escape(checkpoint_norm)}\b"
     )
 
     for line in lines:
         stage_match = stage_pat.match(line)
         if stage_match:
-            current_stage = stage_match.group(1)
+            current_stage = normalize_stage_id(stage_match.group("stage"))
         if checkpoint_pat.match(line):
             return current_stage
 
@@ -595,7 +614,10 @@ def validate(repo_root: Path, strict: bool) -> ValidationResult:
         # Check for stage drift: STATE.md stage doesn't match checkpoint's actual stage in PLAN.md
         if plan_text and state.stage:
             actual_stage = _get_stage_for_checkpoint(plan_text, state.checkpoint)
-            if actual_stage and actual_stage != state.stage:
+            state_stage = state.stage
+            if state_stage and is_valid_stage_id(state_stage):
+                state_stage = normalize_stage_id(state_stage)
+            if actual_stage and state_stage and actual_stage != state_stage:
                 msg = (
                     f"Stage drift detected: STATE.md says Stage {state.stage}, "
                     f"but checkpoint {state.checkpoint} is in Stage {actual_stage} in PLAN.md."
