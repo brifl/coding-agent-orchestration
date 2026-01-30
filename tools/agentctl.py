@@ -124,6 +124,20 @@ def _parse_plan_checkpoint_ids(plan_text: str) -> list[str]:
     return ids
 
 
+def _parse_stage_headings(plan_text: str) -> list[tuple[str, int, str]]:
+    """
+    Return (stage_id, line_no, line_text) for each stage heading.
+    """
+    lines = plan_text.splitlines()
+    results: list[tuple[str, int, str]] = []
+    stage_pat = re.compile(r"(?im)^##\s+Stage\s+(?P<stage>\S+)")
+    for idx, line in enumerate(lines, start=1):
+        m = stage_pat.match(line)
+        if m:
+            results.append((m.group("stage"), idx, line.rstrip()))
+    return results
+
+
 def _find_stage_bounds(plan_text: str, stage: str) -> tuple[int | None, int | None]:
     lines = plan_text.splitlines(keepends=True)
     stage_pat = re.compile(rf"(?im)^##\s+Stage\s+{re.escape(stage)}\b")
@@ -608,8 +622,30 @@ def validate(repo_root: Path, strict: bool) -> ValidationResult:
     if state.checkpoint:
         plan_path = repo_root / ".vibe" / "PLAN.md"
         plan_text = _read_text(plan_path) if plan_path.exists() else ""
-        if state.stage and plan_text and not _plan_has_stage(plan_text, state.stage):
-            warnings.append(f".vibe/PLAN.md: missing stage section for Stage {state.stage}.")
+        if plan_text:
+            stage_headings = _parse_stage_headings(plan_text)
+            seen_stages: dict[str, int] = {}
+            for stage_raw, line_no, line_text in stage_headings:
+                if not is_valid_stage_id(stage_raw):
+                    errors.append(
+                        f".vibe/PLAN.md:{line_no}: invalid stage id '{stage_raw}'. "
+                        f"Expected <int><optional alpha suffix>. Line: {line_text}"
+                    )
+                    continue
+                stage_norm = normalize_stage_id(stage_raw)
+                if stage_norm in seen_stages:
+                    prev_line = seen_stages[stage_norm]
+                    errors.append(
+                        f".vibe/PLAN.md:{line_no}: duplicate stage id '{stage_norm}' "
+                        f"(previously at line {prev_line})."
+                    )
+                else:
+                    seen_stages[stage_norm] = line_no
+
+            if state.stage and not _plan_has_stage(plan_text, state.stage):
+                errors.append(
+                    f".vibe/PLAN.md: missing stage section for Stage {state.stage}."
+                )
 
         # Check for stage drift: STATE.md stage doesn't match checkpoint's actual stage in PLAN.md
         if plan_text and state.stage:
