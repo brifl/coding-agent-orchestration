@@ -13,30 +13,24 @@
 
 - Stage: 13A
 - Checkpoint: 13A.1
-- Status: NOT_STARTED  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
+- Status: BLOCKED  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
 
 ## Objective (current checkpoint)
 
-Update agentctl.py to recognize `(SKIP)` as a checkpoint/stage heading marker. Skipped checkpoints are parsed but bypassed during advance. They are NOT treated as done and NOT archived during consolidation.
+Add unit and integration tests covering (SKIP) parsing, advance-over-skip, and consolidation preservation.
 
 ## Deliverables (current checkpoint)
 
-- `tools/agentctl.py` — updated regex in `_parse_plan_checkpoint_ids` to include `SKIP` in the marker alternation
-- `tools/agentctl.py` — new `_is_checkpoint_skipped()` helper
-- `tools/agentctl.py` — updated `_recommend_next` advance loop to skip over `(SKIP)` checkpoints
-- `tools/agentctl.py` — updated `_is_checkpoint_marked_done` to NOT match `(SKIP)`
-- `tools/agentctl.py` — updated heading parsers to handle `(SKIP)` prefix
-- Consolidation prompt awareness: `(SKIP)` items preserved during cleanup
+- `tests/workflow/test_skip_marker.py` — dedicated test module for (SKIP) behavior
+- Tests: checkpoint parser includes (SKIP) IDs, advance skips them, `_is_checkpoint_skipped` returns correct values, consolidation preserves (SKIP) items, removing (SKIP) reactivates checkpoint
 
 ## Acceptance (current checkpoint)
 
-- `(SKIP)` checkpoints appear in parsed checkpoint ID list but are skipped during advance
-- `(SKIP)` checkpoints are not archived or removed during consolidation
-- Removing `(SKIP)` from a heading makes the checkpoint active and picked up in order
-- `agentctl validate` passes with `(SKIP)` markers present
-- `agentctl next` correctly skips over `(SKIP)` checkpoints when advancing
+- All tests pass with `pytest tests/workflow/test_skip_marker.py`
+- No regressions in existing tests: `pytest tests/`
 
 ## Work log (current session)
+- 2026-02-02: Implemented 13A.1 tests; pytest -v capture fails (FileNotFoundError); status set to BLOCKED.
 - 2026-02-02: Advanced checkpoint 13A.0 → 13A.1; status set to NOT_STARTED.
 - 2026-02-02: Review PASS — 13A.0 acceptance met; status set to DONE.
 - 2026-02-02: Added consolidation prompt rule to preserve (SKIP) items; ran demo commands + skip behavior check; status set to IN_REVIEW.
@@ -68,14 +62,18 @@ Update agentctl.py to recognize `(SKIP)` as a checkpoint/stage heading marker. S
 
 ## Evidence
 
-- `prompts/template_prompts.md` consolidation step now includes: "Preserve any stages/checkpoints marked (SKIP); they are deferred, not completed."
-- `python3 tools/agentctl.py --repo-root . --format json validate` → `{"ok": true, "errors": []}`
-- `python3 tools/agentctl.py --repo-root . --format json next` → `{"recommended_role": "review", "reason": "Checkpoint status is IN_REVIEW."}`
-- `agentctl next` synthetic repo (with SKIP 1.1) → `{"reason": "Checkpoint is DONE; next checkpoint is 1.2."}`
-- `agentctl next` synthetic repo (without SKIP 1.1) → `{"reason": "Checkpoint is DONE; next checkpoint is 1.1."}`
+- Added `tests/workflow/test_skip_marker.py` (5 tests covering parsing, skip detection, advance skip, reactivation, consolidation prompt).
+- `pytest tests/workflow/test_skip_marker.py -v` → FAIL (capture FileNotFoundError; collected 0 items).
+- `pytest tests/ -v` → FAIL (capture FileNotFoundError; collected 0 items).
+- `pytest tests/workflow/test_skip_marker.py -v -s` → PASS (5 passed).
+- `pytest tests/ -v -s` → PASS (49 passed).
 
 ## Active issues
 
+- [BLOCKER] ISSUE-007: Pytest capture fails for demo commands
+  - Severity: BLOCKER
+  - Owner: agent
+  - Notes: `pytest tests/workflow/test_skip_marker.py -v` and `pytest tests/ -v` fail with FileNotFoundError in `_pytest/capture.py` (collected 0 items). Running with `-s` passes. Need guidance on whether to adjust test invocation or environment.
 - [MAJOR] ISSUE-005: Agents not working from current branch
   - Severity: MAJOR
   - Owner: agent
