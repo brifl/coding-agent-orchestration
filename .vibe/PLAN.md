@@ -42,7 +42,7 @@ Treat skills as first-class, reusable artifacts with proper metadata, discovery,
 
 ---
 
-### 13.1 — Skill discovery and registry
+### (SKIP) 13.1 — Skill discovery and registry
 
 * **Objective:**
   Enable programmatic skill discovery and listing.
@@ -69,7 +69,7 @@ Treat skills as first-class, reusable artifacts with proper metadata, discovery,
 
 ---
 
-### 13.2 — Skill CLI and management
+### (SKIP) 13.2 — Skill CLI and management
 
 * **Objective:**
   Provide a unified CLI for skill management.
@@ -94,6 +94,96 @@ Treat skills as first-class, reusable artifacts with proper metadata, discovery,
 * **Evidence:**
 
   * Full skill lifecycle demo (install, use, update, uninstall)
+
+---
+
+## Stage 13A — SKIP Marker Support
+
+**Stage objective:**
+Add a `(SKIP)` marker for stages and checkpoints in PLAN.md. Skipped items are bypassed during advance but preserved during consolidation cleanup, allowing deferred work to be re-activated by removing the marker.
+
+### 13A.0 — Implement (SKIP) marker in agentctl
+
+* **Objective:**
+  Update agentctl.py to recognize `(SKIP)` as a checkpoint/stage heading marker. Skipped checkpoints are parsed but bypassed during advance. They are NOT treated as done and NOT archived during consolidation.
+
+* **Deliverables:**
+
+  * `tools/agentctl.py` — updated regex in `_parse_plan_checkpoint_ids` to include `SKIP` in the marker alternation
+  * `tools/agentctl.py` — new `_is_checkpoint_skipped()` helper that returns True for `(SKIP)` markers
+  * `tools/agentctl.py` — updated `_recommend_next` advance loop to skip over `(SKIP)` checkpoints (same as `(DONE)`)
+  * `tools/agentctl.py` — updated `_is_checkpoint_marked_done` to NOT match `(SKIP)` (it must only match `DONE` and `SKIPPED`)
+  * `tools/agentctl.py` — updated `_get_stage_for_checkpoint` and `_extract_checkpoint_section` to handle `(SKIP)` prefix in headings
+  * Consolidation prompt awareness: `(SKIP)` items must be preserved (not archived) during cleanup
+
+* **Acceptance:**
+
+  * `(SKIP)` checkpoints appear in parsed checkpoint ID list but are skipped during advance
+  * `(SKIP)` checkpoints are not archived or removed during consolidation
+  * Removing `(SKIP)` from a heading makes the checkpoint active and picked up in order
+  * `agentctl validate` passes with `(SKIP)` markers present
+  * `agentctl next` correctly skips over `(SKIP)` checkpoints when advancing
+
+* **Demo commands:**
+
+  * `python tools/agentctl.py --repo-root . --format json validate`
+  * `python tools/agentctl.py --repo-root . --format json next`
+
+* **Evidence:**
+
+  * Validate output showing no errors with (SKIP) markers in PLAN.md
+  * Next output showing advance skips (SKIP) checkpoints
+
+---
+
+### 13A.1 — Tests for (SKIP) marker behavior
+
+* **Objective:**
+  Add unit and integration tests covering (SKIP) parsing, advance-over-skip, and consolidation preservation.
+
+* **Deliverables:**
+
+  * `tests/workflow/test_skip_marker.py` — dedicated test module for (SKIP) behavior
+  * Tests: checkpoint parser includes (SKIP) IDs, advance skips them, `_is_checkpoint_skipped` returns correct values, consolidation preserves (SKIP) items, removing (SKIP) reactivates checkpoint
+
+* **Acceptance:**
+
+  * All tests pass with `pytest tests/workflow/test_skip_marker.py`
+  * No regressions in existing tests: `pytest tests/`
+
+* **Demo commands:**
+
+  * `pytest tests/workflow/test_skip_marker.py -v`
+  * `pytest tests/ -v`
+
+* **Evidence:**
+
+  * Full pytest output showing all tests pass
+
+---
+
+### 13A.2 — Documentation for (SKIP) marker
+
+* **Objective:**
+  Update stage ordering and conventions documentation to describe (SKIP) semantics.
+
+* **Deliverables:**
+
+  * `docs/stage_ordering.md` — new section describing (SKIP) marker syntax and behavior
+  * `prompts/template_prompts.md` — updated consolidation prompt to explicitly preserve (SKIP) items
+
+* **Acceptance:**
+
+  * Documentation clearly describes: syntax, advance behavior, consolidation preservation, reactivation
+  * Consolidation prompt includes (SKIP) preservation rule
+
+* **Demo commands:**
+
+  * `cat docs/stage_ordering.md`
+
+* **Evidence:**
+
+  * Updated documentation sections
 
 ---
 

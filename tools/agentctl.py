@@ -109,11 +109,12 @@ def _parse_plan_checkpoint_ids(plan_text: str) -> list[str]:
       ### 12A.1 - Title
       ### (DONE) 1.2 — Title
       ### (SKIPPED) 12B.3 — Title
+      ### (SKIP) 5.1 — Title
     """
     ids: list[str] = []
-    # capture (DONE) or (SKIPPED) optionally, then capture the checkpoint id X.Y (with optional stage suffix)
+    # capture (DONE), (SKIPPED), or (SKIP) optionally, then capture the checkpoint id X.Y (with optional stage suffix)
     pat = re.compile(
-        rf"(?im)^\s*#{{3,6}}\s+(?:\(\s*(?:DONE|SKIPPED)\s*\)\s+)?(?P<id>{CHECKPOINT_ID_PATTERN})\b"
+        rf"(?im)^\s*#{{3,6}}\s+(?:\(\s*(?:DONE|SKIPPED|SKIP)\s*\)\s+)?(?P<id>{CHECKPOINT_ID_PATTERN})\b"
     )
     for m in pat.finditer(plan_text):
         raw_id = m.group("id")
@@ -127,10 +128,14 @@ def _parse_plan_checkpoint_ids(plan_text: str) -> list[str]:
 def _parse_stage_headings(plan_text: str) -> list[tuple[str, int, str]]:
     """
     Return (stage_id, line_no, line_text) for each stage heading.
+
+    Tolerates an optional (SKIP) marker before 'Stage':
+      ## Stage 14 — Title
+      ## (SKIP) Stage 14 — Title
     """
     lines = plan_text.splitlines()
     results: list[tuple[str, int, str]] = []
-    stage_pat = re.compile(r"(?im)^##\s+Stage\s+(?P<stage>\S+)")
+    stage_pat = re.compile(r"(?im)^##\s+(?:\(\s*SKIP\s*\)\s+)?Stage\s+(?P<stage>\S+)")
     for idx, line in enumerate(lines, start=1):
         m = stage_pat.match(line)
         if m:
@@ -140,8 +145,8 @@ def _parse_stage_headings(plan_text: str) -> list[tuple[str, int, str]]:
 
 def _find_stage_bounds(plan_text: str, stage: str) -> tuple[int | None, int | None]:
     lines = plan_text.splitlines(keepends=True)
-    stage_pat = re.compile(rf"(?im)^##\s+Stage\s+{re.escape(stage)}\b")
-    next_stage_pat = re.compile(rf"(?im)^##\s+Stage\s+{STAGE_ID_PATTERN}\b")
+    stage_pat = re.compile(rf"(?im)^##\s+(?:\(\s*SKIP\s*\)\s+)?Stage\s+{re.escape(stage)}\b")
+    next_stage_pat = re.compile(rf"(?im)^##\s+(?:\(\s*SKIP\s*\)\s+)?Stage\s+{STAGE_ID_PATTERN}\b")
     start_idx = None
     end_idx = None
 
@@ -190,13 +195,13 @@ def _get_stage_for_checkpoint(plan_text: str, checkpoint_id: str) -> str | None:
     """
     lines = plan_text.splitlines()
     current_stage: str | None = None
-    stage_pat = re.compile(rf"(?im)^\s*##\s+Stage\s+(?P<stage>{STAGE_ID_PATTERN})\b")
+    stage_pat = re.compile(rf"(?im)^\s*##\s+(?:\(\s*SKIP\s*\)\s+)?Stage\s+(?P<stage>{STAGE_ID_PATTERN})\b")
     try:
         checkpoint_norm = normalize_checkpoint_id(checkpoint_id)
     except ValueError:
         checkpoint_norm = checkpoint_id
     checkpoint_pat = re.compile(
-        rf"(?im)^\s*#{{3,6}}\s+(?:\(\s*(?:DONE|SKIPPED)\s*\)\s+)?{re.escape(checkpoint_norm)}\b"
+        rf"(?im)^\s*#{{3,6}}\s+(?:\(\s*(?:DONE|SKIPPED|SKIP)\s*\)\s+)?{re.escape(checkpoint_norm)}\b"
     )
 
     for line in lines:
@@ -225,8 +230,20 @@ def _detect_stage_transition(
 
 
 def _is_checkpoint_marked_done(plan_text: str, checkpoint_id: str) -> bool:
-    """Check if a checkpoint is marked as (DONE) or (SKIPPED) in the plan."""
+    """Check if a checkpoint is marked as (DONE) or (SKIPPED) in the plan.
+
+    Note: (SKIP) is intentionally NOT matched here — skipped-for-later
+    checkpoints are not considered done."""
     pat = re.compile(rf"(?im)^\s*#{{3,6}}\s+\(\s*(?:DONE|SKIPPED)\s*\)\s+{re.escape(checkpoint_id)}\b")
+    return bool(pat.search(plan_text))
+
+
+def _is_checkpoint_skipped(plan_text: str, checkpoint_id: str) -> bool:
+    """Check if a checkpoint is marked as (SKIP) in the plan.
+
+    (SKIP) checkpoints are deferred — bypassed during advance but preserved
+    during consolidation.  Removing the marker reactivates the checkpoint."""
+    pat = re.compile(rf"(?im)^\s*#{{3,6}}\s+\(\s*SKIP\s*\)\s+{re.escape(checkpoint_id)}\b")
     return bool(pat.search(plan_text))
 
 
@@ -474,8 +491,8 @@ def load_state(repo_root: Path, state_path: Path | None = None) -> StateInfo:
 
 
 def _plan_has_stage(plan_text: str, stage: str) -> bool:
-    # Matches: "## Stage 0 — Name" or "## Stage 0 - Name" or "## Stage 0"
-    pat = re.compile(rf"(?im)^##\s+Stage\s+{re.escape(stage)}\b")
+    # Matches: "## Stage 0 — Name" or "## (SKIP) Stage 0 - Name" or "## Stage 0"
+    pat = re.compile(rf"(?im)^##\s+(?:\(\s*SKIP\s*\)\s+)?Stage\s+{re.escape(stage)}\b")
     return bool(pat.search(plan_text))
 
 
@@ -831,13 +848,16 @@ def _recommend_next(state: StateInfo, repo_root: Path) -> tuple[Role, str]:
         if not nxt:
             return ("stop", "Current checkpoint is last checkpoint in .vibe/PLAN.md (plan exhausted).")
 
-        # If the next one is explicitly marked (DONE), skip forward until you find not-DONE
-        while nxt and _is_checkpoint_marked_done(plan_text, nxt):
+        # If the next one is explicitly marked (DONE) or (SKIP), skip forward
+        while nxt and (
+            _is_checkpoint_marked_done(plan_text, nxt)
+            or _is_checkpoint_skipped(plan_text, nxt)
+        ):
             state_ck = nxt
             nxt = _next_checkpoint_after(plan_ids, state_ck)
 
         if not nxt:
-            return ("stop", "All remaining checkpoints are marked (DONE) in .vibe/PLAN.md (plan exhausted).")
+            return ("stop", "All remaining checkpoints are marked (DONE) or (SKIP) in .vibe/PLAN.md (plan exhausted).")
 
         # Check for stage transition - recommend consolidation before advancing to new stage
         is_stage_change, cur_stage, nxt_stage = _detect_stage_transition(

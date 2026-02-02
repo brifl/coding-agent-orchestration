@@ -11,26 +11,34 @@
 
 ## Current focus
 
-- Stage: 13
-- Checkpoint: 13.0
-- Status: DONE  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
+- Stage: 13A
+- Checkpoint: 13A.0
+- Status: IN_REVIEW  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
 
 ## Objective (current checkpoint)
 
-Define a standard manifest format for skills.
+Update agentctl.py to recognize `(SKIP)` as a checkpoint/stage heading marker. Skipped checkpoints are parsed but bypassed during advance. They are NOT treated as done and NOT archived during consolidation.
 
 ## Deliverables (current checkpoint)
 
-- `docs/skill_manifest.md` — schema documentation
-- `SKILL.yaml` or `SKILL.json` manifest format
-- Fields: name, version, description, agents, dependencies, entry points
+- `tools/agentctl.py` — updated regex in `_parse_plan_checkpoint_ids` to include `SKIP` in the marker alternation
+- `tools/agentctl.py` — new `_is_checkpoint_skipped()` helper
+- `tools/agentctl.py` — updated `_recommend_next` advance loop to skip over `(SKIP)` checkpoints
+- `tools/agentctl.py` — updated `_is_checkpoint_marked_done` to NOT match `(SKIP)`
+- `tools/agentctl.py` — updated heading parsers to handle `(SKIP)` prefix
+- Consolidation prompt awareness: `(SKIP)` items preserved during cleanup
 
 ## Acceptance (current checkpoint)
 
-- Schema supports: multi-agent compatibility, version constraints, capability requirements
-- Existing skills can be migrated to new format
+- `(SKIP)` checkpoints appear in parsed checkpoint ID list but are skipped during advance
+- `(SKIP)` checkpoints are not archived or removed during consolidation
+- Removing `(SKIP)` from a heading makes the checkpoint active and picked up in order
+- `agentctl validate` passes with `(SKIP)` markers present
+- `agentctl next` correctly skips over `(SKIP)` checkpoints when advancing
 
 ## Work log (current session)
+- 2026-02-02: Implemented 13A.0 — (SKIP) marker support in agentctl. Updated parser, advance logic, and all stage/checkpoint heading patterns. 44/44 tests pass, no regressions.
+- 2026-02-02: JIT injected Stage 13A (SKIP Marker Support); advanced from 13.0 DONE to 13A.0 NOT_STARTED.
 - 2026-01-30: Review PASS → status set to DONE
 
 - 2026-01-30: Consolidated Stage 12A; advanced to Stage 13.0.
@@ -56,7 +64,11 @@ Define a standard manifest format for skills.
 
 ## Evidence
 
-(No evidence)
+- `agentctl validate` passes with (SKIP) markers in PLAN.md: `{"ok": true, "errors": []}`
+- `_is_checkpoint_skipped("13.1")` → True, `_is_checkpoint_skipped("13A.0")` → False
+- `_is_checkpoint_marked_done("13.1")` → False (SKIP ≠ DONE)
+- Advance from 13.0: skips 13.1 → skips 13.2 → lands on 13A.0
+- All 44 existing tests pass (0 regressions)
 
 ## Active issues
 
