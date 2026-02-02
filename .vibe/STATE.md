@@ -13,7 +13,7 @@
 
 - Stage: 13A
 - Checkpoint: 13A.0
-- Status: IN_REVIEW  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
+- Status: DONE  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
 
 ## Objective (current checkpoint)
 
@@ -37,6 +37,9 @@ Update agentctl.py to recognize `(SKIP)` as a checkpoint/stage heading marker. S
 - `agentctl next` correctly skips over `(SKIP)` checkpoints when advancing
 
 ## Work log (current session)
+- 2026-02-02: Review PASS — 13A.0 acceptance met; status set to DONE.
+- 2026-02-02: Added consolidation prompt rule to preserve (SKIP) items; ran demo commands + skip behavior check; status set to IN_REVIEW.
+- 2026-02-02: Review FAIL — consolidation prompt lacks (SKIP) preservation guidance; status set to IN_PROGRESS.
 - 2026-02-02: Implemented 13A.0 — (SKIP) marker support in agentctl. Updated parser, advance logic, and all stage/checkpoint heading patterns. 44/44 tests pass, no regressions.
 - 2026-02-02: JIT injected Stage 13A (SKIP Marker Support); advanced from 13.0 DONE to 13A.0 NOT_STARTED.
 - 2026-01-30: Review PASS → status set to DONE
@@ -64,11 +67,11 @@ Update agentctl.py to recognize `(SKIP)` as a checkpoint/stage heading marker. S
 
 ## Evidence
 
-- `agentctl validate` passes with (SKIP) markers in PLAN.md: `{"ok": true, "errors": []}`
-- `_is_checkpoint_skipped("13.1")` → True, `_is_checkpoint_skipped("13A.0")` → False
-- `_is_checkpoint_marked_done("13.1")` → False (SKIP ≠ DONE)
-- Advance from 13.0: skips 13.1 → skips 13.2 → lands on 13A.0
-- All 44 existing tests pass (0 regressions)
+- `prompts/template_prompts.md` consolidation step now includes: "Preserve any stages/checkpoints marked (SKIP); they are deferred, not completed."
+- `python3 tools/agentctl.py --repo-root . --format json validate` → `{"ok": true, "errors": []}`
+- `python3 tools/agentctl.py --repo-root . --format json next` → `{"recommended_role": "review", "reason": "Checkpoint status is IN_REVIEW."}`
+- `agentctl next` synthetic repo (with SKIP 1.1) → `{"reason": "Checkpoint is DONE; next checkpoint is 1.2."}`
+- `agentctl next` synthetic repo (without SKIP 1.1) → `{"reason": "Checkpoint is DONE; next checkpoint is 1.1."}`
 
 ## Active issues
 

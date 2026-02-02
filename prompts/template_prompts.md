@@ -228,6 +228,7 @@ PROCESS
 
 3) Prune .vibe/PLAN.md:
    - Remove completed stages entirely (they're now in HISTORY)
+   - Preserve any stages/checkpoints marked (SKIP); they are deferred, not completed
    - Keep: current stage + next 1–2 stages only
    - If a stage has no remaining checkpoints, remove it
 
