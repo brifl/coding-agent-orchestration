@@ -12,8 +12,8 @@
 ## Current focus
 
 - Stage: 13A
-- Checkpoint: 13A.0
-- Status: DONE  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
+- Checkpoint: 13A.1
+- Status: NOT_STARTED  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
 
 ## Objective (current checkpoint)
 
@@ -37,6 +37,7 @@ Update agentctl.py to recognize `(SKIP)` as a checkpoint/stage heading marker. S
 - `agentctl next` correctly skips over `(SKIP)` checkpoints when advancing
 
 ## Work log (current session)
+- 2026-02-02: Advanced checkpoint 13A.0 → 13A.1; status set to NOT_STARTED.
 - 2026-02-02: Review PASS — 13A.0 acceptance met; status set to DONE.
 - 2026-02-02: Added consolidation prompt rule to preserve (SKIP) items; ran demo commands + skip behavior check; status set to IN_REVIEW.
 - 2026-02-02: Review FAIL — consolidation prompt lacks (SKIP) preservation guidance; status set to IN_PROGRESS.
