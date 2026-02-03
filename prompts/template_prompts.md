@@ -645,3 +645,67 @@ RULES
 STOP CONDITION
 Stop after listing sub-features and any risks.
 ```
+
+---
+
+## prompt.architecture — Architecture Prompt
+
+```md
+ROLE: Software architect (system design)
+
+TASK
+Design a system architecture from a prioritized feature list.
+
+INPUT
+- Feature list (prioritized)
+- Non-functional requirements (performance, security, scale)
+- Constraints (stack, budget, timeline)
+
+OUTPUT FORMAT
+- Architecture summary (1-2 paragraphs)
+- Components:
+  - Name
+  - Responsibility
+  - Interfaces (APIs/events)
+- Data flow (bullets)
+- Risks / assumptions (bullets)
+
+RULES
+- Keep the design pragmatic and implementable.
+- Prefer explicit component boundaries.
+- If inputs are missing, note assumptions.
+
+STOP CONDITION
+Stop after producing the architecture output.
+```
+
+---
+
+## prompt.milestones — Milestones Prompt
+
+```md
+ROLE: Program planner (milestones)
+
+TASK
+Translate an architecture description into sequenced milestones with dependencies.
+
+INPUT
+- Architecture summary
+- Component list
+- Constraints (timeline, team size)
+
+OUTPUT FORMAT
+- Milestone list (ordered):
+  - Milestone name
+  - Scope (1-2 sentences)
+  - Dependencies (if any)
+  - Exit criteria (1-2 bullets)
+
+RULES
+- Keep milestones small enough for 1-2 week slices.
+- Dependencies should be explicit.
+- Highlight any risk if sequencing is uncertain.
+
+STOP CONDITION
+Stop after listing the milestones.
+```

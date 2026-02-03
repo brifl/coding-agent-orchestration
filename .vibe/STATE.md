@@ -13,7 +13,7 @@
 
 - Stage: 18
 - Checkpoint: 18.1
-- Status: NOT_STARTED  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
+- Status: IN_REVIEW  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
 
 ## Objective (current checkpoint)
 
@@ -31,6 +31,7 @@ Create prompts for architecture and milestone planning.
 - Milestones are sequenced logically
 
 ## Work log (current session)
+- 2026-02-03: Added architecture and milestones prompts; ran demo command; status set to IN_REVIEW.
 - 2026-02-03: Advanced checkpoint 18.0 → 18.1; status set to NOT_STARTED.
 - 2026-02-03: Review PASS — 18.0 acceptance met; status set to DONE.
 - 2026-02-03: Added ideation and feature breakdown prompts; ran demo command; status set to IN_REVIEW.
@@ -61,7 +62,7 @@ Create prompts for architecture and milestone planning.
 
 ## Evidence
 
-(None yet)
+- `python3 tools/prompt_catalog.py prompts/template_prompts.md get prompt.architecture` prints the new architecture prompt.
 
 ## Active issues
 
