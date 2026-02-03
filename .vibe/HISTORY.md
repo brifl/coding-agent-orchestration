@@ -13,6 +13,10 @@
 
 ## Completed stages
 
+### 2026-02-03 — Stage 18: Design-Side Prompts (completed)
+
+Added ideation, architecture, milestones, and PLAN generation prompts (checkpoints 18.0–18.2).
+
 ### 2026-02-03 — Stage 17: Configurable Workflows (completed)
 
 Defined workflow configuration, implemented workflow execution and agentctl integration, and added preset workflow configurations (checkpoints 17.0–17.2).
@@ -98,6 +102,7 @@ Introduced stable prompt IDs with a shared catalog and updated agent control too
 ### Work log (archived)
 
 - 2026-02-02 — Pruned older STATE work log entries from 2026-01-29 through 2026-02-02 during Stage 13A consolidation.
+- 2026-02-03 — Pruned STATE work log entries older than the most recent 10 during Stage 18 consolidation.
 
 ### Resolved issues (archived)
 

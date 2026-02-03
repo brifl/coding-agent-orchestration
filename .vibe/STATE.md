@@ -11,26 +11,27 @@
 
 ## Current focus
 
-- Stage: 18
-- Checkpoint: 18.2
-- Status: DONE  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
+- Stage: 19
+- Checkpoint: 19.0
+- Status: NOT_STARTED  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
 
 ## Objective (current checkpoint)
 
-Create prompts that generate PLAN.md content from milestones.
+Define refactor scanning and execution prompts with structured outputs.
 
 ## Deliverables (current checkpoint)
 
-- `prompt.stages_from_milestones` — convert milestones to stages
-- `prompt.checkpoints_from_stage` — break stage into checkpoints
-- Output: valid PLAN.md sections
+- `prompt.refactor_scan` — produces prioritized refactor backlog with justifications
+- `prompt.refactor_execute` — applies a single refactor checkpoint safely
+- Output: structured findings, refactor plan, and execution evidence
 
 ## Acceptance (current checkpoint)
 
-- Generated checkpoints follow schema (objective, deliverables, acceptance, demo, evidence)
-- Output can be pasted directly into PLAN.md
+- Refactor scan output includes top findings, refactor plan, and selection recommendation
+- Refactor execute output includes edits summary, tests, and pass/fail evidence
 
 ## Work log (current session)
+- 2026-02-03: Consolidated Stage 18; advanced to checkpoint 19.0; status set to NOT_STARTED.
 - 2026-02-03: Clarified consolidation prompt to preserve future stages; resolved ISSUE-006.
 - 2026-02-03: Restored Stage 21 backlog to PLAN.md after consolidation policy update.
 - 2026-02-03: Synced consolidation prompt wording in skill prompt resources.
@@ -40,9 +41,6 @@ Create prompts that generate PLAN.md content from milestones.
 - 2026-02-03: Review PASS — 18.1 acceptance met; status set to DONE.
 - 2026-02-03: Added architecture and milestones prompts; ran demo command; status set to IN_REVIEW.
 - 2026-02-03: Advanced checkpoint 18.0 → 18.1; status set to NOT_STARTED.
-- 2026-02-03: Review PASS — 18.0 acceptance met; status set to DONE.
-- 2026-02-03: Added ideation and feature breakdown prompts; ran demo command; status set to IN_REVIEW.
-- 2026-02-03: Consolidated Stage 17; advanced to checkpoint 18.0; status set to NOT_STARTED.
 - 2026-02-03: Review PASS — 17.2 acceptance met; status set to DONE.
 - 2026-02-03: Added preset workflows; ran demo commands; status set to IN_REVIEW.
 - 2026-02-03: Advanced checkpoint 17.1 → 17.2; status set to NOT_STARTED.
@@ -69,8 +67,7 @@ Create prompts that generate PLAN.md content from milestones.
 
 ## Evidence
 
-- `python3 tools/prompt_catalog.py prompts/template_prompts.md get prompt.stages_from_milestones` prints the new stages-from-milestones prompt.
-- `prompt.consolidation` now instructs to keep all future stages/checkpoints in PLAN.md.
+(None yet)
 
 ## Active issues
 
