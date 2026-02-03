@@ -13,7 +13,7 @@
 
 - Stage: 13
 - Checkpoint: 13.0
-- Status: IN_REVIEW  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
+- Status: DONE  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
 
 ## Objective (current checkpoint)
 
@@ -31,6 +31,7 @@ Define a standard manifest format for skills.
 - Existing skills can be migrated to new format
 
 ## Work log (current session)
+- 2026-02-03: Review PASS — 13.0 acceptance met; status set to DONE.
 - 2026-02-03: Added skill manifest schema and sample; ran demo command; status set to IN_REVIEW.
 - 2026-02-03: JIT injected Stage 13 before Stage 14; advanced to checkpoint 13.0; status set to NOT_STARTED.
 - 2026-02-02: Blocked on missing `tools/skillctl.py`; status set to BLOCKED.
