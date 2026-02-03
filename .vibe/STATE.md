@@ -13,7 +13,7 @@
 
 - Stage: 17
 - Checkpoint: 17.0
-- Status: NOT_STARTED  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
+- Status: IN_REVIEW  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
 
 ## Objective (current checkpoint)
 
@@ -31,6 +31,7 @@ Define how workflows are expressed in configuration.
 - Workflows reference prompts by ID
 
 ## Work log (current session)
+- 2026-02-03: Added workflow schema doc; ran demo command; status set to IN_REVIEW.
 - 2026-02-03: Consolidated Stage 16; advanced to checkpoint 17.0; status set to NOT_STARTED.
 - 2026-02-03: Review PASS — 16.2 acceptance met; status set to DONE.
 - 2026-02-03: Ran sync demo for 16.2; status set to IN_REVIEW.
@@ -44,7 +45,7 @@ Define how workflows are expressed in configuration.
 
 ## Evidence
 
-(None yet)
+- `cat docs/workflow_schema.md` shows workflow schema with triggers and steps.
 
 ## Active issues
 
