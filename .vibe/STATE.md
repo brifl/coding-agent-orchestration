@@ -13,7 +13,7 @@
 
 - Stage: 17
 - Checkpoint: 17.2
-- Status: NOT_STARTED  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
+- Status: IN_REVIEW  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
 
 ## Objective (current checkpoint)
 
@@ -31,6 +31,7 @@ Provide useful preset workflow configurations.
 - Users can copy and customize
 
 ## Work log (current session)
+- 2026-02-03: Added preset workflows; ran demo commands; status set to IN_REVIEW.
 - 2026-02-03: Advanced checkpoint 17.1 → 17.2; status set to NOT_STARTED.
 - 2026-02-03: Review PASS — 17.1 acceptance met; status set to DONE.
 - 2026-02-03: Implemented workflow engine + agentctl workflow selection; ran demo commands; status set to IN_REVIEW.
@@ -55,7 +56,8 @@ Provide useful preset workflow configurations.
 
 ## Evidence
 
-(None yet)
+- `python3 tools/workflow_engine.py list` shows: auto-triage, continuous-refactor, refactor-cycle, standard.
+- `python3 tools/workflow_engine.py describe continuous-refactor` shows trigger type and steps including `every=3`.
 
 ## Active issues
 

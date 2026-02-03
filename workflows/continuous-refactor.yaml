@@ -1,0 +1,8 @@
+name: continuous-refactor
+description: Periodic refactor workflow alongside implementation.
+triggers:
+  - type: manual
+steps:
+  - prompt_id: prompt.refactor_checkpoint
+    every: 3
+  - prompt_id: prompt.checkpoint_implementation

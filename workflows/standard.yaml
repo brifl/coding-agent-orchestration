@@ -1,0 +1,8 @@
+name: standard
+description: Default Vibe workflow (design -> implement -> review).
+triggers:
+  - type: manual
+steps:
+  - prompt_id: prompt.stage_design
+  - prompt_id: prompt.checkpoint_implementation
+  - prompt_id: prompt.checkpoint_review

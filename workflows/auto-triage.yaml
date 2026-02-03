@@ -1,7 +1,7 @@
 name: auto-triage
-description: Auto-triage when major issues appear.
+description: Trigger triage when blockers appear.
 triggers:
   - type: on-issue
-    value: MAJOR
+    value: BLOCKER
 steps:
   - prompt_id: prompt.issues_triage
