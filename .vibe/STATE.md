@@ -13,7 +13,7 @@
 
 - Stage: 13
 - Checkpoint: 13.0
-- Status: NOT_STARTED  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
+- Status: IN_REVIEW  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
 
 ## Objective (current checkpoint)
 
@@ -31,6 +31,7 @@ Define a standard manifest format for skills.
 - Existing skills can be migrated to new format
 
 ## Work log (current session)
+- 2026-02-03: Added skill manifest schema and sample; ran demo command; status set to IN_REVIEW.
 - 2026-02-03: JIT injected Stage 13 before Stage 14; advanced to checkpoint 13.0; status set to NOT_STARTED.
 - 2026-02-02: Blocked on missing `tools/skillctl.py`; status set to BLOCKED.
 - 2026-02-02: Advanced checkpoint 14.0 → 14.1; status set to NOT_STARTED.
@@ -49,7 +50,9 @@ Define a standard manifest format for skills.
 
 ## Evidence
 
-(None yet)
+- Added `docs/skill_manifest.md` with schema + capability requirements and example.
+- Added `skills/vibe-loop/SKILL.yaml` manifest with all required fields.
+- `cat skills/vibe-loop/SKILL.yaml` output:\n  `name: vibe-loop`\n  `version: \"1.0.0\"`\n  `description: Run a single Vibe workflow loop.`\n  `agents:`\n  `  - codex`\n  `  - claude`\n  `dependencies:`\n  `  - name: vibe-prompts`\n  `    version: \">=1.0.0\"`\n  `capabilities:`\n  `  - filesystem`\n  `  - process`\n  `entry_points:`\n  `  - name: loop`\n  `    command: \"python ~/.codex/skills/vibe-loop/scripts/vibe_next_and_print.py --repo-root . --show-decision\"`
 
 ## Active issues
 
