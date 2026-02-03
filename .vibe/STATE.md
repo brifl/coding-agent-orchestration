@@ -12,25 +12,26 @@
 ## Current focus
 
 - Stage: 17
-- Checkpoint: 17.1
-- Status: DONE  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
+- Checkpoint: 17.2
+- Status: NOT_STARTED  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
 
 ## Objective (current checkpoint)
 
-Implement a workflow engine that executes configured workflows.
+Provide useful preset workflow configurations.
 
 ## Deliverables (current checkpoint)
 
-- `tools/workflow_engine.py` — interprets and executes workflows
-- Integration with agentctl: `--workflow <name>` flag
-- Workflow state tracking in STATE.md
+- `workflows/standard.yaml` — default Vibe workflow (design→implement→review)
+- `workflows/continuous-refactor.yaml` — periodic refactoring
+- `workflows/auto-triage.yaml` — triggered on issues
 
 ## Acceptance (current checkpoint)
 
-- Engine can execute multi-step workflows
-- Conditions and triggers evaluated correctly
+- Presets work out of the box
+- Users can copy and customize
 
 ## Work log (current session)
+- 2026-02-03: Advanced checkpoint 17.1 → 17.2; status set to NOT_STARTED.
 - 2026-02-03: Review PASS — 17.1 acceptance met; status set to DONE.
 - 2026-02-03: Implemented workflow engine + agentctl workflow selection; ran demo commands; status set to IN_REVIEW.
 - 2026-02-03: Advanced checkpoint 17.0 → 17.1; status set to NOT_STARTED.
@@ -54,8 +55,7 @@ Implement a workflow engine that executes configured workflows.
 
 ## Evidence
 
-- `python3 tools/workflow_engine.py run refactor-cycle` prints: `SKIP prompt.refactor_checkpoint (frequency)` then `RUN prompt.checkpoint_implementation`.
-- `python3 tools/agentctl.py --repo-root . next --workflow auto-triage` recommends `prompt.issues_triage`.
+(None yet)
 
 ## Active issues
 
