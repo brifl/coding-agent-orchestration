@@ -12,8 +12,8 @@
 ## Current focus
 
 - Stage: 14
-- Checkpoint: 14.0
-- Status: DONE  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
+- Checkpoint: 14.1
+- Status: NOT_STARTED  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
 
 ## Objective (current checkpoint)
 
@@ -31,6 +31,7 @@ Define how skill sets are structured and stored.
 - Sets can extend other sets (inheritance)
 
 ## Work log (current session)
+- 2026-02-02: Advanced checkpoint 14.0 → 14.1; status set to NOT_STARTED.
 - 2026-02-02: Review PASS — 14.0 acceptance met; status set to DONE.
 - 2026-02-02: Added skill set docs and examples; ran demo command; status set to IN_REVIEW.
 - 2026-02-02: Consolidated Stage 13A; advanced stage pointer to 14.0; cleared evidence.
