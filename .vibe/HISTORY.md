@@ -13,6 +13,10 @@
 
 ## Completed stages
 
+### 2026-02-03 — Stage 17: Configurable Workflows (completed)
+
+Defined workflow configuration, implemented workflow execution and agentctl integration, and added preset workflow configurations (checkpoints 17.0–17.2).
+
 ### 2026-02-03 — Stage 16: Skill Subscription (completed)
 
 Repeated subscription flow for Stage 16 with pinning and sync/upgrade commands to validate the new workflow additions (checkpoints 16.0–16.2).
@@ -601,4 +605,104 @@ Implement bounded recursive tool use based on RLM principles, enabling explicit,
 
 * **Evidence:**
 
+  * RLM task completing within bounds
+
+### Archived backlog — Stage 17
+
+## Stage 17 — Configurable Workflows
+
+**Stage objective:**
+Move workflow logic from hard-coded prompts to configurable definitions, enabling custom loop ordering, triggers, and frequency.
+
+### 17.0 — Workflow definition schema
+
+* **Objective:**
+  Define how workflows are expressed in configuration.
+* **Deliverables:**
+  * `docs/workflow_schema.md` — workflow configuration format
+  * Schema: triggers, steps, conditions, frequency
+  * Trigger types: manual, on-status, on-issue, scheduled
+* **Acceptance:**
+  * Schema can express: "run refactor every 3rd checkpoint", "auto-triage on BLOCKER"
+  * Workflows reference prompts by ID
+* **Demo commands:**
+  * `cat docs/workflow_schema.md`
+* **Evidence:**
+  * Example workflow definitions
+
+---
+
+### 17.1 — Workflow engine
+
+* **Objective:**
+  Implement a workflow engine that executes configured workflows.
+* **Deliverables:**
+  * `tools/workflow_engine.py` — interprets and executes workflows
+  * Integration with agentctl: `--workflow <name>` flag
+  * Workflow state tracking in STATE.md
+* **Acceptance:**
+  * Engine can execute multi-step workflows
+  * Conditions and triggers evaluated correctly
+* **Demo commands:**
+  * `python tools/workflow_engine.py run refactor-cycle`
+  * `python tools/agentctl.py --repo-root . next --workflow auto-triage`
+* **Evidence:**
+  * Workflow execution trace
+
+---
+
+### 17.2 — Preset workflows
+
+* **Objective:**
+  Provide useful preset workflow configurations.
+* **Deliverables:**
+  * `workflows/standard.yaml` — default Vibe workflow (design -> implement -> review)
+  * `workflows/continuous-refactor.yaml` — periodic refactoring
+  * `workflows/auto-triage.yaml` — triggered on issues
+* **Acceptance:**
+  * Presets work out of the box
+  * Users can copy and customize
+* **Demo commands:**
+  * `python tools/workflow_engine.py list`
+  * `python tools/workflow_engine.py describe continuous-refactor`
+* **Evidence:**
+  * Preset workflow executing successfully
+
+### Archived backlog — Stage 21
+
+## Stage 21 — RLM tooling (deferred)
+
+### 21.1 — RLM executor
+
+* **Objective:**
+  Implement an executor that runs RLM invocations within bounds.
+* **Deliverables:**
+  * `skills/rlm-tools/executor.py` — RLM execution engine
+  * Tracks: depth, iterations, tokens consumed
+  * Halts on limit breach with clear error
+* **Acceptance:**
+  * Executor respects all configured limits
+  * Partial results returned on limit breach
+* **Demo commands:**
+  * `python skills/rlm-tools/executor.py run task.json --max-depth 3`
+* **Evidence:**
+  * Execution trace showing recursion and limits
+
+---
+
+### 21.2 — RLM skill packaging
+
+* **Objective:**
+  Package RLM as a skill that agents can invoke.
+* **Deliverables:**
+  * `skills/rlm-tools/SKILL.yaml` — skill manifest
+  * Agent integration: prompt templates for RLM invocation
+  * Safety: default conservative limits
+* **Acceptance:**
+  * Skill installs via skillctl
+  * Agents can delegate sub-tasks with bounded recursion
+* **Demo commands:**
+  * `python tools/skillctl.py install skills/rlm-tools --global`
+  * `python skills/rlm-tools/invoke.py "research and summarize X" --max-depth 2`
+* **Evidence:**
   * RLM task completing within bounds

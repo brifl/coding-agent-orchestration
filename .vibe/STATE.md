@@ -11,26 +11,27 @@
 
 ## Current focus
 
-- Stage: 17
-- Checkpoint: 17.2
-- Status: DONE  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
+- Stage: 18
+- Checkpoint: 18.0
+- Status: NOT_STARTED  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
 
 ## Objective (current checkpoint)
 
-Provide useful preset workflow configurations.
+Create prompts for early-stage idea development.
 
 ## Deliverables (current checkpoint)
 
-- `workflows/standard.yaml` — default Vibe workflow (design→implement→review)
-- `workflows/continuous-refactor.yaml` — periodic refactoring
-- `workflows/auto-triage.yaml` — triggered on issues
+- `prompt.ideation` — brainstorm features from a problem statement
+- `prompt.feature_breakdown` — decompose a feature into sub-features
+- Output format: structured feature list with priorities
 
 ## Acceptance (current checkpoint)
 
-- Presets work out of the box
-- Users can copy and customize
+- Prompts produce actionable feature lists
+- Output can feed into architecture prompts
 
 ## Work log (current session)
+- 2026-02-03: Consolidated Stage 17; advanced to checkpoint 18.0; status set to NOT_STARTED.
 - 2026-02-03: Review PASS — 17.2 acceptance met; status set to DONE.
 - 2026-02-03: Added preset workflows; ran demo commands; status set to IN_REVIEW.
 - 2026-02-03: Advanced checkpoint 17.1 → 17.2; status set to NOT_STARTED.
@@ -57,8 +58,7 @@ Provide useful preset workflow configurations.
 
 ## Evidence
 
-- `python3 tools/workflow_engine.py list` shows: auto-triage, continuous-refactor, refactor-cycle, standard.
-- `python3 tools/workflow_engine.py describe continuous-refactor` shows trigger type and steps including `every=3`.
+(None yet)
 
 ## Active issues
 
