@@ -28,6 +28,7 @@ import argparse
 import json
 import os
 import shutil
+import subprocess
 import sys
 from pathlib import Path
 from typing import Iterable
@@ -256,18 +257,23 @@ def install_skills_agent_global(agent: str, force: bool) -> int:
     updated: list[str] = []
     skipped: list[str] = []
 
-    # 1) Sync skill folders
+    # 1) Install skill folders via skillctl
     for name in skill_names:
-        src_dir = find_resource("skill", name, agent=agent)
-        if not src_dir or not src_dir.exists():
-            raise FileNotFoundError(f"Skill folder for '{name}' not found.")
-
-        dst_dir = dst_root / name
-        u = _sync_dir(src_dir, dst_dir, force=force)
-        if u:
-            updated.extend(u)
-        else:
-            skipped.append(str(dst_dir))
+        cmd = [
+            sys.executable,
+            str(repo_root / "tools" / "skillctl.py"),
+            "install",
+            name,
+            "--global",
+            "--agent",
+            agent,
+        ]
+        if force:
+            cmd.append("--force")
+        p = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        if p.returncode != 0:
+            raise RuntimeError(f"skillctl install failed for '{name}':\n{p.stderr or p.stdout}")
+        updated.append(str(dst_root / name))
 
     # 2) Force-refresh runtime scripts every install (prevents stale behavior)
     updated.extend(
@@ -291,8 +297,6 @@ def install_skills_agent_global(agent: str, force: bool) -> int:
         raise FileNotFoundError(f"Canonical catalog missing: {canonical_catalog}")
 
     # 4) Validate the catalog BEFORE installing it (no package imports; use subprocess)
-    import subprocess
-
     p = subprocess.run(
         [sys.executable, str(repo_root / "tools" / "prompt_catalog.py"), str(canonical_catalog), "list"],
         stdout=subprocess.PIPE,
@@ -356,12 +360,21 @@ def install_skills_agent_repo(agent: str, target_repo: Path, force: bool) -> int
 
     for src_dir in sorted(p for p in src_skills_root.iterdir() if p.is_dir()):
         skill_names.append(src_dir.name)
-        dst_dir = dst_root / src_dir.name
-        u = _sync_dir(src_dir, dst_dir, force=force)
-        if u:
-            updated.extend(u)
-        else:
-            skipped.append(str(dst_dir))
+        cmd = [
+            sys.executable,
+            str(repo_root / "tools" / "skillctl.py"),
+            "install",
+            src_dir.name,
+            "--repo",
+            "--agent",
+            agent,
+        ]
+        if force:
+            cmd.append("--force")
+        p = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        if p.returncode != 0:
+            raise RuntimeError(f"skillctl install failed for '{src_dir.name}':\n{p.stderr or p.stdout}")
+        updated.append(str(dst_root / src_dir.name))
 
     if not skill_names:
         raise RuntimeError(f"No repo-local skills found in: {src_skills_root}")

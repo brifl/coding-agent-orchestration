@@ -13,7 +13,7 @@
 
 - Stage: 13
 - Checkpoint: 13.2
-- Status: NOT_STARTED  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
+- Status: IN_REVIEW  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
 
 ## Objective (current checkpoint)
 
@@ -31,6 +31,7 @@ Define a standard manifest format for skills.
 - Existing skills can be migrated to new format
 
 ## Work log (current session)
+- 2026-02-03: Implemented skillctl CLI and bootstrap integration; ran demo commands; status set to IN_REVIEW.
 - 2026-02-03: Advanced checkpoint 13.1 → 13.2; status set to NOT_STARTED.
 - 2026-02-03: Review PASS — 13.1 acceptance met; status set to DONE.
 - 2026-02-03: Implemented skill registry CLI and parsing; ran demo commands; status set to IN_REVIEW.
@@ -55,8 +56,9 @@ Define a standard manifest format for skills.
 
 ## Evidence
 
-- `python3 tools/skill_registry.py list --format json` output includes repo skills with metadata (example: `vibe-loop` with version, description, agents, manifest path).
-- `python3 tools/skill_registry.py info vibe-loop` output shows name/version/description/agents/source/path/manifest.
+- `python3 tools/skillctl.py list` output lists repo skills with versions (example: `vibe-loop 1.0.0`).
+- `python3 tools/skillctl.py install vibe-prompts --global` → Installed to `/home/brifl/.gemini/skills/vibe-prompts`.
+- `python3 tools/skillctl.py validate skills/vibe-loop` → `OK: skills/vibe-loop`.
 
 ## Active issues
 
