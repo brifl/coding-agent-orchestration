@@ -25,6 +25,10 @@ def _repo_root() -> Path:
     return Path.cwd()
 
 
+def _skillsets_root() -> Path:
+    return _repo_root() / "skillsets"
+
+
 def _agent_global_dir(agent: str) -> Path:
     return Path.home() / f".{agent}" / "skills"
 
@@ -86,6 +90,140 @@ def _load_manifest(path: Path) -> dict[str, Any] | None:
     except Exception:
         return None
     return None
+
+
+def _parse_skillset_yaml(text: str) -> dict[str, Any]:
+    data: dict[str, Any] = {"extends": [], "skills": []}
+    current_section: str | None = None
+    last_skill: dict[str, Any] | None = None
+
+    for raw in text.splitlines():
+        if not raw.strip() or raw.lstrip().startswith("#"):
+            continue
+        indent = len(raw) - len(raw.lstrip())
+        line = raw.strip()
+
+        if indent == 0 and line.startswith("name:"):
+            data["name"] = line.split(":", 1)[1].strip().strip("\"'")
+            current_section = None
+            continue
+        if indent == 0 and line.startswith("description:"):
+            data["description"] = line.split(":", 1)[1].strip().strip("\"'")
+            current_section = None
+            continue
+        if indent == 0 and line.startswith("extends:"):
+            current_section = "extends"
+            continue
+        if indent == 0 and line.startswith("skills:"):
+            current_section = "skills"
+            continue
+
+        if current_section == "extends" and line.startswith("-"):
+            item = line[1:].strip().strip("\"'")
+            data["extends"].append(item)
+            continue
+
+        if current_section == "skills" and line.startswith("-"):
+            item = line[1:].strip()
+            skill: dict[str, Any] = {}
+            if item.startswith("name:"):
+                skill["name"] = item.split(":", 1)[1].strip().strip("\"'")
+            data["skills"].append(skill)
+            last_skill = skill
+            continue
+
+        if current_section == "skills" and indent > 0 and ":" in line and last_skill is not None:
+            key, value = line.split(":", 1)
+            last_skill[key.strip()] = value.strip().strip("\"'")
+
+    return data
+
+
+def _load_skillset(path: Path) -> dict[str, Any] | None:
+    try:
+        if path.suffix == ".json":
+            return json.loads(path.read_text(encoding="utf-8"))
+        if path.suffix in {".yaml", ".yml"}:
+            return _parse_skillset_yaml(path.read_text(encoding="utf-8"))
+    except Exception:
+        return None
+    return None
+
+
+def _find_skillset(name: str) -> Path | None:
+    root = _skillsets_root()
+    for ext in (".yaml", ".yml", ".json"):
+        path = root / f"{name}{ext}"
+        if path.exists():
+            return path
+    return None
+
+
+def _manifest_dependencies(skill_name: str, agent: str) -> list[str]:
+    skill_dir = find_resource("skill", skill_name, agent=agent)
+    if not skill_dir or not skill_dir.exists():
+        return []
+    manifest_path = _find_manifest(Path(skill_dir))
+    if not manifest_path:
+        return []
+    manifest = _load_manifest(manifest_path)
+    if not manifest:
+        return []
+    deps = manifest.get("dependencies") or []
+    if isinstance(deps, list):
+        return [str(d) for d in deps]
+    return []
+
+
+def resolve_skillset(name: str, agent: str) -> dict[str, Any]:
+    visited: set[str] = set()
+    resolving: set[str] = set()
+    resolved: dict[str, str | None] = {}
+    tree: dict[str, list[str]] = {}
+
+    def load_set(set_name: str) -> dict[str, Any]:
+        path = _find_skillset(set_name)
+        if not path:
+            raise FileNotFoundError(f"Skillset '{set_name}' not found.")
+        data = _load_skillset(path)
+        if not data:
+            raise ValueError(f"Failed to parse skillset: {path}")
+        return data
+
+    def visit_set(set_name: str) -> None:
+        if set_name in resolving:
+            raise ValueError(f"Circular skillset dependency detected: {set_name}")
+        if set_name in visited:
+            return
+        resolving.add(set_name)
+        data = load_set(set_name)
+        for parent in data.get("extends", []):
+            visit_set(str(parent))
+
+        for skill in data.get("skills", []):
+            name = str(skill.get("name"))
+            version = skill.get("version")
+            if name in resolved and version and resolved[name] and resolved[name] != version:
+                raise ValueError(f"Version conflict for {name}: {resolved[name]} vs {version}")
+            resolved[name] = resolved.get(name) or version
+        visited.add(set_name)
+        resolving.remove(set_name)
+
+    visit_set(name)
+
+    # Expand dependencies from manifests
+    for skill_name in list(resolved.keys()):
+        deps = _manifest_dependencies(skill_name, agent)
+        tree[skill_name] = deps
+        for dep in deps:
+            if dep not in resolved:
+                resolved[dep] = None
+
+    resolved_list = [
+        {"name": skill, "version": resolved[skill]} for skill in sorted(resolved.keys())
+    ]
+
+    return {"name": name, "skills": resolved_list, "dependency_tree": tree}
 
 
 def _sync_dir(src: Path, dst: Path, *, force: bool) -> None:
@@ -217,6 +355,28 @@ def cmd_validate(path: Path) -> int:
     return 0
 
 
+def cmd_resolve_set(name: str, fmt: str, agent: str) -> int:
+    try:
+        payload = resolve_skillset(name, agent)
+    except Exception as exc:
+        print(f"ERROR: {exc}")
+        return 1
+
+    if fmt == "json":
+        print(json.dumps(payload, indent=2))
+        return 0
+
+    print(f"Skillset: {payload['name']}")
+    print("Skills:")
+    for skill in payload["skills"]:
+        version = skill["version"] or "-"
+        print(f"- {skill['name']} ({version})")
+    print("Dependency tree:")
+    for key, deps in payload["dependency_tree"].items():
+        print(f"- {key}: {', '.join(deps) if deps else '-'}")
+    return 0
+
+
 def main(argv: list[str]) -> int:
     parser = argparse.ArgumentParser(prog="skillctl.py")
     sub = parser.add_subparsers(dest="cmd", required=True)
@@ -252,6 +412,11 @@ def main(argv: list[str]) -> int:
     valp = sub.add_parser("validate", help="Validate a skill manifest")
     valp.add_argument("path")
 
+    rsvp = sub.add_parser("resolve-set", help="Resolve a skill set")
+    rsvp.add_argument("name")
+    rsvp.add_argument("--format", choices=["json", "text"], default="text")
+    rsvp.add_argument("--agent", default=DEFAULT_AGENT)
+
     args = parser.parse_args(argv)
 
     if args.cmd == "list":
@@ -266,6 +431,8 @@ def main(argv: list[str]) -> int:
         return cmd_update(args.name, agent=args.agent, global_install=args.global_install, repo_install=args.repo_install)
     if args.cmd == "validate":
         return cmd_validate(Path(args.path))
+    if args.cmd == "resolve-set":
+        return cmd_resolve_set(args.name, args.format, args.agent)
 
     return 2
 
