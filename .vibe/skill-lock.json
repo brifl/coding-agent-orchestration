@@ -3,7 +3,7 @@
     {
       "name": "claude-memory",
       "source": "https://github.com/anthropics/skills",
-      "pin": "v2.0.0"
+      "pin": "v1.0.0"
     }
   ]
 }
