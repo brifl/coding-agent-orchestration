@@ -12,25 +12,26 @@
 ## Current focus
 
 - Stage: 18
-- Checkpoint: 18.1
-- Status: DONE  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
+- Checkpoint: 18.2
+- Status: NOT_STARTED  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
 
 ## Objective (current checkpoint)
 
-Create prompts for architecture and milestone planning.
+Create prompts that generate PLAN.md content from milestones.
 
 ## Deliverables (current checkpoint)
 
-- `prompt.architecture` — design system architecture from features
-- `prompt.milestones` — break architecture into major milestones
-- Output: architecture doc, milestone list with dependencies
+- `prompt.stages_from_milestones` — convert milestones to stages
+- `prompt.checkpoints_from_stage` — break stage into checkpoints
+- Output: valid PLAN.md sections
 
 ## Acceptance (current checkpoint)
 
-- Architecture prompt produces component diagrams / descriptions
-- Milestones are sequenced logically
+- Generated checkpoints follow schema (objective, deliverables, acceptance, demo, evidence)
+- Output can be pasted directly into PLAN.md
 
 ## Work log (current session)
+- 2026-02-03: Advanced checkpoint 18.1 → 18.2; status set to NOT_STARTED.
 - 2026-02-03: Review PASS — 18.1 acceptance met; status set to DONE.
 - 2026-02-03: Added architecture and milestones prompts; ran demo command; status set to IN_REVIEW.
 - 2026-02-03: Advanced checkpoint 18.0 → 18.1; status set to NOT_STARTED.
@@ -63,7 +64,7 @@ Create prompts for architecture and milestone planning.
 
 ## Evidence
 
-- `python3 tools/prompt_catalog.py prompts/template_prompts.md get prompt.architecture` prints the new architecture prompt.
+(None yet)
 
 ## Active issues
 
