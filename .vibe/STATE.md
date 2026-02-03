@@ -70,10 +70,10 @@ Create prompts that generate PLAN.md content from milestones.
 
 ## Active issues
 
-- [MAJOR] ISSUE-005: Agents not working from current branch
-  - Severity: MAJOR
+- [BLOCKER] ISSUE-006: Agents cleaning up future plans
+  - Severity: BLOCKER
   - Owner: agent
-  - Notes: Agents running vibe-loop or other skills should not create branches. They should always work from the current branch and commit to the current branch. This is documented in prompts, but it is not followed consistently. This creates drift, branch clutter, and merge issues when these branches are created.
+  - Notes: When running vibe-loop/vibe-run skill, there is a prompt.consolidation loop. This should clean up old stages that have been completed, along with other stuff that is no longer relevant. It is cleaning up future stages and it shouldn't. Those should be preserved so that we can work from them like a queue of work items.
 
 ## Decisions
 
