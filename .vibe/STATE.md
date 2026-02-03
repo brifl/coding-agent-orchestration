@@ -13,7 +13,7 @@
 
 - Stage: 17
 - Checkpoint: 17.1
-- Status: IN_REVIEW  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
+- Status: DONE  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
 
 ## Objective (current checkpoint)
 
@@ -31,6 +31,7 @@ Implement a workflow engine that executes configured workflows.
 - Conditions and triggers evaluated correctly
 
 ## Work log (current session)
+- 2026-02-03: Review PASS — 17.1 acceptance met; status set to DONE.
 - 2026-02-03: Implemented workflow engine + agentctl workflow selection; ran demo commands; status set to IN_REVIEW.
 - 2026-02-03: Advanced checkpoint 17.0 → 17.1; status set to NOT_STARTED.
 - 2026-02-03: Review PASS — 17.0 acceptance met; status set to DONE.
