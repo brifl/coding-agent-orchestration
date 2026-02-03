@@ -13,7 +13,7 @@
 
 - Stage: 14
 - Checkpoint: 14.0
-- Status: NOT_STARTED  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
+- Status: IN_REVIEW  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
 
 ## Objective (current checkpoint)
 
@@ -31,6 +31,7 @@ Define how skill sets are structured and stored.
 - Sets can extend other sets (inheritance)
 
 ## Work log (current session)
+- 2026-02-02: Added skill set docs and examples; ran demo command; status set to IN_REVIEW.
 - 2026-02-02: Consolidated Stage 13A; advanced stage pointer to 14.0; cleared evidence.
 - 2026-02-02: Review PASS — 13A.2 acceptance met; status set to DONE.
 - 2026-02-02: Updated stage ordering docs with (SKIP) semantics; ran demo command; status set to IN_REVIEW.
@@ -44,7 +45,9 @@ Define how skill sets are structured and stored.
 
 ## Evidence
 
-(None yet)
+- Added `docs/skill_sets.md` describing schema, version pins, and inheritance.
+- Added `skillsets/` with `vibe-base.yaml` and `vibe-core.yaml`.
+- `cat skillsets/vibe-core.yaml` output:\n  `name: vibe-core`\n  `description: Default bundle for repo workflows.`\n  `extends:`\n  `  - vibe-base`\n  `skills:`\n  `  - name: vibe-review-pass`\n  `    version: \">=1.0.0\"`
 
 ## Active issues
 

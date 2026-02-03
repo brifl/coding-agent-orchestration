@@ -1,0 +1,7 @@
+name: vibe-base
+description: Core workflow essentials.
+skills:
+  - name: vibe-loop
+    version: ">=1.0.0"
+  - name: vibe-prompts
+    version: ">=1.0.0"

@@ -1,0 +1,7 @@
+name: vibe-core
+description: Default bundle for repo workflows.
+extends:
+  - vibe-base
+skills:
+  - name: vibe-review-pass
+    version: ">=1.0.0"
