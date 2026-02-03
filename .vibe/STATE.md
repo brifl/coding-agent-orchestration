@@ -11,26 +11,27 @@
 
 ## Current focus
 
-- Stage: 15
-- Checkpoint: 15.2
-- Status: DONE  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
+- Stage: 16
+- Checkpoint: 16.0
+- Status: NOT_STARTED  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
 
 ## Objective (current checkpoint)
 
-Enable syncing subscribed skills to latest (or pinned) versions.
+Define how external skill sources are specified and trusted.
 
 ## Deliverables (current checkpoint)
 
-- `skillctl.py` enhancement: `sync` command
-- Respects pins, warns on major version changes
-- `--upgrade` flag to update pins
+- `docs/skill_sources.md` — source configuration and trust model
+- Source format: git URL, branch/tag, subdirectory path
+- Trust levels: verified, community, untrusted
 
 ## Acceptance (current checkpoint)
 
-- `skillctl sync` updates all subscribed skills
-- Breaking changes require explicit `--upgrade`
+- Sources can be GitHub repos, git URLs, or local paths
+- Trust level affects installation warnings
 
 ## Work log (current session)
+- 2026-02-03: Consolidated Stage 15; advanced to checkpoint 16.0; status set to NOT_STARTED.
 - 2026-02-03: Review PASS — 15.2 acceptance met; status set to DONE.
 - 2026-02-03: Implemented sync + upgrade flow; ran demo commands; status set to IN_REVIEW.
 - 2026-02-03: Advanced checkpoint 15.1 → 15.2; status set to NOT_STARTED.
@@ -40,20 +41,10 @@ Enable syncing subscribed skills to latest (or pinned) versions.
 - 2026-02-03: Review PASS — 15.0 acceptance met; status set to DONE.
 - 2026-02-03: Added skill source docs; ran demo command; status set to IN_REVIEW.
 - 2026-02-03: Consolidated Stage 14; advanced to checkpoint 15.0; status set to NOT_STARTED.
-- 2026-02-03: Review PASS — 14.2 acceptance met; status set to DONE.
-- 2026-02-03: Added skillset auto-install in bootstrap; ran demo commands; status set to IN_REVIEW.
-- 2026-02-03: Advanced checkpoint 14.1 → 14.2; status set to NOT_STARTED.
-- 2026-02-03: Review PASS — 14.1 acceptance met; status set to DONE.
-- 2026-02-03: Implemented resolve-set in skillctl; ran demo command; status set to IN_REVIEW.
-- 2026-02-03: Consolidated Stage 13; advanced to checkpoint 14.1; status set to NOT_STARTED.
-- 2026-02-03: Review PASS — 13.2 acceptance met; status set to DONE.
-- 2026-02-03: Implemented skillctl CLI and bootstrap integration; ran demo commands; status set to IN_REVIEW.
-- 2026-02-03: Advanced checkpoint 13.1 → 13.2; status set to NOT_STARTED.
 
 ## Evidence
 
-- `python3 tools/skillctl.py sync` warns on major update (current pin `v1.0.0`).
-- `python3 tools/skillctl.py sync --upgrade` updates pin to `v2.0.0` in `.vibe/skill-lock.json`.
+(None yet)
 
 ## Active issues
 

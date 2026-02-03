@@ -13,6 +13,10 @@
 
 ## Completed stages
 
+### 2026-02-03 — Stage 15: Skill Subscription (completed)
+
+Defined skill source/trust docs, added subscription + lockfile support, and implemented sync/upgrade behavior for subscribed skills (checkpoints 15.0–15.2).
+
 ### 2026-02-03 — Stage 14: Skill Sets (completed)
 
 Defined skill set schema and examples, added resolution in skillctl with dependency trees, and enabled bootstrap installation + config recording for skillsets (checkpoints 14.0–14.2).
