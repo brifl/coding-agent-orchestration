@@ -12,8 +12,8 @@
 ## Current focus
 
 - Stage: 13A
-- Checkpoint: 13A.1
-- Status: DONE  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
+- Checkpoint: 13A.2
+- Status: NOT_STARTED  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
 
 ## Objective (current checkpoint)
 
@@ -30,6 +30,7 @@ Add unit and integration tests covering (SKIP) parsing, advance-over-skip, and c
 - No regressions in existing tests: `pytest tests/`
 
 ## Work log (current session)
+- 2026-02-02: Advanced checkpoint 13A.1 → 13A.2; status set to NOT_STARTED.
 - 2026-02-02: Review PASS — 13A.1 acceptance met; status set to DONE.
 - 2026-02-02: Re-ran pytest with --capture=sys; tests pass; status set to IN_REVIEW.
 - 2026-02-02: Implemented 13A.1 tests; pytest -v capture fails (FileNotFoundError); status set to BLOCKED.
