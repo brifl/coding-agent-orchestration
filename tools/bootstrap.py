@@ -31,7 +31,7 @@ import shutil
 import subprocess
 import sys
 from pathlib import Path
-from typing import Iterable
+from typing import Any, Iterable
 
 # Add parent dir to path to allow sibling imports
 _tools_dir = Path(__file__).parent.resolve()
@@ -165,12 +165,30 @@ def init_repo(target_repo: Path, skillset: str | None = None, overwrite: bool = 
             skipped.append(str(config_path))
         else:
             config_payload = {
-                "name": skillset,
+                "skillset": {"name": skillset},
                 "skill_folders": [],
                 "prompt_catalogs": [],
             }
             _write_text(config_path, json.dumps(config_payload, indent=2) + "\n")
             created.append(str(config_path))
+
+        # Auto-install skills from the set into .vibe/skills
+        skill_defs = _resolve_skillset(repo_root, skillset)
+        dst_root = vibe_dir / "skills"
+        dst_root.mkdir(parents=True, exist_ok=True)
+        for skill in skill_defs:
+            name = skill["name"]
+            src_dir = repo_root / "skills" / name
+            if not src_dir.exists():
+                src_dir = repo_root / "skills" / "repo" / name
+            if not src_dir.exists():
+                raise FileNotFoundError(f"Skill folder not found for '{name}'.")
+            dst_dir = dst_root / name
+            u = _sync_dir(src_dir, dst_dir, force=False)
+            if u:
+                created.extend(u)
+            else:
+                skipped.append(str(dst_dir))
 
     # Summary
     print("init-repo summary")
@@ -203,6 +221,109 @@ def _default_agent_global_dir(agent: str) -> Path:
     if agent_home:
         return Path(agent_home).expanduser().resolve() / "skills"
     return Path.home() / f".{agent}" / "skills"
+
+
+def _parse_skillset_yaml(text: str) -> dict[str, Any]:
+    data: dict[str, Any] = {"extends": [], "skills": []}
+    current_section: str | None = None
+    last_skill: dict[str, Any] | None = None
+
+    for raw in text.splitlines():
+        if not raw.strip() or raw.lstrip().startswith("#"):
+            continue
+        indent = len(raw) - len(raw.lstrip())
+        line = raw.strip()
+
+        if indent == 0 and line.startswith("name:"):
+            data["name"] = line.split(":", 1)[1].strip().strip("\"'")
+            current_section = None
+            continue
+        if indent == 0 and line.startswith("description:"):
+            data["description"] = line.split(":", 1)[1].strip().strip("\"'")
+            current_section = None
+            continue
+        if indent == 0 and line.startswith("extends:"):
+            current_section = "extends"
+            continue
+        if indent == 0 and line.startswith("skills:"):
+            current_section = "skills"
+            continue
+
+        if current_section == "extends" and line.startswith("-"):
+            item = line[1:].strip().strip("\"'")
+            data["extends"].append(item)
+            continue
+
+        if current_section == "skills" and line.startswith("-"):
+            item = line[1:].strip()
+            skill: dict[str, Any] = {}
+            if item.startswith("name:"):
+                skill["name"] = item.split(":", 1)[1].strip().strip("\"'")
+            data["skills"].append(skill)
+            last_skill = skill
+            continue
+
+        if current_section == "skills" and indent > 0 and ":" in line and last_skill is not None:
+            key, value = line.split(":", 1)
+            last_skill[key.strip()] = value.strip().strip("\"'")
+
+    return data
+
+
+def _load_skillset(path: Path) -> dict[str, Any] | None:
+    try:
+        if path.suffix == ".json":
+            return json.loads(path.read_text(encoding="utf-8"))
+        if path.suffix in {".yaml", ".yml"}:
+            return _parse_skillset_yaml(path.read_text(encoding="utf-8"))
+    except Exception:
+        return None
+    return None
+
+
+def _find_skillset(repo_root: Path, name: str) -> Path | None:
+    root = repo_root / "skillsets"
+    for ext in (".yaml", ".yml", ".json"):
+        path = root / f"{name}{ext}"
+        if path.exists():
+            return path
+    return None
+
+
+def _resolve_skillset(repo_root: Path, name: str) -> list[dict[str, Any]]:
+    visited: set[str] = set()
+    resolving: set[str] = set()
+    resolved: dict[str, str | None] = {}
+
+    def load_set(set_name: str) -> dict[str, Any]:
+        path = _find_skillset(repo_root, set_name)
+        if not path:
+            raise FileNotFoundError(f"Skillset '{set_name}' not found.")
+        data = _load_skillset(path)
+        if not data:
+            raise ValueError(f"Failed to parse skillset: {path}")
+        return data
+
+    def visit_set(set_name: str) -> None:
+        if set_name in resolving:
+            raise ValueError(f"Circular skillset dependency detected: {set_name}")
+        if set_name in visited:
+            return
+        resolving.add(set_name)
+        data = load_set(set_name)
+        for parent in data.get("extends", []):
+            visit_set(str(parent))
+        for skill in data.get("skills", []):
+            skill_name = str(skill.get("name"))
+            version = skill.get("version")
+            if skill_name in resolved and version and resolved[skill_name] and resolved[skill_name] != version:
+                raise ValueError(f"Version conflict for {skill_name}: {resolved[skill_name]} vs {version}")
+            resolved[skill_name] = resolved.get(skill_name) or version
+        visited.add(set_name)
+        resolving.remove(set_name)
+
+    visit_set(name)
+    return [{"name": k, "version": v} for k, v in resolved.items()]
 
 
 def _copy_file(src: Path, dst: Path, *, force: bool = False, preserve_mtime: bool = True) -> bool:

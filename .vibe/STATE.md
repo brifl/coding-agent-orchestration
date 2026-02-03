@@ -13,24 +13,25 @@
 
 - Stage: 14
 - Checkpoint: 14.2
-- Status: NOT_STARTED  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
+- Status: IN_REVIEW  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
 
 ## Objective (current checkpoint)
 
-Resolve skill sets to concrete skill lists.
+Enable bootstrapping with a skill set reference.
 
 ## Deliverables (current checkpoint)
 
-- `skillctl.py` enhancement: `resolve-set` command
-- Dependency resolution (skill A requires skill B)
-- Conflict detection (incompatible versions)
+- `bootstrap.py` enhancement: `--skillset <name>` flag
+- Auto-install all skills in set
+- Record set reference in `.vibe/config.json`
 
 ## Acceptance (current checkpoint)
 
-- `skillctl resolve-set vibe-core` outputs resolved skill list
-- Circular dependencies detected and reported
+- `bootstrap.py init-repo . --skillset vibe-core` installs all vibe-core skills
+- Config records which set was used
 
 ## Work log (current session)
+- 2026-02-03: Added skillset auto-install in bootstrap; ran demo commands; status set to IN_REVIEW.
 - 2026-02-03: Advanced checkpoint 14.1 → 14.2; status set to NOT_STARTED.
 - 2026-02-03: Review PASS — 14.1 acceptance met; status set to DONE.
 - 2026-02-03: Implemented resolve-set in skillctl; ran demo command; status set to IN_REVIEW.
@@ -47,7 +48,8 @@ Resolve skill sets to concrete skill lists.
 
 ## Evidence
 
-- `python3 tools/skillctl.py resolve-set vibe-core --format json` output shows resolved skills and dependency tree.
+- `python3 tools/bootstrap.py init-repo /tmp/test --skillset vibe-core` installs set skills into `/tmp/test/.vibe/skills`.
+- `/tmp/test/.vibe/config.json` includes `"skillset": {"name": "vibe-core"}`.
 
 ## Active issues
 

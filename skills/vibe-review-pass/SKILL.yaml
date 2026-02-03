@@ -1,0 +1,12 @@
+name: vibe-review-pass
+version: "1.0.0"
+description: Mark an IN_REVIEW checkpoint as DONE.
+agents:
+  - codex
+  - claude
+dependencies:
+  - name: vibe-loop
+    version: ">=1.0.0"
+entry_points:
+  - name: review-pass
+    command: "python ~/.codex/skills/vibe-review-pass/scripts/vibe_review_pass.py"
