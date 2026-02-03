@@ -41,9 +41,9 @@ This reduces variance across agents.
 
 ---
 
-## 19.0 — Refactoring prompts
+### 19.0 — Refactoring prompts
 
-### `prompt.refactor_scan`
+#### `prompt.refactor_scan`
 
 **Objective:** produce a prioritized refactor backlog _with justifications and scope bounds_.
 
@@ -80,7 +80,7 @@ This reduces variance across agents.
 
 ---
 
-### `prompt.refactor_execute`
+#### `prompt.refactor_execute`
 
 **Objective:** apply a single refactor checkpoint safely.
 
@@ -109,7 +109,7 @@ This reduces variance across agents.
 
 ---
 
-### `prompt.refactor_verify`
+#### `prompt.refactor_verify`
 
 **Objective:** confirm refactor didn’t change behavior and didn’t worsen quality.
 
@@ -128,9 +128,9 @@ This reduces variance across agents.
 
 ---
 
-## 19.1 — Testing and coverage prompts
+### 19.1 — Testing and coverage prompts
 
-### `prompt.test_gap_analysis`
+#### `prompt.test_gap_analysis`
 
 **Objective:** identify untested paths _tied to actual risk_.
 
@@ -158,7 +158,7 @@ This reduces variance across agents.
 
 ---
 
-### `prompt.test_generation`
+#### `prompt.test_generation`
 
 **Objective:** generate runnable tests for _one_ gap.
 
@@ -182,7 +182,7 @@ This reduces variance across agents.
 
 ---
 
-### `prompt.test_review`
+#### `prompt.test_review`
 
 **Objective:** review tests for signal/noise and maintainability.
 
@@ -200,9 +200,9 @@ This reduces variance across agents.
 
 ---
 
-## 19.2 — Human feedback prompts
+### 19.2 — Human feedback prompts
 
-### `prompt.demo_script`
+#### `prompt.demo_script`
 
 **Objective:** produce a non-technical validation script.
 
@@ -224,7 +224,7 @@ This reduces variance across agents.
 
 ---
 
-### `prompt.feedback_intake`
+#### `prompt.feedback_intake`
 
 **Objective:** collect structured feedback with minimal back-and-forth.
 
@@ -248,7 +248,7 @@ This reduces variance across agents.
 
 ---
 
-### `prompt.feedback_triage`
+#### `prompt.feedback_triage`
 
 **Objective:** convert feedback into issues/checkpoints.
 
@@ -359,41 +359,3 @@ Treat this as two parallel indexes:
 * Include example query showing lexical beats semantic (exact symbol) and vice versa.
 
 ---
-
----
-
-## Stage 21 — RLM tooling (deferred)
-
-### 21.1 — RLM executor
-
-* **Objective:**
-  Implement an executor that runs RLM invocations within bounds.
-* **Deliverables:**
-  * `skills/rlm-tools/executor.py` — RLM execution engine
-  * Tracks: depth, iterations, tokens consumed
-  * Halts on limit breach with clear error
-* **Acceptance:**
-  * Executor respects all configured limits
-  * Partial results returned on limit breach
-* **Demo commands:**
-  * `python skills/rlm-tools/executor.py run task.json --max-depth 3`
-* **Evidence:**
-  * Execution trace showing recursion and limits
----
-
-### 21.2 — RLM skill packaging
-
-* **Objective:**
-  Package RLM as a skill that agents can invoke.
-* **Deliverables:**
-  * `skills/rlm-tools/SKILL.yaml` — skill manifest
-  * Agent integration: prompt templates for RLM invocation
-  * Safety: default conservative limits
-* **Acceptance:**
-  * Skill installs via skillctl
-  * Agents can delegate sub-tasks with bounded recursion
-* **Demo commands:**
-  * `python tools/skillctl.py install skills/rlm-tools --global`
-  * `python skills/rlm-tools/invoke.py "research and summarize X" --max-depth 2`
-* **Evidence:**
-  * RLM task completing within bounds
