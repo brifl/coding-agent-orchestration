@@ -11,26 +11,27 @@
 
 ## Current focus
 
-- Stage: 20
-- Checkpoint: 20.0
-- Status: BLOCKED  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
+- Stage: 19A
+- Checkpoint: 19A.0
+- Status: NOT_STARTED  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
 
 ## Objective (current checkpoint)
 
-Define RAG scope, indexing, and retrieval expectations.
+Build a scanner that indexes multiple directories.
 
 ## Deliverables (current checkpoint)
 
-- RAG skill requirements and schema (doc)
-- Indexing strategy and chunking rules
-- Retrieval quality targets
+- `skills/rag-index/scanner.py` — recursive directory scanner
+- Configurable: include/exclude patterns, file types, depth
+- Output: file manifest with metadata (path, size, mtime, type)
 
 ## Acceptance (current checkpoint)
 
-- RAG workflow documented end-to-end
-- Clear definitions for indexing and retrieval APIs
+- Scans multiple directories in one pass
+- Respects gitignore and custom exclusions
 
 ## Work log (current session)
+- 2026-02-03: Updated plan to Stage 19A; unblocked and set checkpoint 19A.0 to NOT_STARTED.
 - 2026-02-03: Blocked on Stage 20.0 scope/placement; clarification requested.
 - 2026-02-03: Consolidated Stage 19; advanced to checkpoint 20.0; status set to NOT_STARTED.
 - 2026-02-03: Review PASS — 19.2 acceptance met; status set to DONE.
@@ -53,10 +54,7 @@ Define RAG scope, indexing, and retrieval expectations.
 
 ## Active issues
 
-- [BLOCKER] ISSUE-008: Stage 20.0 scanner location/scope unclear
-  - Severity: BLOCKER
-  - Owner: agent
-  - Notes: Stage 20.0 requires `scanner.py` with a manifest schema, but no path or skill/package target is specified. Should this live under a new `skills/rag` (or `skills/repo/rag`) package, `tools/`, or another location? Also confirm CLI entrypoint expectations (script vs module).
+(None)
 
 ## Decisions
 

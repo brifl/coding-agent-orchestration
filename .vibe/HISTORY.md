@@ -109,6 +109,7 @@ Introduced stable prompt IDs with a shared catalog and updated agent control too
 
 ### Resolved issues (archived)
 
+- 2026-02-03 — ISSUE-008: Stage 19A injected to host RAG scanner work; scope/location clarified.
 - 2026-02-03 — ISSUE-007: Normalized Stage 19 checkpoint headings so agentctl recognizes 19.1/19.2.
 - 2026-02-03 — ISSUE-006: Consolidation prompt updated to preserve future stages in PLAN.md backlog.
 - 2026-02-03 — ISSUE-008: JIT inserted Stage 13 to provide skillctl before Stage 14; blocker cleared.
