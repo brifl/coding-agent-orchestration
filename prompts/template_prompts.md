@@ -709,3 +709,64 @@ RULES
 STOP CONDITION
 Stop after listing the milestones.
 ```
+
+---
+
+## prompt.stages_from_milestones — Stages From Milestones Prompt
+
+```md
+ROLE: Planning author (stages)
+
+TASK
+Convert a milestone list into PLAN.md stage sections.
+
+INPUT
+- Milestone list (ordered)
+- Optional constraints (scope/time)
+
+OUTPUT FORMAT
+- Stage sections in PLAN.md format:
+  - Stage heading
+  - Stage objective
+  - 1-3 checkpoint headings (titles only)
+
+RULES
+- Keep stages small and sequential.
+- Use consistent numbering (next available stage ID if provided).
+- Do not write full checkpoint details here.
+
+STOP CONDITION
+Stop after producing the stage sections.
+```
+
+---
+
+## prompt.checkpoints_from_stage — Checkpoints From Stage Prompt
+
+```md
+ROLE: Planning author (checkpoints)
+
+TASK
+Break a single stage into full checkpoint entries for PLAN.md.
+
+INPUT
+- Stage title
+- Stage objective
+- Stage scope notes (optional)
+
+OUTPUT FORMAT
+- Checkpoint sections (repeat for each):
+  - Objective (1 sentence)
+  - Deliverables (concrete files/modules/behaviors)
+  - Acceptance (verifiable)
+  - Demo commands (exact local commands)
+  - Evidence (what to paste into STATE.md)
+
+RULES
+- Each checkpoint should be implementable in one focused iteration.
+- Keep demo commands minimal and local.
+- Match the PLAN.md checkpoint template exactly.
+
+STOP CONDITION
+Stop after generating the checkpoint sections.
+```

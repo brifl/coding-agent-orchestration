@@ -13,7 +13,7 @@
 
 - Stage: 18
 - Checkpoint: 18.2
-- Status: NOT_STARTED  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
+- Status: IN_REVIEW  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
 
 ## Objective (current checkpoint)
 
@@ -31,6 +31,7 @@ Create prompts that generate PLAN.md content from milestones.
 - Output can be pasted directly into PLAN.md
 
 ## Work log (current session)
+- 2026-02-03: Added stage/checkpoint generation prompts; ran demo command; status set to IN_REVIEW.
 - 2026-02-03: Advanced checkpoint 18.1 → 18.2; status set to NOT_STARTED.
 - 2026-02-03: Review PASS — 18.1 acceptance met; status set to DONE.
 - 2026-02-03: Added architecture and milestones prompts; ran demo command; status set to IN_REVIEW.
@@ -64,7 +65,7 @@ Create prompts that generate PLAN.md content from milestones.
 
 ## Evidence
 
-(None yet)
+- `python3 tools/prompt_catalog.py prompts/template_prompts.md get prompt.stages_from_milestones` prints the new stages-from-milestones prompt.
 
 ## Active issues
 
