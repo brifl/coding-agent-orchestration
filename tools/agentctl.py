@@ -999,6 +999,54 @@ def cmd_next(args: argparse.Namespace) -> int:
     state = load_state(repo_root)
     prompt_catalog_path = find_resource("prompt", "template_prompts.md")
 
+    if args.workflow:
+        try:
+            from workflow_engine import select_next_prompt
+        except Exception as exc:
+            payload = {
+                "recommended_role": "stop",
+                "recommended_prompt_id": "stop",
+                "recommended_prompt_title": "Stop (workflow unavailable)",
+                "reason": f"Failed to load workflow engine: {exc}",
+                "workflow": args.workflow,
+                "stage": state.stage,
+                "checkpoint": state.checkpoint,
+                "status": state.status,
+                "prompt_catalog_path": str(prompt_catalog_path) if prompt_catalog_path else None,
+            }
+            print(_render_output(payload, args.format))
+            return 2
+
+        prompt_id = select_next_prompt(args.workflow)
+        if not prompt_id:
+            payload = {
+                "recommended_role": "stop",
+                "recommended_prompt_id": "stop",
+                "recommended_prompt_title": "Stop (no workflow match)",
+                "reason": f"No workflow step matched for {args.workflow}.",
+                "workflow": args.workflow,
+                "stage": state.stage,
+                "checkpoint": state.checkpoint,
+                "status": state.status,
+                "prompt_catalog_path": str(prompt_catalog_path) if prompt_catalog_path else None,
+            }
+            print(_render_output(payload, args.format))
+            return 1
+
+        payload = {
+            "recommended_role": "implement",
+            "recommended_prompt_id": prompt_id,
+            "recommended_prompt_title": f"Workflow-selected prompt ({prompt_id})",
+            "reason": f"Workflow {args.workflow} selected {prompt_id}.",
+            "workflow": args.workflow,
+            "stage": state.stage,
+            "checkpoint": state.checkpoint,
+            "status": state.status,
+            "prompt_catalog_path": str(prompt_catalog_path) if prompt_catalog_path else None,
+        }
+        print(_render_output(payload, args.format))
+        return 0
+
     if args.run_gates and state.status in {"NOT_STARTED", "IN_PROGRESS"}:
         gate_results = run_gates(repo_root, state.checkpoint)
         failed_required_gates = [r for r in gate_results if not r.passed and r.gate.required]
@@ -1184,6 +1232,10 @@ def build_parser() -> argparse.ArgumentParser:
         "--run-gates",
         action="store_true",
         help="Run quality gates before recommending next action.",
+    )
+    pn.add_argument(
+        "--workflow",
+        help="Use configured workflow to select the next prompt.",
     )
     pn.set_defaults(fn=cmd_next)
 

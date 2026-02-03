@@ -1,0 +1,7 @@
+name: auto-triage
+description: Auto-triage when major issues appear.
+triggers:
+  - type: on-issue
+    value: MAJOR
+steps:
+  - prompt_id: prompt.issues_triage

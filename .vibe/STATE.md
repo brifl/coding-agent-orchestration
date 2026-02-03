@@ -13,24 +13,25 @@
 
 - Stage: 17
 - Checkpoint: 17.1
-- Status: NOT_STARTED  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
+- Status: IN_REVIEW  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
 
 ## Objective (current checkpoint)
 
-Define how workflows are expressed in configuration.
+Implement a workflow engine that executes configured workflows.
 
 ## Deliverables (current checkpoint)
 
-- `docs/workflow_schema.md` — workflow configuration format
-- Schema: triggers, steps, conditions, frequency
-- Trigger types: manual, on-status, on-issue, scheduled
+- `tools/workflow_engine.py` — interprets and executes workflows
+- Integration with agentctl: `--workflow <name>` flag
+- Workflow state tracking in STATE.md
 
 ## Acceptance (current checkpoint)
 
-- Schema can express: "run refactor every 3rd checkpoint", "auto-triage on BLOCKER"
-- Workflows reference prompts by ID
+- Engine can execute multi-step workflows
+- Conditions and triggers evaluated correctly
 
 ## Work log (current session)
+- 2026-02-03: Implemented workflow engine + agentctl workflow selection; ran demo commands; status set to IN_REVIEW.
 - 2026-02-03: Advanced checkpoint 17.0 → 17.1; status set to NOT_STARTED.
 - 2026-02-03: Review PASS — 17.0 acceptance met; status set to DONE.
 - 2026-02-03: Added workflow schema doc; ran demo command; status set to IN_REVIEW.
@@ -45,9 +46,15 @@ Define how workflows are expressed in configuration.
 - 2026-02-03: Verified skill source docs for 16.0; ran demo command; status set to IN_REVIEW.
 - 2026-02-03: Consolidated Stage 15; advanced to checkpoint 16.0; status set to NOT_STARTED.
 
+## Workflow state
+- Name: refactor-cycle
+- Last run: 1 step(s)
+- Steps: prompt.checkpoint_implementation
+
 ## Evidence
 
-- `cat docs/workflow_schema.md` shows workflow schema with triggers and steps.
+- `python3 tools/workflow_engine.py run refactor-cycle` prints: `SKIP prompt.refactor_checkpoint (frequency)` then `RUN prompt.checkpoint_implementation`.
+- `python3 tools/agentctl.py --repo-root . next --workflow auto-triage` recommends `prompt.issues_triage`.
 
 ## Active issues
 
