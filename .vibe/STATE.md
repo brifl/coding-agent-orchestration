@@ -31,6 +31,8 @@ Create prompts that generate PLAN.md content from milestones.
 - Output can be pasted directly into PLAN.md
 
 ## Work log (current session)
+- 2026-02-03: Clarified consolidation prompt to preserve future stages; resolved ISSUE-006.
+- 2026-02-03: Restored Stage 21 backlog to PLAN.md after consolidation policy update.
 - 2026-02-03: Review PASS — 18.2 acceptance met; status set to DONE.
 - 2026-02-03: Added stage/checkpoint generation prompts; ran demo command; status set to IN_REVIEW.
 - 2026-02-03: Advanced checkpoint 18.1 → 18.2; status set to NOT_STARTED.
@@ -67,13 +69,11 @@ Create prompts that generate PLAN.md content from milestones.
 ## Evidence
 
 - `python3 tools/prompt_catalog.py prompts/template_prompts.md get prompt.stages_from_milestones` prints the new stages-from-milestones prompt.
+- `prompt.consolidation` now instructs to keep all future stages/checkpoints in PLAN.md.
 
 ## Active issues
 
-- [BLOCKER] ISSUE-006: Agents cleaning up future plans
-  - Severity: BLOCKER
-  - Owner: agent
-  - Notes: When running vibe-loop/vibe-run skill, there is a prompt.consolidation loop. This should clean up old stages that have been completed, along with other stuff that is no longer relevant. It is cleaning up future stages and it shouldn't. Those should be preserved so that we can work from them like a queue of work items.
+(None)
 
 ## Decisions
 

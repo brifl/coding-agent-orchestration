@@ -101,6 +101,7 @@ Introduced stable prompt IDs with a shared catalog and updated agent control too
 
 ### Resolved issues (archived)
 
+- 2026-02-03 — ISSUE-006: Consolidation prompt updated to preserve future stages in PLAN.md backlog.
 - 2026-02-03 — ISSUE-008: JIT inserted Stage 13 to provide skillctl before Stage 14; blocker cleared.
 - 2026-02-02 — ISSUE-007: Pytest capture failures resolved by using `--capture=sys` for demo commands.
 - 2026-01-26 — ISSUE-BOOT-001: Declared `.vibe/` as the only authoritative workflow location and removed fallback logic.
@@ -667,42 +668,3 @@ Move workflow logic from hard-coded prompts to configurable definitions, enablin
   * `python tools/workflow_engine.py describe continuous-refactor`
 * **Evidence:**
   * Preset workflow executing successfully
-
-### Archived backlog — Stage 21
-
-## Stage 21 — RLM tooling (deferred)
-
-### 21.1 — RLM executor
-
-* **Objective:**
-  Implement an executor that runs RLM invocations within bounds.
-* **Deliverables:**
-  * `skills/rlm-tools/executor.py` — RLM execution engine
-  * Tracks: depth, iterations, tokens consumed
-  * Halts on limit breach with clear error
-* **Acceptance:**
-  * Executor respects all configured limits
-  * Partial results returned on limit breach
-* **Demo commands:**
-  * `python skills/rlm-tools/executor.py run task.json --max-depth 3`
-* **Evidence:**
-  * Execution trace showing recursion and limits
-
----
-
-### 21.2 — RLM skill packaging
-
-* **Objective:**
-  Package RLM as a skill that agents can invoke.
-* **Deliverables:**
-  * `skills/rlm-tools/SKILL.yaml` — skill manifest
-  * Agent integration: prompt templates for RLM invocation
-  * Safety: default conservative limits
-* **Acceptance:**
-  * Skill installs via skillctl
-  * Agents can delegate sub-tasks with bounded recursion
-* **Demo commands:**
-  * `python tools/skillctl.py install skills/rlm-tools --global`
-  * `python skills/rlm-tools/invoke.py "research and summarize X" --max-depth 2`
-* **Evidence:**
-  * RLM task completing within bounds

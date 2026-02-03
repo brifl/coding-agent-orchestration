@@ -229,8 +229,9 @@ PROCESS
 3) Prune .vibe/PLAN.md:
    - Remove completed stages entirely (they're now in HISTORY)
    - Preserve any stages/checkpoints marked (SKIP); they are deferred, not completed
-   - Keep: current stage + next 1–2 stages only
-   - If a stage has no remaining checkpoints, remove it
+   - Keep all future stages/checkpoints; PLAN.md is the backlog queue
+   - Only remove stages that are fully completed
+   - If a stage has no remaining checkpoints and is completed, remove it
 
 4) Sync stage pointer:
    - If advancing to a new stage, update .vibe/STATE.md "Stage:" field
