@@ -13,7 +13,7 @@
 
 - Stage: 17
 - Checkpoint: 17.2
-- Status: IN_REVIEW  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
+- Status: DONE  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
 
 ## Objective (current checkpoint)
 
@@ -31,6 +31,7 @@ Provide useful preset workflow configurations.
 - Users can copy and customize
 
 ## Work log (current session)
+- 2026-02-03: Review PASS — 17.2 acceptance met; status set to DONE.
 - 2026-02-03: Added preset workflows; ran demo commands; status set to IN_REVIEW.
 - 2026-02-03: Advanced checkpoint 17.1 → 17.2; status set to NOT_STARTED.
 - 2026-02-03: Review PASS — 17.1 acceptance met; status set to DONE.
