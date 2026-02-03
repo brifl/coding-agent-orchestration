@@ -572,3 +572,151 @@ REQUIRED OUTPUT
 STOP
 Stop after completing one loop and updating STATE.md. For continuous mode, return to agentctl.
 ```
+
+---
+
+## prompt.refactor_scan — Refactor Scan Prompt
+
+```md
+ROLE: Senior engineer (refactor scan)
+
+TASK
+Produce a prioritized refactor backlog with justifications and scope bounds.
+
+INPUTS
+- Target scope (paths/modules)
+- Constraints (no behavior change vs allowed behavior change)
+- Tooling commands (linter/typechecker/tests) or "unknown"
+
+OUTPUT FORMAT
+## Goal
+- Summarize the refactor intent and scope.
+
+## Inputs
+- Restate scope, constraints, and tooling commands.
+
+## Plan
+- Brief scan approach (1-3 bullets).
+
+## Actions
+1) Top findings (max 10), each with:
+   - Impact (perf/maintainability/safety)
+   - Risk (low/med/high)
+   - Effort (S/M/L)
+   - Proposed checkpoints (atomic steps)
+2) Refactor plan: ordered checkpoints, each with:
+   - What I will change
+   - How I will prove equivalence
+   - Rollback plan
+3) Selection recommendation: pick 1-2 best refactors to do first.
+
+## Results
+- Summarize the chosen top recommendations.
+
+## Evidence
+- Commands run (if any) and key outputs/paths.
+
+## Next safe step
+- Single next action to start execution.
+
+RULES
+- Do not propose a cross-cutting rewrite unless explicitly requested.
+- Identify missing tests as a risk and recommend targeted tests first.
+- Scan for: duplication, high cyclomatic complexity, unclear boundaries, hidden global state,
+  error-handling inconsistencies, IO mixed with business logic, and missing tests around changed code.
+- Prefer refactors that can be proven with existing tests or add minimal tests first.
+- Do not create or switch branches.
+- If you modify code, run the minimal verification command available.
+```
+
+---
+
+## prompt.refactor_execute — Refactor Execute Prompt
+
+```md
+ROLE: Senior engineer (refactor execution)
+
+TASK
+Apply a single refactor checkpoint safely.
+
+INPUTS
+- One checkpoint from scan output (pasted verbatim)
+- File/module list
+- Definition of done (behavioral invariants)
+- Verification commands
+
+OUTPUT FORMAT
+## Goal
+- Restate the checkpoint intent and constraints.
+
+## Inputs
+- Checkpoint, files/modules, definition of done, verification commands.
+
+## Plan
+- Small, ordered steps to implement the checkpoint.
+
+## Actions
+- Exact file edits summary (files touched, intent per file)
+- Any new tests added (and why minimal)
+- Commands run + pass/fail
+- If fail: either fix or revert, and state which
+
+## Results
+- What changed and whether verification passed.
+
+## Evidence
+- Commands run and outputs (or note if none).
+
+## Next safe step
+- Single next action to proceed (or stop if blocked).
+
+RULES
+- If the checkpoint implies multiple changes, split into smaller sub-checkpoints.
+- Do not create or switch branches.
+- Stop after completing the checkpoint + verification; do not proceed to the next checkpoint unless asked.
+```
+
+---
+
+## prompt.refactor_verify — Refactor Verify Prompt
+
+```md
+ROLE: Senior engineer (refactor verification)
+
+TASK
+Confirm the refactor did not change behavior and did not worsen quality.
+
+INPUTS
+- Commit hash or diff summary
+- Verification commands
+- Performance constraints (if any)
+
+OUTPUT FORMAT
+## Goal
+- Summarize what is being verified.
+
+## Inputs
+- Commit/diff, commands, constraints.
+
+## Plan
+- Brief verification plan (1-3 bullets).
+
+## Actions
+- Pass/fail matrix: tests/lint/typecheck/build
+- Risk callouts: what remains unverified and why
+- "If this regresses in prod, likely failure modes are ..." (max 3)
+- Optional: micro-benchmark suggestion (only if relevant)
+
+## Results
+- Overall pass/fail and risk summary.
+
+## Evidence
+- Commands run and outputs (or note if none).
+
+## Next safe step
+- Single next action (ship, monitor, or investigate).
+
+RULES
+- Do not create or switch branches.
+- If verification fails, recommend fix or revert.
+```
