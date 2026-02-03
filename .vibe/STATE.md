@@ -13,7 +13,7 @@
 
 - Stage: 15
 - Checkpoint: 15.2
-- Status: IN_REVIEW  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
+- Status: DONE  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
 
 ## Objective (current checkpoint)
 
@@ -31,6 +31,7 @@ Enable syncing subscribed skills to latest (or pinned) versions.
 - Breaking changes require explicit `--upgrade`
 
 ## Work log (current session)
+- 2026-02-03: Review PASS — 15.2 acceptance met; status set to DONE.
 - 2026-02-03: Implemented sync + upgrade flow; ran demo commands; status set to IN_REVIEW.
 - 2026-02-03: Advanced checkpoint 15.1 → 15.2; status set to NOT_STARTED.
 - 2026-02-03: Review PASS — 15.1 acceptance met; status set to DONE.
