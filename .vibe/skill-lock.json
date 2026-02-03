@@ -1,0 +1,9 @@
+{
+  "subscriptions": [
+    {
+      "name": "claude-memory",
+      "source": "https://github.com/anthropics/skills",
+      "pin": "v1.0.0"
+    }
+  ]
+}

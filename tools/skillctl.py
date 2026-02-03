@@ -29,6 +29,23 @@ def _skillsets_root() -> Path:
     return _repo_root() / "skillsets"
 
 
+def _lock_path() -> Path:
+    return _repo_root() / ".vibe" / "skill-lock.json"
+
+
+def _load_lock() -> dict[str, Any]:
+    path = _lock_path()
+    if not path.exists():
+        return {"subscriptions": []}
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def _write_lock(payload: dict[str, Any]) -> None:
+    path = _lock_path()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+
+
 def _agent_global_dir(agent: str) -> Path:
     return Path.home() / f".{agent}" / "skills"
 
@@ -377,6 +394,26 @@ def cmd_resolve_set(name: str, fmt: str, agent: str) -> int:
     return 0
 
 
+def cmd_subscribe(source: str, name: str, pin: str | None) -> int:
+    lock = _load_lock()
+    subs = lock.get("subscriptions", [])
+    # Update existing subscription if present.
+    existing = next((s for s in subs if s.get("name") == name and s.get("source") == source), None)
+    entry = {
+        "name": name,
+        "source": source,
+        "pin": pin or "HEAD",
+    }
+    if existing:
+        existing.update(entry)
+    else:
+        subs.append(entry)
+    lock["subscriptions"] = subs
+    _write_lock(lock)
+    print(f"Subscribed {name} from {source} (pin: {entry['pin']})")
+    return 0
+
+
 def main(argv: list[str]) -> int:
     parser = argparse.ArgumentParser(prog="skillctl.py")
     sub = parser.add_subparsers(dest="cmd", required=True)
@@ -417,6 +454,11 @@ def main(argv: list[str]) -> int:
     rsvp.add_argument("--format", choices=["json", "text"], default="text")
     rsvp.add_argument("--agent", default=DEFAULT_AGENT)
 
+    subp = sub.add_parser("subscribe", help="Subscribe to an external skill")
+    subp.add_argument("source")
+    subp.add_argument("name")
+    subp.add_argument("--pin", type=str)
+
     args = parser.parse_args(argv)
 
     if args.cmd == "list":
@@ -433,6 +475,8 @@ def main(argv: list[str]) -> int:
         return cmd_validate(Path(args.path))
     if args.cmd == "resolve-set":
         return cmd_resolve_set(args.name, args.format, args.agent)
+    if args.cmd == "subscribe":
+        return cmd_subscribe(args.source, args.name, args.pin)
 
     return 2
 

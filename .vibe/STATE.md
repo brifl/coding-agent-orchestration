@@ -13,24 +13,25 @@
 
 - Stage: 15
 - Checkpoint: 15.1
-- Status: NOT_STARTED  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
+- Status: IN_REVIEW  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
 
 ## Objective (current checkpoint)
 
-Define how external skill sources are specified and trusted.
+Implement skill subscription with version pinning.
 
 ## Deliverables (current checkpoint)
 
-- `docs/skill_sources.md` — source configuration and trust model
-- Source format: git URL, branch/tag, subdirectory path
-- Trust levels: verified, community, untrusted
+- `skillctl.py` enhancement: `subscribe` command
+- Pin format: `source@version` or `source@commit`
+- Lock file: `.vibe/skill-lock.json`
 
 ## Acceptance (current checkpoint)
 
-- Sources can be GitHub repos, git URLs, or local paths
-- Trust level affects installation warnings
+- `skillctl subscribe https://github.com/anthropics/skills skill-name`
+- Lock file records exact versions for reproducibility
 
 ## Work log (current session)
+- 2026-02-03: Implemented skill subscription + lock file; ran demo command; status set to IN_REVIEW.
 - 2026-02-03: Advanced checkpoint 15.0 → 15.1; status set to NOT_STARTED.
 - 2026-02-03: Review PASS — 15.0 acceptance met; status set to DONE.
 - 2026-02-03: Added skill source docs; ran demo command; status set to IN_REVIEW.
@@ -47,7 +48,8 @@ Define how external skill sources are specified and trusted.
 
 ## Evidence
 
-- `cat docs/skill_sources.md` shows source formats and trust levels.
+- `python3 tools/skillctl.py subscribe https://github.com/anthropics/skills claude-memory --pin v1.0.0` wrote `.vibe/skill-lock.json`.
+- `.vibe/skill-lock.json` records `claude-memory` with pin `v1.0.0`.
 
 ## Active issues
 
