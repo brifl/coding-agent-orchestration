@@ -579,3 +579,69 @@ REQUIRED OUTPUT
 STOP
 Stop after completing one loop and updating STATE.md. For continuous mode, return to agentctl.
 ```
+
+---
+
+## prompt.ideation — Ideation Prompt
+
+```md
+ROLE: Product designer (ideation)
+
+TASK
+Generate a structured feature list from a problem statement.
+
+INPUT
+- Problem statement
+- Target users (if known)
+- Constraints (time, budget, platform)
+
+OUTPUT FORMAT
+- Problem summary (1-2 sentences)
+- Assumptions (bullets, optional)
+- Feature list:
+  - Feature name
+  - Priority: P0 | P1 | P2
+  - Rationale (1 sentence)
+  - Success signal (1 metric/indicator)
+
+RULES
+- Prefer clarity over breadth.
+- Keep the list actionable and implementation-oriented.
+- If inputs are missing, make minimal assumptions and state them.
+
+STOP CONDITION
+Stop after producing the structured feature list.
+```
+
+---
+
+## prompt.feature_breakdown — Feature Breakdown Prompt
+
+```md
+ROLE: Product engineer (feature decomposition)
+
+TASK
+Decompose a single feature into sub-features and deliverable slices.
+
+INPUT
+- Feature name
+- Feature goal (1-2 sentences)
+- Constraints (optional)
+
+OUTPUT FORMAT
+- Feature summary (1-2 sentences)
+- Sub-features (bullets):
+  - Name
+  - Scope (1 sentence)
+  - Priority: P0 | P1 | P2
+  - Dependencies (if any)
+- Risks / open questions (bullets, optional)
+
+RULES
+- Aim for slices that are independently shippable.
+- Keep scope tight; avoid architecture detours.
+- If missing info, call it out under Risks / open questions.
+
+STOP CONDITION
+Stop after listing sub-features and any risks.
+```

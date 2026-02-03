@@ -13,7 +13,7 @@
 
 - Stage: 18
 - Checkpoint: 18.0
-- Status: NOT_STARTED  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
+- Status: IN_REVIEW  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
 
 ## Objective (current checkpoint)
 
@@ -31,6 +31,7 @@ Create prompts for early-stage idea development.
 - Output can feed into architecture prompts
 
 ## Work log (current session)
+- 2026-02-03: Added ideation and feature breakdown prompts; ran demo command; status set to IN_REVIEW.
 - 2026-02-03: Consolidated Stage 17; advanced to checkpoint 18.0; status set to NOT_STARTED.
 - 2026-02-03: Review PASS — 17.2 acceptance met; status set to DONE.
 - 2026-02-03: Added preset workflows; ran demo commands; status set to IN_REVIEW.
@@ -58,7 +59,7 @@ Create prompts for early-stage idea development.
 
 ## Evidence
 
-(None yet)
+- `python3 tools/prompt_catalog.py prompts/template_prompts.md get prompt.ideation` prints the new ideation prompt.
 
 ## Active issues
 
