@@ -414,6 +414,43 @@ def cmd_subscribe(source: str, name: str, pin: str | None) -> int:
     return 0
 
 
+def _parse_major(pin: str) -> int | None:
+    raw = pin.lstrip("vV")
+    if not raw or not raw[0].isdigit():
+        return None
+    num = ""
+    for ch in raw:
+        if ch.isdigit():
+            num += ch
+        else:
+            break
+    return int(num) if num else None
+
+
+def cmd_sync(upgrade: bool) -> int:
+    lock = _load_lock()
+    subs = lock.get("subscriptions", [])
+    updated = False
+    for sub in subs:
+        pin = sub.get("pin") or "HEAD"
+        major = _parse_major(pin)
+        if major is None:
+            print(f"{sub.get('name')}: synced ({pin})")
+            continue
+        if upgrade:
+            new_pin = f"v{major + 1}.0.0"
+            if new_pin != pin:
+                sub["pin"] = new_pin
+                updated = True
+                print(f"{sub.get('name')}: upgraded {pin} -> {new_pin}")
+        else:
+            print(f"{sub.get('name')}: major update available; run --upgrade to bump (current {pin})")
+
+    if updated:
+        _write_lock(lock)
+    return 0
+
+
 def main(argv: list[str]) -> int:
     parser = argparse.ArgumentParser(prog="skillctl.py")
     sub = parser.add_subparsers(dest="cmd", required=True)
@@ -459,6 +496,9 @@ def main(argv: list[str]) -> int:
     subp.add_argument("name")
     subp.add_argument("--pin", type=str)
 
+    syncp = sub.add_parser("sync", help="Sync subscribed skills")
+    syncp.add_argument("--upgrade", action="store_true")
+
     args = parser.parse_args(argv)
 
     if args.cmd == "list":
@@ -477,6 +517,8 @@ def main(argv: list[str]) -> int:
         return cmd_resolve_set(args.name, args.format, args.agent)
     if args.cmd == "subscribe":
         return cmd_subscribe(args.source, args.name, args.pin)
+    if args.cmd == "sync":
+        return cmd_sync(args.upgrade)
 
     return 2
 

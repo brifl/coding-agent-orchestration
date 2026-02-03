@@ -13,24 +13,25 @@
 
 - Stage: 15
 - Checkpoint: 15.2
-- Status: NOT_STARTED  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
+- Status: IN_REVIEW  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
 
 ## Objective (current checkpoint)
 
-Implement skill subscription with version pinning.
+Enable syncing subscribed skills to latest (or pinned) versions.
 
 ## Deliverables (current checkpoint)
 
-- `skillctl.py` enhancement: `subscribe` command
-- Pin format: `source@version` or `source@commit`
-- Lock file: `.vibe/skill-lock.json`
+- `skillctl.py` enhancement: `sync` command
+- Respects pins, warns on major version changes
+- `--upgrade` flag to update pins
 
 ## Acceptance (current checkpoint)
 
-- `skillctl subscribe https://github.com/anthropics/skills skill-name`
-- Lock file records exact versions for reproducibility
+- `skillctl sync` updates all subscribed skills
+- Breaking changes require explicit `--upgrade`
 
 ## Work log (current session)
+- 2026-02-03: Implemented sync + upgrade flow; ran demo commands; status set to IN_REVIEW.
 - 2026-02-03: Advanced checkpoint 15.1 → 15.2; status set to NOT_STARTED.
 - 2026-02-03: Review PASS — 15.1 acceptance met; status set to DONE.
 - 2026-02-03: Implemented skill subscription + lock file; ran demo command; status set to IN_REVIEW.
@@ -50,8 +51,8 @@ Implement skill subscription with version pinning.
 
 ## Evidence
 
-- `python3 tools/skillctl.py subscribe https://github.com/anthropics/skills claude-memory --pin v1.0.0` wrote `.vibe/skill-lock.json`.
-- `.vibe/skill-lock.json` records `claude-memory` with pin `v1.0.0`.
+- `python3 tools/skillctl.py sync` warns on major update (current pin `v1.0.0`).
+- `python3 tools/skillctl.py sync --upgrade` updates pin to `v2.0.0` in `.vibe/skill-lock.json`.
 
 ## Active issues
 
