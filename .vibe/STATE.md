@@ -13,7 +13,7 @@
 
 - Stage: 19
 - Checkpoint: 19.1
-- Status: NOT_STARTED  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
+- Status: IN_REVIEW  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
 
 ## Objective (current checkpoint)
 
@@ -32,6 +32,7 @@ Define testing and coverage prompts.
 - Test review output includes coverage, brittleness, and concrete edits
 
 ## Work log (current session)
+- 2026-02-03: Added test gap/generation/review prompts; ran demo command; status set to IN_REVIEW.
 - 2026-02-03: Advanced checkpoint 19.0 → 19.1; status set to NOT_STARTED.
 - 2026-02-03: Detected checkpoint headings for 19.1/19.2 not parsed by agentctl; logged ISSUE-007.
 - 2026-02-03: Review PASS — 19.0 acceptance met; status set to DONE.
@@ -72,7 +73,7 @@ Define testing and coverage prompts.
 
 ## Evidence
 
-- `python3 tools/prompt_catalog.py prompts/template_prompts.md get prompt.refactor_scan` prints the new refactor scan prompt.
+- `python3 tools/prompt_catalog.py prompts/template_prompts.md get prompt.test_gap_analysis` prints the new test gap analysis prompt.
 
 ## Active issues
 

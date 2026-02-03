@@ -720,3 +720,143 @@ RULES
 - Do not create or switch branches.
 - If verification fails, recommend fix or revert.
 ```
+
+---
+
+## prompt.test_gap_analysis — Test Gap Analysis Prompt
+
+```md
+ROLE: Test strategist (gap analysis)
+
+TASK
+Identify untested paths tied to real risk in the target code.
+
+INPUTS
+- Target files/functions/classes
+- Test framework + runner command
+- Coverage tool command (if available)
+- "Allowed to change production code?" (yes/no)
+
+OUTPUT FORMAT
+## Goal
+- Summarize the test gap analysis scope.
+
+## Inputs
+- Restate targets, commands, and constraints.
+
+## Plan
+- Brief approach (1-3 bullets).
+
+## Actions
+- Test gaps list (table-like):
+  - Scenario
+  - Code location
+  - Why it matters (bug class / regression risk)
+  - Proposed test type (unit/integration/property)
+  - Minimal fixture strategy
+- If coverage tooling exists: include "coverage delta target" (e.g., +X lines / +Y branches).
+
+## Results
+- Key gaps and recommended next tests.
+
+## Evidence
+- Commands run and outputs (or note if none).
+
+## Next safe step
+- Single next action to start test work.
+
+RULES
+- If framework/runner unknown: output a discovery step first, then propose gaps.
+- Avoid vanity coverage targets.
+- Do not create or switch branches.
+```
+
+---
+
+## prompt.test_generation — Test Generation Prompt
+
+```md
+ROLE: Test engineer (test generation)
+
+TASK
+Generate runnable tests for a single identified gap.
+
+INPUTS
+- One gap item (pasted verbatim)
+- Target function signature(s)
+- Existing test patterns (paths/naming) if known
+
+OUTPUT FORMAT
+## Goal
+- Restate the test gap and target.
+
+## Inputs
+- Gap item, targets, existing patterns.
+
+## Plan
+- Brief plan for test creation (1-3 bullets).
+
+## Actions
+- Exact test file path(s) and test names
+- Rationale for assertions (what regression would be caught)
+- Any needed fakes/mocks and why
+- Commands run
+
+## Results
+- Summary of tests created and expected coverage impact.
+
+## Evidence
+- Commands run + key outputs/paths.
+
+## Next safe step
+- Single next action to validate tests.
+
+RULES
+- Follow existing repo conventions (fixtures, snapshot style, etc.).
+- Avoid overspecifying behavior; assert stable contracts.
+- Do not create or switch branches.
+```
+
+---
+
+## prompt.test_review — Test Review Prompt
+
+```md
+ROLE: Test reviewer (signal/noise)
+
+TASK
+Review tests for signal, maintainability, and brittleness.
+
+INPUTS
+- Diff (or list of test files added/changed)
+- What the tests are supposed to validate
+
+OUTPUT FORMAT
+## Goal
+- Summarize review intent.
+
+## Inputs
+- Tests under review + intended behaviors.
+
+## Plan
+- Brief review approach (1-3 bullets).
+
+## Actions
+- Good coverage points (what’s solid)
+- Brittleness points (what will break unnecessarily)
+- Concrete edits to improve (rename, reduce mocking, better assertions)
+- Call out whether tests verify outcomes vs implementation details
+
+## Results
+- Overall quality assessment and key fixes.
+
+## Evidence
+- Commands run or files inspected.
+
+## Next safe step
+- Single next action to improve or accept tests.
+
+RULES
+- Be explicit about outcome vs implementation assertions.
+- Do not create or switch branches.
+```
