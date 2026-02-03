@@ -11,25 +11,27 @@
 
 ## Current focus
 
-- Stage: 13A
-- Checkpoint: 13A.2
-- Status: DONE  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
+- Stage: 14
+- Checkpoint: 14.0
+- Status: NOT_STARTED  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
 
 ## Objective (current checkpoint)
 
-Update stage ordering and conventions documentation to describe (SKIP) semantics.
+Define how skill sets are structured and stored.
 
 ## Deliverables (current checkpoint)
 
-- `docs/stage_ordering.md` — new section describing (SKIP) marker syntax and behavior
-- `prompts/template_prompts.md` — updated consolidation prompt to explicitly preserve (SKIP) items
+- `docs/skill_sets.md` — schema and usage documentation
+- `skillsets/` directory for set definitions
+- Set format: name, description, skills list, version constraints
 
 ## Acceptance (current checkpoint)
 
-- Documentation clearly describes: syntax, advance behavior, consolidation preservation, reactivation
-- Consolidation prompt includes (SKIP) preservation rule
+- Sets can reference skills by name with optional version pins
+- Sets can extend other sets (inheritance)
 
 ## Work log (current session)
+- 2026-02-02: Consolidated Stage 13A; advanced stage pointer to 14.0; cleared evidence.
 - 2026-02-02: Review PASS — 13A.2 acceptance met; status set to DONE.
 - 2026-02-02: Updated stage ordering docs with (SKIP) semantics; ran demo command; status set to IN_REVIEW.
 - 2026-02-02: Advanced checkpoint 13A.1 → 13A.2; status set to NOT_STARTED.
@@ -39,37 +41,10 @@ Update stage ordering and conventions documentation to describe (SKIP) semantics
 - 2026-02-02: Advanced checkpoint 13A.0 → 13A.1; status set to NOT_STARTED.
 - 2026-02-02: Review PASS — 13A.0 acceptance met; status set to DONE.
 - 2026-02-02: Added consolidation prompt rule to preserve (SKIP) items; ran demo commands + skip behavior check; status set to IN_REVIEW.
-- 2026-02-02: Review FAIL — consolidation prompt lacks (SKIP) preservation guidance; status set to IN_PROGRESS.
-- 2026-02-02: Implemented 13A.0 — (SKIP) marker support in agentctl. Updated parser, advance logic, and all stage/checkpoint heading patterns. 44/44 tests pass, no regressions.
-- 2026-02-02: JIT injected Stage 13A (SKIP Marker Support); advanced from 13.0 DONE to 13A.0 NOT_STARTED.
-- 2026-01-30: Review PASS → status set to DONE
-
-- 2026-01-30: Consolidated Stage 12A; advanced to Stage 13.0.
-- 2026-01-30: Reviewed 12A.3 - PASS. Deliverables and acceptance criteria met.
-- 2026-01-30: Added stage ordering unit + integration tests (12A.3).
-- 2026-01-30: Advanced to checkpoint 12A.3.
-- 2026-01-30: Implemented 12A.2 stage ID validation and duplicate detection.
-- 2026-01-30: Advanced to checkpoint 12A.2.
-- 2026-01-30: Implemented 12A.1 stage ordering logic updates.
-- 2026-01-30: Advanced to checkpoint 12A.1.
-- 2026-01-30: Reviewed 12A.0 - PASS. Deliverables and acceptance criteria met.
-- 2026-01-30: Added stage ordering documentation for suffix-based stage IDs.
-- 2026-01-29: Consolidated Stage 12, pruned logs, and advanced to 13.0.
-- 2026-01-29: Reviewed 12.2 - PASS. Deliverables and acceptance criteria met.
-- 2026-01-29: Implemented 12.2 - Updated bootstrap.py and agentctl.py to use the resource resolver. Verified changes with demo commands.
-- 2026-01-29: Advanced to checkpoint 12.2.
-- 2026-01-29: Reviewed 12.1 - PASS. Deliverables and acceptance criteria met.
-- 2026-01-29: Implemented 12.1 - Implemented resource resolver and verified with demo commands.
-- 2026-01-29: Advanced to checkpoint 12.1.
-- 2026-01-29: Reviewed 12.0 - PASS. Deliverables and acceptance criteria met.
-- 2026-01-29: Implemented 12.0 - Defined and documented the global vs repo-local resource model.
-- 2026-01-29: Resolved ISSUE-005: Corrected the status of checkpoint 11.2 to DONE, as it was already reviewed and passed.
 
 ## Evidence
 
-- `docs/stage_ordering.md` now includes (SKIP) syntax and behavior section.
-- Consolidation prompt already includes: "Preserve any stages/checkpoints marked (SKIP); they are deferred, not completed."
-- `cat docs/stage_ordering.md` shows the new (SKIP) markers section.
+(None yet)
 
 ## Active issues
 

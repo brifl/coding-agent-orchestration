@@ -13,6 +13,10 @@
 
 ## Completed stages
 
+### 2026-02-02 — Stage 13A: SKIP Marker Support (completed)
+
+Added `(SKIP)` marker handling in agentctl, added skip marker tests, and documented SKIP semantics and consolidation preservation for deferred stages/checkpoints (checkpoints 13A.0–13A.2).
+
 ### 2026-01-29 — Stage 12: Global vs Repo-Local Separation (completed)
 
 Established clear boundaries between global and repo-local resources, implemented a resource resolver, and updated core tools to use it, enabling skill reuse with project customization. This included checkpoints 12.0, 12.1, and 12.2.
@@ -71,8 +75,13 @@ Introduced stable prompt IDs with a shared catalog and updated agent control too
 
 ## Archived details (checkpoint level)
 
+### Work log (archived)
+
+- 2026-02-02 — Pruned older STATE work log entries from 2026-01-29 through 2026-02-02 during Stage 13A consolidation.
+
 ### Resolved issues (archived)
 
+- 2026-02-02 — ISSUE-007: Pytest capture failures resolved by using `--capture=sys` for demo commands.
 - 2026-01-26 — ISSUE-BOOT-001: Declared `.vibe/` as the only authoritative workflow location and removed fallback logic.
 - 2026-01-27 — ISSUE-001: Updated `vibe_next_and_print.py` to respect CODEX_HOME aware skills roots.
 - 2026-01-28 — ISSUE-001: Fixed stage sync and transition detection in agentctl and improved heading parsing robustness.
