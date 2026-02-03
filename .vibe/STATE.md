@@ -11,26 +11,27 @@
 
 ## Current focus
 
-- Stage: 14
-- Checkpoint: 14.2
-- Status: DONE  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
+- Stage: 15
+- Checkpoint: 15.0
+- Status: NOT_STARTED  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
 
 ## Objective (current checkpoint)
 
-Enable bootstrapping with a skill set reference.
+Define how external skill sources are specified and trusted.
 
 ## Deliverables (current checkpoint)
 
-- `bootstrap.py` enhancement: `--skillset <name>` flag
-- Auto-install all skills in set
-- Record set reference in `.vibe/config.json`
+- `docs/skill_sources.md` — source configuration and trust model
+- Source format: git URL, branch/tag, subdirectory path
+- Trust levels: verified, community, untrusted
 
 ## Acceptance (current checkpoint)
 
-- `bootstrap.py init-repo . --skillset vibe-core` installs all vibe-core skills
-- Config records which set was used
+- Sources can be GitHub repos, git URLs, or local paths
+- Trust level affects installation warnings
 
 ## Work log (current session)
+- 2026-02-03: Consolidated Stage 14; advanced to checkpoint 15.0; status set to NOT_STARTED.
 - 2026-02-03: Review PASS — 14.2 acceptance met; status set to DONE.
 - 2026-02-03: Added skillset auto-install in bootstrap; ran demo commands; status set to IN_REVIEW.
 - 2026-02-03: Advanced checkpoint 14.1 → 14.2; status set to NOT_STARTED.
@@ -40,17 +41,10 @@ Enable bootstrapping with a skill set reference.
 - 2026-02-03: Review PASS — 13.2 acceptance met; status set to DONE.
 - 2026-02-03: Implemented skillctl CLI and bootstrap integration; ran demo commands; status set to IN_REVIEW.
 - 2026-02-03: Advanced checkpoint 13.1 → 13.2; status set to NOT_STARTED.
-- 2026-02-03: Review PASS — 13.1 acceptance met; status set to DONE.
-- 2026-02-03: Implemented skill registry CLI and parsing; ran demo commands; status set to IN_REVIEW.
-- 2026-02-03: Advanced checkpoint 13.0 → 13.1; status set to NOT_STARTED.
-- 2026-02-03: Review PASS — 13.0 acceptance met; status set to DONE.
-- 2026-02-03: Added skill manifest schema and sample; ran demo command; status set to IN_REVIEW.
-- 2026-02-03: JIT injected Stage 13 before Stage 14; advanced to checkpoint 13.0; status set to NOT_STARTED.
 
 ## Evidence
 
-- `python3 tools/bootstrap.py init-repo /tmp/test --skillset vibe-core` installs set skills into `/tmp/test/.vibe/skills`.
-- `/tmp/test/.vibe/config.json` includes `"skillset": {"name": "vibe-core"}`.
+(None yet)
 
 ## Active issues
 

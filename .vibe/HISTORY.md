@@ -13,6 +13,10 @@
 
 ## Completed stages
 
+### 2026-02-03 — Stage 14: Skill Sets (completed)
+
+Defined skill set schema and examples, added resolution in skillctl with dependency trees, and enabled bootstrap installation + config recording for skillsets (checkpoints 14.0–14.2).
+
 ### 2026-02-03 — Stage 13: Skill Library Foundation (completed)
 
 Defined skill manifest schema with examples, added skill discovery registry, and introduced a skill management CLI integrated with bootstrap installs (checkpoints 13.0–13.2).
