@@ -11,27 +11,27 @@
 
 ## Current focus
 
-- Stage: 19
-- Checkpoint: 19.2
-- Status: DONE  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
+- Stage: 20
+- Checkpoint: 20.0
+- Status: NOT_STARTED  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
 
 ## Objective (current checkpoint)
 
-Define human feedback prompts.
+Define RAG scope, indexing, and retrieval expectations.
 
 ## Deliverables (current checkpoint)
 
-- `prompt.demo_script` — produce a non-technical validation script
-- `prompt.feedback_intake` — collect structured feedback
-- `prompt.feedback_triage` — convert feedback into issues/checkpoints
+- RAG skill requirements and schema (doc)
+- Indexing strategy and chunking rules
+- Retrieval quality targets
 
 ## Acceptance (current checkpoint)
 
-- Demo script output includes steps, outcomes, and reset instructions
-- Feedback intake output includes all required fields
-- Feedback triage output includes issues/checkpoint conversion
+- RAG workflow documented end-to-end
+- Clear definitions for indexing and retrieval APIs
 
 ## Work log (current session)
+- 2026-02-03: Consolidated Stage 19; advanced to checkpoint 20.0; status set to NOT_STARTED.
 - 2026-02-03: Review PASS — 19.2 acceptance met; status set to DONE.
 - 2026-02-03: Added demo/feedback prompts; ran demo command; status set to IN_REVIEW.
 - 2026-02-03: Advanced checkpoint 19.1 → 19.2; status set to NOT_STARTED.
@@ -41,35 +41,6 @@ Define human feedback prompts.
 - 2026-02-03: Detected checkpoint headings for 19.1/19.2 not parsed by agentctl; logged ISSUE-007.
 - 2026-02-03: Review PASS — 19.0 acceptance met; status set to DONE.
 - 2026-02-03: Added refactor scan/execute/verify prompts; ran demo command; status set to IN_REVIEW.
-- 2026-02-03: Consolidated Stage 18; advanced to checkpoint 19.0; status set to NOT_STARTED.
-- 2026-02-03: Clarified consolidation prompt to preserve future stages; resolved ISSUE-006.
-- 2026-02-03: Restored Stage 21 backlog to PLAN.md after consolidation policy update.
-- 2026-02-03: Synced consolidation prompt wording in skill prompt resources.
-- 2026-02-03: Review PASS — 18.2 acceptance met; status set to DONE.
-- 2026-02-03: Added stage/checkpoint generation prompts; ran demo command; status set to IN_REVIEW.
-- 2026-02-03: Advanced checkpoint 18.1 → 18.2; status set to NOT_STARTED.
-- 2026-02-03: Review PASS — 18.1 acceptance met; status set to DONE.
-- 2026-02-03: Added architecture and milestones prompts; ran demo command; status set to IN_REVIEW.
-- 2026-02-03: Advanced checkpoint 18.0 → 18.1; status set to NOT_STARTED.
-- 2026-02-03: Review PASS — 17.2 acceptance met; status set to DONE.
-- 2026-02-03: Added preset workflows; ran demo commands; status set to IN_REVIEW.
-- 2026-02-03: Advanced checkpoint 17.1 → 17.2; status set to NOT_STARTED.
-- 2026-02-03: Review PASS — 17.1 acceptance met; status set to DONE.
-- 2026-02-03: Implemented workflow engine + agentctl workflow selection; ran demo commands; status set to IN_REVIEW.
-- 2026-02-03: Advanced checkpoint 17.0 → 17.1; status set to NOT_STARTED.
-- 2026-02-03: Review PASS — 17.0 acceptance met; status set to DONE.
-- 2026-02-03: Added workflow schema doc; ran demo command; status set to IN_REVIEW.
-- 2026-02-03: Consolidated Stage 16; advanced to checkpoint 17.0; status set to NOT_STARTED.
-- 2026-02-03: Review PASS — 16.2 acceptance met; status set to DONE.
-- 2026-02-03: Ran sync demo for 16.2; status set to IN_REVIEW.
-- 2026-02-03: Advanced checkpoint 16.1 → 16.2; status set to NOT_STARTED.
-- 2026-02-03: Review PASS — 16.1 acceptance met; status set to DONE.
-- 2026-02-03: Ran subscription demo for 16.1; status set to IN_REVIEW.
-- 2026-02-03: Advanced checkpoint 16.0 → 16.1; status set to NOT_STARTED.
-- 2026-02-03: Review PASS — 16.0 acceptance met; status set to DONE.
-- 2026-02-03: Verified skill source docs for 16.0; ran demo command; status set to IN_REVIEW.
-- 2026-02-03: Consolidated Stage 15; advanced to checkpoint 16.0; status set to NOT_STARTED.
-
 ## Workflow state
 - Name: refactor-cycle
 - Last run: 1 step(s)
@@ -77,7 +48,7 @@ Define human feedback prompts.
 
 ## Evidence
 
-- `python3 tools/prompt_catalog.py prompts/template_prompts.md get prompt.demo_script` prints the new demo script prompt.
+(None yet)
 
 ## Active issues
 
