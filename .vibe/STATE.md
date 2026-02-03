@@ -12,26 +12,27 @@
 ## Current focus
 
 - Stage: 19
-- Checkpoint: 19.1
-- Status: DONE  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
+- Checkpoint: 19.2
+- Status: NOT_STARTED  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
 
 ## Objective (current checkpoint)
 
-Define testing and coverage prompts.
+Define human feedback prompts.
 
 ## Deliverables (current checkpoint)
 
-- `prompt.test_gap_analysis` — identify untested paths tied to risk
-- `prompt.test_generation` — generate runnable tests for one gap
-- `prompt.test_review` — review tests for signal/noise and maintainability
+- `prompt.demo_script` — produce a non-technical validation script
+- `prompt.feedback_intake` — collect structured feedback
+- `prompt.feedback_triage` — convert feedback into issues/checkpoints
 
 ## Acceptance (current checkpoint)
 
-- Test gap analysis output includes scenario, location, risk, proposed test type, fixture strategy
-- Test generation output includes exact paths, rationale, mocks, commands
-- Test review output includes coverage, brittleness, and concrete edits
+- Demo script output includes steps, outcomes, and reset instructions
+- Feedback intake output includes all required fields
+- Feedback triage output includes issues/checkpoint conversion
 
 ## Work log (current session)
+- 2026-02-03: Advanced checkpoint 19.1 → 19.2; status set to NOT_STARTED.
 - 2026-02-03: Review PASS — 19.1 acceptance met; status set to DONE.
 - 2026-02-03: Added test gap/generation/review prompts; ran demo command; status set to IN_REVIEW.
 - 2026-02-03: Advanced checkpoint 19.0 → 19.1; status set to NOT_STARTED.
@@ -74,7 +75,7 @@ Define testing and coverage prompts.
 
 ## Evidence
 
-- `python3 tools/prompt_catalog.py prompts/template_prompts.md get prompt.test_gap_analysis` prints the new test gap analysis prompt.
+(None yet)
 
 ## Active issues
 
