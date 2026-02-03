@@ -12,27 +12,27 @@
 ## Current focus
 
 - Stage: 19
-- Checkpoint: 19.0
-- Status: DONE  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
+- Checkpoint: 19.1
+- Status: NOT_STARTED  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
 
 ## Objective (current checkpoint)
 
-Define refactor scanning and execution prompts with structured outputs.
+Define testing and coverage prompts.
 
 ## Deliverables (current checkpoint)
 
-- `prompt.refactor_scan` — produces prioritized refactor backlog with justifications
-- `prompt.refactor_execute` — applies a single refactor checkpoint safely
-- `prompt.refactor_verify` — verifies refactor safety and quality
-- Output: structured findings, refactor plan, and execution evidence
+- `prompt.test_gap_analysis` — identify untested paths tied to risk
+- `prompt.test_generation` — generate runnable tests for one gap
+- `prompt.test_review` — review tests for signal/noise and maintainability
 
 ## Acceptance (current checkpoint)
 
-- Refactor scan output includes top findings, refactor plan, and selection recommendation
-- Refactor execute output includes edits summary, tests, and pass/fail evidence
-- Refactor verify output includes pass/fail matrix and risk callouts
+- Test gap analysis output includes scenario, location, risk, proposed test type, fixture strategy
+- Test generation output includes exact paths, rationale, mocks, commands
+- Test review output includes coverage, brittleness, and concrete edits
 
 ## Work log (current session)
+- 2026-02-03: Advanced checkpoint 19.0 → 19.1; status set to NOT_STARTED.
 - 2026-02-03: Detected checkpoint headings for 19.1/19.2 not parsed by agentctl; logged ISSUE-007.
 - 2026-02-03: Review PASS — 19.0 acceptance met; status set to DONE.
 - 2026-02-03: Added refactor scan/execute/verify prompts; ran demo command; status set to IN_REVIEW.
@@ -76,10 +76,7 @@ Define refactor scanning and execution prompts with structured outputs.
 
 ## Active issues
 
-- [BLOCKER] ISSUE-007: Stage 19 checkpoint headings skipped by agentctl
-  - Severity: BLOCKER
-  - Owner: agent
-  - Notes: .vibe/PLAN.md uses level-2 headings for 19.1 and 19.2, so agentctl doesn't recognize them as checkpoints and jumps to 20.0. Need to normalize headings to ### for checkpoints or adjust parser.
+(None)
 
 ## Decisions
 
