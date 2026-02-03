@@ -33,6 +33,7 @@ Define refactor scanning and execution prompts with structured outputs.
 - Refactor verify output includes pass/fail matrix and risk callouts
 
 ## Work log (current session)
+- 2026-02-03: Detected checkpoint headings for 19.1/19.2 not parsed by agentctl; logged ISSUE-007.
 - 2026-02-03: Review PASS — 19.0 acceptance met; status set to DONE.
 - 2026-02-03: Added refactor scan/execute/verify prompts; ran demo command; status set to IN_REVIEW.
 - 2026-02-03: Consolidated Stage 18; advanced to checkpoint 19.0; status set to NOT_STARTED.
@@ -75,7 +76,10 @@ Define refactor scanning and execution prompts with structured outputs.
 
 ## Active issues
 
-(None)
+- [BLOCKER] ISSUE-007: Stage 19 checkpoint headings skipped by agentctl
+  - Severity: BLOCKER
+  - Owner: agent
+  - Notes: .vibe/PLAN.md uses level-2 headings for 19.1 and 19.2, so agentctl doesn't recognize them as checkpoints and jumps to 20.0. Need to normalize headings to ### for checkpoints or adjust parser.
 
 ## Decisions
 
