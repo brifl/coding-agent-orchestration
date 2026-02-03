@@ -12,25 +12,26 @@
 ## Current focus
 
 - Stage: 18
-- Checkpoint: 18.0
-- Status: DONE  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
+- Checkpoint: 18.1
+- Status: NOT_STARTED  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
 
 ## Objective (current checkpoint)
 
-Create prompts for early-stage idea development.
+Create prompts for architecture and milestone planning.
 
 ## Deliverables (current checkpoint)
 
-- `prompt.ideation` — brainstorm features from a problem statement
-- `prompt.feature_breakdown` — decompose a feature into sub-features
-- Output format: structured feature list with priorities
+- `prompt.architecture` — design system architecture from features
+- `prompt.milestones` — break architecture into major milestones
+- Output: architecture doc, milestone list with dependencies
 
 ## Acceptance (current checkpoint)
 
-- Prompts produce actionable feature lists
-- Output can feed into architecture prompts
+- Architecture prompt produces component diagrams / descriptions
+- Milestones are sequenced logically
 
 ## Work log (current session)
+- 2026-02-03: Advanced checkpoint 18.0 → 18.1; status set to NOT_STARTED.
 - 2026-02-03: Review PASS — 18.0 acceptance met; status set to DONE.
 - 2026-02-03: Added ideation and feature breakdown prompts; ran demo command; status set to IN_REVIEW.
 - 2026-02-03: Consolidated Stage 17; advanced to checkpoint 18.0; status set to NOT_STARTED.
@@ -60,7 +61,7 @@ Create prompts for early-stage idea development.
 
 ## Evidence
 
-- `python3 tools/prompt_catalog.py prompts/template_prompts.md get prompt.ideation` prints the new ideation prompt.
+(None yet)
 
 ## Active issues
 
