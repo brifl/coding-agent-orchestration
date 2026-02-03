@@ -13,7 +13,7 @@
 
 - Stage: 13
 - Checkpoint: 13.2
-- Status: IN_REVIEW  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
+- Status: DONE  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
 
 ## Objective (current checkpoint)
 
@@ -31,6 +31,7 @@ Define a standard manifest format for skills.
 - Existing skills can be migrated to new format
 
 ## Work log (current session)
+- 2026-02-03: Review PASS — 13.2 acceptance met; status set to DONE.
 - 2026-02-03: Implemented skillctl CLI and bootstrap integration; ran demo commands; status set to IN_REVIEW.
 - 2026-02-03: Advanced checkpoint 13.1 → 13.2; status set to NOT_STARTED.
 - 2026-02-03: Review PASS — 13.1 acceptance met; status set to DONE.
