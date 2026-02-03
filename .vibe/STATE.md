@@ -13,7 +13,7 @@
 
 - Stage: 15
 - Checkpoint: 15.1
-- Status: IN_REVIEW  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
+- Status: DONE  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
 
 ## Objective (current checkpoint)
 
@@ -31,6 +31,7 @@ Implement skill subscription with version pinning.
 - Lock file records exact versions for reproducibility
 
 ## Work log (current session)
+- 2026-02-03: Review PASS — 15.1 acceptance met; status set to DONE.
 - 2026-02-03: Implemented skill subscription + lock file; ran demo command; status set to IN_REVIEW.
 - 2026-02-03: Advanced checkpoint 15.0 → 15.1; status set to NOT_STARTED.
 - 2026-02-03: Review PASS — 15.0 acceptance met; status set to DONE.
