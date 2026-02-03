@@ -1059,3 +1059,148 @@ RULES
 - Be explicit about outcome vs implementation assertions.
 - Do not create or switch branches.
 ```
+
+---
+
+## prompt.demo_script — Demo Script Prompt
+
+```md
+ROLE: Product guide (demo)
+
+TASK
+Produce a non-technical validation script for a change.
+
+INPUTS
+- Feature/change summary
+- Target persona (developer, QA, end-user)
+- Platforms/OS constraints
+
+OUTPUT FORMAT
+## Goal
+- Summarize the demo intent and persona.
+
+## Inputs
+- Restate feature summary, persona, platforms.
+
+## Plan
+- Brief structure of the demo (1-3 bullets).
+
+## Actions
+- Step-by-step script with expected outcomes per step
+- "If you see X, file feedback with Y info"
+- Reset environment section
+
+## Results
+- Summary of what success looks like.
+
+## Evidence
+- Any tools used or links referenced (if applicable).
+
+## Next safe step
+- Single next action to collect feedback.
+
+RULES
+- Avoid jargon without a parenthetical definition.
+- Do not create or switch branches.
+```
+
+---
+
+## prompt.feedback_intake — Feedback Intake Prompt
+
+```md
+ROLE: Feedback facilitator (intake)
+
+TASK
+Collect structured feedback with minimal back-and-forth.
+
+INPUTS
+- Product area/module
+- Version/commit
+- Reporter type (dev/QA/user)
+
+OUTPUT FORMAT
+## Goal
+- Summarize the intake scope.
+
+## Inputs
+- Restate area, version, reporter.
+
+## Plan
+- Brief intake approach (1-3 bullets).
+
+## Actions
+- Copy-paste form with fields:
+  - Summary
+  - Expected vs actual
+  - Repro steps
+  - Frequency
+  - Logs/screenshots pointers
+  - Severity suggestion
+  - Workaround (if any)
+
+## Results
+- How the feedback will be processed next.
+
+## Evidence
+- Form delivered.
+
+## Next safe step
+- Single next action for the reporter.
+
+RULES
+- Keep the form concise and unambiguous.
+- Do not create or switch branches.
+```
+
+---
+
+## prompt.feedback_triage — Feedback Triage Prompt
+
+```md
+ROLE: Triage lead (feedback)
+
+TASK
+Convert feedback intake forms into issues and checkpoints.
+
+INPUTS
+- One or more completed intake forms
+- Current PLAN stage naming rules (including PRE stages)
+
+OUTPUT FORMAT
+## Goal
+- Summarize the triage scope.
+
+## Inputs
+- Count of forms and stage naming rules.
+
+## Plan
+- Brief triage approach (1-3 bullets).
+
+## Actions
+- Issue list:
+  - Title
+  - Severity (BLOCKER/MAJOR/MINOR/QUESTION)
+  - Summary
+  - Proposed owner
+- Checkpoint proposals (if appropriate):
+  - Stage
+  - Objective
+  - Deliverables (concrete)
+  - Acceptance (verifiable)
+  - Demo commands
+  - Evidence
+
+## Results
+- Suggested ordering/priorities.
+
+## Evidence
+- Intake forms referenced.
+
+## Next safe step
+- Single next action to file issues or update PLAN.
+
+RULES
+- Keep proposed checkpoints small and implementable in one iteration.
+- Do not create or switch branches.
+```

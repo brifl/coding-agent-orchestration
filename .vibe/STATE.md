@@ -13,7 +13,7 @@
 
 - Stage: 19
 - Checkpoint: 19.2
-- Status: NOT_STARTED  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
+- Status: IN_REVIEW  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
 
 ## Objective (current checkpoint)
 
@@ -32,6 +32,7 @@ Define human feedback prompts.
 - Feedback triage output includes issues/checkpoint conversion
 
 ## Work log (current session)
+- 2026-02-03: Added demo/feedback prompts; ran demo command; status set to IN_REVIEW.
 - 2026-02-03: Advanced checkpoint 19.1 → 19.2; status set to NOT_STARTED.
 - 2026-02-03: Review PASS — 19.1 acceptance met; status set to DONE.
 - 2026-02-03: Added test gap/generation/review prompts; ran demo command; status set to IN_REVIEW.
@@ -75,7 +76,7 @@ Define human feedback prompts.
 
 ## Evidence
 
-(None yet)
+- `python3 tools/prompt_catalog.py prompts/template_prompts.md get prompt.demo_script` prints the new demo script prompt.
 
 ## Active issues
 
