@@ -13,7 +13,7 @@
 
 - Stage: 16
 - Checkpoint: 16.0
-- Status: IN_REVIEW  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
+- Status: DONE  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
 
 ## Objective (current checkpoint)
 
@@ -31,6 +31,7 @@ Define how external skill sources are specified and trusted.
 - Trust level affects installation warnings
 
 ## Work log (current session)
+- 2026-02-03: Review PASS — 16.0 acceptance met; status set to DONE.
 - 2026-02-03: Verified skill source docs for 16.0; ran demo command; status set to IN_REVIEW.
 - 2026-02-03: Consolidated Stage 15; advanced to checkpoint 16.0; status set to NOT_STARTED.
 - 2026-02-03: Review PASS — 15.2 acceptance met; status set to DONE.
