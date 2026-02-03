@@ -23,3 +23,13 @@ Stages sort by numeric value first, then by suffix.
 - `11, 12, 12A, 12B, 13`
 - `2, 2A, 2B, 3`
 - `9, 10, 10A, 11`
+
+## (SKIP) markers
+
+Use `(SKIP)` to defer a stage or checkpoint without removing it from the plan.
+
+- Stage syntax: `## (SKIP) Stage 14 — Title`
+- Checkpoint syntax: `### (SKIP) 14.1 — Title`
+- Advance behavior: `(SKIP)` checkpoints are parsed but skipped when advancing.
+- Consolidation: `(SKIP)` stages/checkpoints are preserved (not archived).
+- Reactivation: remove `(SKIP)` to make the item active again.

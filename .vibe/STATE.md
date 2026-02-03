@@ -13,23 +13,24 @@
 
 - Stage: 13A
 - Checkpoint: 13A.2
-- Status: NOT_STARTED  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
+- Status: IN_REVIEW  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
 
 ## Objective (current checkpoint)
 
-Add unit and integration tests covering (SKIP) parsing, advance-over-skip, and consolidation preservation.
+Update stage ordering and conventions documentation to describe (SKIP) semantics.
 
 ## Deliverables (current checkpoint)
 
-- `tests/workflow/test_skip_marker.py` — dedicated test module for (SKIP) behavior
-- Tests: checkpoint parser includes (SKIP) IDs, advance skips them, `_is_checkpoint_skipped` returns correct values, consolidation preserves (SKIP) items, removing (SKIP) reactivates checkpoint
+- `docs/stage_ordering.md` — new section describing (SKIP) marker syntax and behavior
+- `prompts/template_prompts.md` — updated consolidation prompt to explicitly preserve (SKIP) items
 
 ## Acceptance (current checkpoint)
 
-- All tests pass with `pytest tests/workflow/test_skip_marker.py`
-- No regressions in existing tests: `pytest tests/`
+- Documentation clearly describes: syntax, advance behavior, consolidation preservation, reactivation
+- Consolidation prompt includes (SKIP) preservation rule
 
 ## Work log (current session)
+- 2026-02-02: Updated stage ordering docs with (SKIP) semantics; ran demo command; status set to IN_REVIEW.
 - 2026-02-02: Advanced checkpoint 13A.1 → 13A.2; status set to NOT_STARTED.
 - 2026-02-02: Review PASS — 13A.1 acceptance met; status set to DONE.
 - 2026-02-02: Re-ran pytest with --capture=sys; tests pass; status set to IN_REVIEW.
@@ -65,13 +66,9 @@ Add unit and integration tests covering (SKIP) parsing, advance-over-skip, and c
 
 ## Evidence
 
-- Added `tests/workflow/test_skip_marker.py` (5 tests covering parsing, skip detection, advance skip, reactivation, consolidation prompt).
-- `pytest tests/workflow/test_skip_marker.py -v` → FAIL (capture FileNotFoundError; collected 0 items).
-- `pytest tests/ -v` → FAIL (capture FileNotFoundError; collected 0 items).
-- `pytest tests/workflow/test_skip_marker.py -v -s` → PASS (5 passed).
-- `pytest tests/ -v -s` → PASS (49 passed).
-- `pytest tests/workflow/test_skip_marker.py -v --capture=sys` → PASS (5 passed).
-- `pytest tests/ -v --capture=sys` → PASS (49 passed).
+- `docs/stage_ordering.md` now includes (SKIP) syntax and behavior section.
+- Consolidation prompt already includes: "Preserve any stages/checkpoints marked (SKIP); they are deferred, not completed."
+- `cat docs/stage_ordering.md` shows the new (SKIP) markers section.
 
 ## Active issues
 
