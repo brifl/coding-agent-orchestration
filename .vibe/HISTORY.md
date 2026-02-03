@@ -13,6 +13,10 @@
 
 ## Completed stages
 
+### 2026-02-03 — Stage 16: Skill Subscription (completed)
+
+Repeated subscription flow for Stage 16 with pinning and sync/upgrade commands to validate the new workflow additions (checkpoints 16.0–16.2).
+
 ### 2026-02-03 — Stage 15: Skill Subscription (completed)
 
 Defined skill source/trust docs, added subscription + lockfile support, and implemented sync/upgrade behavior for subscribed skills (checkpoints 15.0–15.2).
