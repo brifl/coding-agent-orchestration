@@ -13,24 +13,25 @@
 
 - Stage: 14
 - Checkpoint: 14.1
-- Status: NOT_STARTED  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
+- Status: BLOCKED  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
 
 ## Objective (current checkpoint)
 
-Define how skill sets are structured and stored.
+Resolve skill sets to concrete skill lists.
 
 ## Deliverables (current checkpoint)
 
-- `docs/skill_sets.md` — schema and usage documentation
-- `skillsets/` directory for set definitions
-- Set format: name, description, skills list, version constraints
+- `skillctl.py` enhancement: `resolve-set` command
+- Dependency resolution (skill A requires skill B)
+- Conflict detection (incompatible versions)
 
 ## Acceptance (current checkpoint)
 
-- Sets can reference skills by name with optional version pins
-- Sets can extend other sets (inheritance)
+- `skillctl resolve-set vibe-core` outputs resolved skill list
+- Circular dependencies detected and reported
 
 ## Work log (current session)
+- 2026-02-02: Blocked on missing `tools/skillctl.py`; status set to BLOCKED.
 - 2026-02-02: Advanced checkpoint 14.0 → 14.1; status set to NOT_STARTED.
 - 2026-02-02: Review PASS — 14.0 acceptance met; status set to DONE.
 - 2026-02-02: Added skill set docs and examples; ran demo command; status set to IN_REVIEW.
@@ -47,12 +48,14 @@ Define how skill sets are structured and stored.
 
 ## Evidence
 
-- Added `docs/skill_sets.md` describing schema, version pins, and inheritance.
-- Added `skillsets/` with `vibe-base.yaml` and `vibe-core.yaml`.
-- `cat skillsets/vibe-core.yaml` output:\n  `name: vibe-core`\n  `description: Default bundle for repo workflows.`\n  `extends:`\n  `  - vibe-base`\n  `skills:`\n  `  - name: vibe-review-pass`\n  `    version: \">=1.0.0\"`
+(None yet)
 
 ## Active issues
 
+- [BLOCKER] ISSUE-008: Missing tools/skillctl.py required for 14.1
+  - Severity: BLOCKER
+  - Owner: agent
+  - Notes: Checkpoint 14.1 requires enhancing `tools/skillctl.py`, but the file does not exist (Stage 13.2 was skipped). Need direction on whether to implement skillctl now or re-open Stage 13.2.
 - [MAJOR] ISSUE-005: Agents not working from current branch
   - Severity: MAJOR
   - Owner: agent
