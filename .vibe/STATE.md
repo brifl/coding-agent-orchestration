@@ -13,7 +13,7 @@
 
 - Stage: 14
 - Checkpoint: 14.1
-- Status: IN_REVIEW  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
+- Status: DONE  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
 
 ## Objective (current checkpoint)
 
@@ -31,6 +31,7 @@ Resolve skill sets to concrete skill lists.
 - Circular dependencies detected and reported
 
 ## Work log (current session)
+- 2026-02-03: Review PASS — 14.1 acceptance met; status set to DONE.
 - 2026-02-03: Implemented resolve-set in skillctl; ran demo command; status set to IN_REVIEW.
 - 2026-02-03: Consolidated Stage 13; advanced to checkpoint 14.1; status set to NOT_STARTED.
 - 2026-02-03: Review PASS — 13.2 acceptance met; status set to DONE.
