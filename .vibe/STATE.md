@@ -11,26 +11,27 @@
 
 ## Current focus
 
-- Stage: 13
-- Checkpoint: 13.2
-- Status: DONE  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
+- Stage: 14
+- Checkpoint: 14.1
+- Status: NOT_STARTED  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
 
 ## Objective (current checkpoint)
 
-Define a standard manifest format for skills.
+Resolve skill sets to concrete skill lists.
 
 ## Deliverables (current checkpoint)
 
-- `docs/skill_manifest.md` — schema documentation
-- `SKILL.yaml` or `SKILL.json` manifest format
-- Fields: name, version, description, agents, dependencies, entry points
+- `skillctl.py` enhancement: `resolve-set` command
+- Dependency resolution (skill A requires skill B)
+- Conflict detection (incompatible versions)
 
 ## Acceptance (current checkpoint)
 
-- Schema supports: multi-agent compatibility, version constraints, capability requirements
-- Existing skills can be migrated to new format
+- `skillctl resolve-set vibe-core` outputs resolved skill list
+- Circular dependencies detected and reported
 
 ## Work log (current session)
+- 2026-02-03: Consolidated Stage 13; advanced to checkpoint 14.1; status set to NOT_STARTED.
 - 2026-02-03: Review PASS — 13.2 acceptance met; status set to DONE.
 - 2026-02-03: Implemented skillctl CLI and bootstrap integration; ran demo commands; status set to IN_REVIEW.
 - 2026-02-03: Advanced checkpoint 13.1 → 13.2; status set to NOT_STARTED.
@@ -40,26 +41,10 @@ Define a standard manifest format for skills.
 - 2026-02-03: Review PASS — 13.0 acceptance met; status set to DONE.
 - 2026-02-03: Added skill manifest schema and sample; ran demo command; status set to IN_REVIEW.
 - 2026-02-03: JIT injected Stage 13 before Stage 14; advanced to checkpoint 13.0; status set to NOT_STARTED.
-- 2026-02-02: Blocked on missing `tools/skillctl.py`; status set to BLOCKED.
-- 2026-02-02: Advanced checkpoint 14.0 → 14.1; status set to NOT_STARTED.
-- 2026-02-02: Review PASS — 14.0 acceptance met; status set to DONE.
-- 2026-02-02: Added skill set docs and examples; ran demo command; status set to IN_REVIEW.
-- 2026-02-02: Consolidated Stage 13A; advanced stage pointer to 14.0; cleared evidence.
-- 2026-02-02: Review PASS — 13A.2 acceptance met; status set to DONE.
-- 2026-02-02: Updated stage ordering docs with (SKIP) semantics; ran demo command; status set to IN_REVIEW.
-- 2026-02-02: Advanced checkpoint 13A.1 → 13A.2; status set to NOT_STARTED.
-- 2026-02-02: Review PASS — 13A.1 acceptance met; status set to DONE.
-- 2026-02-02: Re-ran pytest with --capture=sys; tests pass; status set to IN_REVIEW.
-- 2026-02-02: Implemented 13A.1 tests; pytest -v capture fails (FileNotFoundError); status set to BLOCKED.
-- 2026-02-02: Advanced checkpoint 13A.0 → 13A.1; status set to NOT_STARTED.
-- 2026-02-02: Review PASS — 13A.0 acceptance met; status set to DONE.
-- 2026-02-02: Added consolidation prompt rule to preserve (SKIP) items; ran demo commands + skip behavior check; status set to IN_REVIEW.
 
 ## Evidence
 
-- `python3 tools/skillctl.py list` output lists repo skills with versions (example: `vibe-loop 1.0.0`).
-- `python3 tools/skillctl.py install vibe-prompts --global` → Installed to `/home/brifl/.gemini/skills/vibe-prompts`.
-- `python3 tools/skillctl.py validate skills/vibe-loop` → `OK: skills/vibe-loop`.
+(None yet)
 
 ## Active issues
 

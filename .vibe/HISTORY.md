@@ -13,6 +13,10 @@
 
 ## Completed stages
 
+### 2026-02-03 — Stage 13: Skill Library Foundation (completed)
+
+Defined skill manifest schema with examples, added skill discovery registry, and introduced a skill management CLI integrated with bootstrap installs (checkpoints 13.0–13.2).
+
 ### 2026-02-02 — Stage 13A: SKIP Marker Support (completed)
 
 Added `(SKIP)` marker handling in agentctl, added skip marker tests, and documented SKIP semantics and consolidation preservation for deferred stages/checkpoints (checkpoints 13A.0–13A.2).
@@ -81,6 +85,7 @@ Introduced stable prompt IDs with a shared catalog and updated agent control too
 
 ### Resolved issues (archived)
 
+- 2026-02-03 — ISSUE-008: JIT inserted Stage 13 to provide skillctl before Stage 14; blocker cleared.
 - 2026-02-02 — ISSUE-007: Pytest capture failures resolved by using `--capture=sys` for demo commands.
 - 2026-01-26 — ISSUE-BOOT-001: Declared `.vibe/` as the only authoritative workflow location and removed fallback logic.
 - 2026-01-27 — ISSUE-001: Updated `vibe_next_and_print.py` to respect CODEX_HOME aware skills roots.
