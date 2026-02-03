@@ -11,26 +11,27 @@
 
 ## Current focus
 
-- Stage: 14
-- Checkpoint: 14.1
-- Status: BLOCKED  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
+- Stage: 13
+- Checkpoint: 13.0
+- Status: NOT_STARTED  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
 
 ## Objective (current checkpoint)
 
-Resolve skill sets to concrete skill lists.
+Define a standard manifest format for skills.
 
 ## Deliverables (current checkpoint)
 
-- `skillctl.py` enhancement: `resolve-set` command
-- Dependency resolution (skill A requires skill B)
-- Conflict detection (incompatible versions)
+- `docs/skill_manifest.md` — schema documentation
+- `SKILL.yaml` or `SKILL.json` manifest format
+- Fields: name, version, description, agents, dependencies, entry points
 
 ## Acceptance (current checkpoint)
 
-- `skillctl resolve-set vibe-core` outputs resolved skill list
-- Circular dependencies detected and reported
+- Schema supports: multi-agent compatibility, version constraints, capability requirements
+- Existing skills can be migrated to new format
 
 ## Work log (current session)
+- 2026-02-03: JIT injected Stage 13 before Stage 14; advanced to checkpoint 13.0; status set to NOT_STARTED.
 - 2026-02-02: Blocked on missing `tools/skillctl.py`; status set to BLOCKED.
 - 2026-02-02: Advanced checkpoint 14.0 → 14.1; status set to NOT_STARTED.
 - 2026-02-02: Review PASS — 14.0 acceptance met; status set to DONE.
@@ -52,10 +53,6 @@ Resolve skill sets to concrete skill lists.
 
 ## Active issues
 
-- [BLOCKER] ISSUE-008: Missing tools/skillctl.py required for 14.1
-  - Severity: BLOCKER
-  - Owner: agent
-  - Notes: Checkpoint 14.1 requires enhancing `tools/skillctl.py`, but the file does not exist (Stage 13.2 was skipped). Need direction on whether to implement skillctl now or re-open Stage 13.2.
 - [MAJOR] ISSUE-005: Agents not working from current branch
   - Severity: MAJOR
   - Owner: agent

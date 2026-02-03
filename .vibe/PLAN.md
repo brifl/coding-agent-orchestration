@@ -97,6 +97,92 @@ Treat skills as first-class, reusable artifacts with proper metadata, discovery,
 
 ---
 
+## Stage 13 — Skill Library Foundation
+
+**Stage objective:**
+Treat skills as first-class, reusable artifacts with proper metadata, discovery, and management.
+
+### 13.0 — Skill manifest schema
+
+* **Objective:**
+  Define a standard manifest format for skills.
+
+* **Deliverables:**
+
+  * `docs/skill_manifest.md` — schema documentation
+  * `SKILL.yaml` or `SKILL.json` manifest format
+  * Fields: name, version, description, agents, dependencies, entry points
+
+* **Acceptance:**
+
+  * Schema supports: multi-agent compatibility, version constraints, capability requirements
+  * Existing skills can be migrated to new format
+
+* **Demo commands:**
+
+  * `cat skills/vibe-loop/SKILL.yaml`
+
+* **Evidence:**
+
+  * Example manifest with all fields populated
+
+---
+
+### 13.1 — Skill discovery and registry
+
+* **Objective:**
+  Enable programmatic skill discovery and listing.
+
+* **Deliverables:**
+
+  * `tools/skill_registry.py` — discovers and indexes available skills
+  * Scans: global, repo-local, built-in locations
+  * Caching for performance
+
+* **Acceptance:**
+
+  * `skill_registry.py list` shows all available skills with metadata
+  * `skill_registry.py info <name>` shows detailed skill info
+
+* **Demo commands:**
+
+  * `python tools/skill_registry.py list --format json`
+  * `python tools/skill_registry.py info vibe-loop`
+
+* **Evidence:**
+
+  * List output showing skills from multiple sources
+
+---
+
+### 13.2 — Skill CLI and management
+
+* **Objective:**
+  Provide a unified CLI for skill management.
+
+* **Deliverables:**
+
+  * `tools/skillctl.py` — skill management commands
+  * Commands: list, info, install, uninstall, update, validate
+  * Integration with bootstrap.py (skillctl as the backend)
+
+* **Acceptance:**
+
+  * All skill operations go through skillctl
+  * Consistent UX across install/update/remove
+
+* **Demo commands:**
+
+  * `python tools/skillctl.py list`
+  * `python tools/skillctl.py install vibe-prompts --global`
+  * `python tools/skillctl.py validate skills/vibe-loop`
+
+* **Evidence:**
+
+  * Full skill lifecycle demo (install, use, update, uninstall)
+
+---
+
 ## Stage 14 — Skill Sets
 
 **Stage objective:**
