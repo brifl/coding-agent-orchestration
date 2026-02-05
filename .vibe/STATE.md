@@ -13,7 +13,7 @@
 
 - Stage: 19A
 - Checkpoint: 19A.2
-- Status: IN_REVIEW  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
+- Status: BLOCKED  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
 
 ## Objective (current checkpoint)
 
@@ -31,6 +31,7 @@ Close out the Stage 19A prototype with a working end-to-end pipeline: scan → i
 - `retrieve.py pipeline` produces results from raw directories without pre-built index
 
 ## Work log (current session)
+- 2026-02-05: Blocked on clean-worktree requirement (repo has pre-existing modified files); need guidance before setting IN_REVIEW.
 - 2026-02-05: Implemented retrieve.py with pipeline mode; updated rag-index SKILL.md; ran skillctl install + retrieval demos; status set to IN_REVIEW.
 - 2026-02-05: Review PASS — 19A.1 acceptance met; all deliverables verified; advanced to 19A.2; status set to NOT_STARTED.
 - 2026-02-05: Implemented indexer.py; tested build, search, incremental skip/update/removal; all acceptance criteria pass; status set to IN_REVIEW.
@@ -69,7 +70,7 @@ Installed rag-index to /home/brifl/.gemini/skills/rag-index
 
 ## Active issues
 
-(None)
+- BLOCKER: Repo has pre-existing modified files (git status not clean), so the clean-worktree requirement blocks setting Status to IN_REVIEW. Guidance needed on whether to ignore, stash, or commit those changes.
 
 ## Decisions
 
