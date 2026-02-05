@@ -36,6 +36,7 @@ Build a deterministic chunking library that splits files into indexed units suit
 - Chunks have non-overlapping, contiguous line ranges that cover the entire file
 
 ## Work log (current session)
+
 - 2026-02-05: Resolved ISSUE-011 — added installable `vibe-one-loop` and `vibe-run` skills; wired bootstrap + skillset + docs to include them.
 - 2026-02-05: Resolved ISSUE-010 — added manifest front matter to `vibe-loop`, forced manifest refresh in global installs, and verified cross-repo/global discovery (including UNC-style `CODEX_HOME` normalization).
 - 2026-02-05: Mitigated ISSUE-009 in local tooling by normalizing `CODEX_HOME`/`AGENT_HOME` paths across resolver/install scripts; external Codex recommended-skills clone behavior still requires product-side verification.
@@ -64,7 +65,9 @@ Build a deterministic chunking library that splits files into indexed units suit
 - 2026-02-03: Detected checkpoint headings for 19.1/19.2 not parsed by agentctl; logged ISSUE-007.
 - 2026-02-03: Review PASS — 19.0 acceptance met; status set to DONE.
 - 2026-02-03: Added refactor scan/execute/verify prompts; ran demo command; status set to IN_REVIEW.
+
 ## Workflow state
+
 (none)
 
 ## Evidence
@@ -78,7 +81,7 @@ Build a deterministic chunking library that splits files into indexed units suit
 ## Active issues
 
 - [ ] ISSUE-009: Skills fail to load outside current repo (vendor_imports clone collision)
-  - Severity: BLOCKER
+  - Severity: MINOR
   - Owner: agent
   - Notes: External error seen in Codex app: "Unable to load recommended skills: git clone failed: fatal: destination path '\\wsl.localhost\\Ubuntu\\home\\brifl\\.codex\\vendor_imports\\skills' already exists and is not an empty directory." Local tooling now normalizes UNC-style `CODEX_HOME` paths and cross-repo discovery is verified. Remaining work is product-side behavior for recommended skill vendor clone/update handling. Docs for reference: https://developers.openai.com/codex/skills/
 
