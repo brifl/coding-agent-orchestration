@@ -1,12 +1,3 @@
----
-name: vibe-loop
-description: Run a single Vibe workflow loop.
-version: "1.0.0"
-dependencies:
-  - vibe-prompts
----
-# vibe-loop
-
 ## Purpose
 
 Drive the Vibe workflow deterministically for a target repository.
