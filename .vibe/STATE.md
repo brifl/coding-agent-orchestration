@@ -12,25 +12,28 @@
 ## Current focus
 
 - Stage: 19A
-- Checkpoint: 19A.0
+- Checkpoint: 19A.1
 - Status: IN_REVIEW  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
 
 ## Objective (current checkpoint)
 
-Build a scanner that indexes multiple directories.
+Build a searchable index from scanned files.
 
 ## Deliverables (current checkpoint)
 
-- `.codex/skills/rag-index/scanner.py` — recursive directory scanner
-- Configurable: include/exclude patterns, file types, depth
-- Output: file manifest with metadata (path, size, mtime, type)
+- `.codex/skills/rag-index/indexer.py` — builds embeddings/keyword index
+- Supports: full-text search, semantic search (with embeddings)
+- Storage: local SQLite or JSON for portability
 
 ## Acceptance (current checkpoint)
 
-- Scans multiple directories in one pass
-- Respects gitignore and custom exclusions
+- Index is persistent and incremental (only re-index changed files)
+- Search returns ranked results
 
 ## Work log (current session)
+- 2026-02-05: Implemented indexer.py; tested build, search, incremental skip/update/removal; all acceptance criteria pass; status set to IN_REVIEW.
+- 2026-02-05: Advanced checkpoint 19A.0 → 19A.1; status set to NOT_STARTED.
+- 2026-02-05: Review PASS — 19A.0 acceptance met; all deliverables verified; status set to DONE.
 - 2026-02-04: Implemented scanner.py; tested multi-dir, gitignore, exclusions, include/file-type filters, max-depth; all acceptance criteria pass; status set to IN_REVIEW.
 - 2026-02-03: Updated plan to Stage 19A; unblocked and set checkpoint 19A.0 to NOT_STARTED.
 - 2026-02-03: Blocked on Stage 20.0 scope/placement; clarification requested.
@@ -50,6 +53,33 @@ Build a scanner that indexes multiple directories.
 - Steps: prompt.checkpoint_implementation
 
 ## Evidence
+
+### Index build (demo command)
+
+```
+$ python .codex/skills/rag-index/indexer.py build --manifest manifest.json --output index.db
+Index built: 13 indexed, 0 skipped (unchanged), 0 removed, 0 errors.
+```
+
+### Search with ranked results (demo command)
+
+```
+$ python .codex/skills/rag-index/indexer.py search "directory scan" --index index.db --top-k 3
+[
+  {"rel_path": "scanner.py", "score": -3.2629, "snippet": "...Recursive >>>directory<<< scanner..."},
+  {"rel_path": "__pycache__/scanner.cpython-313.pyc", "score": -3.238, "snippet": "...directory...scan_directories..."}
+]
+```
+
+### Incremental indexing
+
+```
+First build:  {'indexed': 2, 'skipped': 0, 'removed': 0, 'errors': 0}
+Second build: {'indexed': 0, 'skipped': 2, 'removed': 0, 'errors': 0}  # unchanged
+Third build:  {'indexed': 1, 'skipped': 1, 'removed': 0, 'errors': 0}  # a.txt changed
+Fourth build: {'indexed': 0, 'skipped': 1, 'removed': 1, 'errors': 0}  # b.txt removed
+PASS: all incremental scenarios verified
+```
 
 ### Multi-directory scan
 
