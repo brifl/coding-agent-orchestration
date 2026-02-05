@@ -19,6 +19,7 @@ These skills are defined in `docs/base_skills.md` and are **immutable**:
 |-------|---------|---------------------------|
 | vibe-prompts | Prompt catalog access | No |
 | vibe-loop | Single loop execution | No |
+| vibe-one-loop | Single loop alias for compatibility | No |
 | vibe-run | Continuous execution | No |
 | agentctl | Dispatcher and validation | No (interface only) |
 

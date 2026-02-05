@@ -1,3 +1,11 @@
+---
+name: vibe-loop
+description: Run one deterministic Vibe dispatcher step and print the selected prompt body.
+version: "1.0.0"
+dependencies:
+  - vibe-prompts
+---
+
 ## Purpose
 
 Drive the Vibe workflow deterministically for a target repository.

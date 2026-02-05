@@ -23,9 +23,13 @@ A skill set is a YAML or JSON document with the following fields:
 name: vibe-base
 description: Core workflow essentials.
 skills:
+  - name: vibe-prompts
+    version: ">=1.0.0"
   - name: vibe-loop
     version: ">=1.0.0"
-  - name: vibe-prompts
+  - name: vibe-one-loop
+    version: ">=1.0.0"
+  - name: vibe-run
     version: ">=1.0.0"
 ```
 

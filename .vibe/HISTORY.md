@@ -109,6 +109,8 @@ Introduced stable prompt IDs with a shared catalog and updated agent control too
 
 ### Resolved issues (archived)
 
+- 2026-02-05 — ISSUE-011: Added installable `vibe-one-loop` and `vibe-run` skills; updated bootstrap + skillset + docs for consistent Codex loop/continuous surface.
+- 2026-02-05 — ISSUE-010: Added `vibe-loop` manifest front matter, global install refresh for manifests, and UNC-style `CODEX_HOME` normalization to restore cross-repo skill visibility.
 - 2026-02-03 — ISSUE-008: Stage 19A injected to host RAG scanner work; scope/location clarified.
 - 2026-02-03 — ISSUE-007: Normalized Stage 19 checkpoint headings so agentctl recognizes 19.1/19.2.
 - 2026-02-03 — ISSUE-006: Consolidation prompt updated to preserve future stages in PLAN.md backlog.

@@ -20,9 +20,30 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import subprocess
 import sys
 from pathlib import Path
+
+
+_WSL_UNC_RE = re.compile(r"^//wsl(?:\.localhost)?/[^/]+/(.+)$", re.IGNORECASE)
+_WIN_DRIVE_RE = re.compile(r"^([A-Za-z]):/(.+)$")
+
+
+def _normalize_home_path(raw: str) -> Path:
+    value = raw.strip().strip('"').strip("'")
+    if os.name != "nt":
+        value = value.replace("\\", "/")
+        unc_match = _WSL_UNC_RE.match(value)
+        if unc_match:
+            value = "/" + unc_match.group(1).lstrip("/")
+        else:
+            drive_match = _WIN_DRIVE_RE.match(value)
+            if drive_match:
+                drive = drive_match.group(1).lower()
+                tail = drive_match.group(2)
+                value = f"/mnt/{drive}/{tail}"
+    return Path(value).expanduser().resolve()
 
 
 def _skills_root_from_this_script() -> Path:
@@ -41,11 +62,11 @@ def _skills_root_env_fallback() -> Path | None:
     """
     codex_home = os.environ.get("CODEX_HOME")
     if codex_home:
-        return Path(codex_home).expanduser().resolve() / "skills"
+        return _normalize_home_path(codex_home) / "skills"
     agent_home = os.environ.get("AGENT_HOME")
     if not agent_home:
         return None
-    return Path(agent_home).expanduser().resolve() / "skills"
+    return _normalize_home_path(agent_home) / "skills"
 
 
 def _looks_like_skills_root(root: Path) -> bool:

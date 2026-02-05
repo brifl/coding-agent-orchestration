@@ -12,10 +12,30 @@ from __future__ import annotations
 
 import argparse
 import os
+import re
 from pathlib import Path
 
 # Assume 'gemini' for the agent if not specified.
 DEFAULT_AGENT = "gemini"
+
+_WSL_UNC_RE = re.compile(r"^//wsl(?:\.localhost)?/[^/]+/(.+)$", re.IGNORECASE)
+_WIN_DRIVE_RE = re.compile(r"^([A-Za-z]):/(.+)$")
+
+def _normalize_home_path(raw: str) -> Path:
+    value = raw.strip().strip('"').strip("'")
+    if os.name != "nt":
+        value = value.replace("\\", "/")
+        unc_match = _WSL_UNC_RE.match(value)
+        if unc_match:
+            value = "/" + unc_match.group(1).lstrip("/")
+        else:
+            drive_match = _WIN_DRIVE_RE.match(value)
+            if drive_match:
+                drive = drive_match.group(1).lower()
+                tail = drive_match.group(2)
+                value = f"/mnt/{drive}/{tail}"
+    return Path(value).expanduser().resolve()
+
 
 def _get_repo_root() -> Path:
     """Gets the repository root by searching for the .git directory."""
@@ -27,7 +47,7 @@ def _get_repo_root() -> Path:
 def _codex_home() -> Path:
     env_home = os.environ.get("CODEX_HOME")
     if env_home:
-        return Path(env_home).expanduser().resolve()
+        return _normalize_home_path(env_home)
     return Path.home() / ".codex"
 
 

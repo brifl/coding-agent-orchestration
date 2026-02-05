@@ -36,6 +36,9 @@ Build a deterministic chunking library that splits files into indexed units suit
 - Chunks have non-overlapping, contiguous line ranges that cover the entire file
 
 ## Work log (current session)
+- 2026-02-05: Resolved ISSUE-011 — added installable `vibe-one-loop` and `vibe-run` skills; wired bootstrap + skillset + docs to include them.
+- 2026-02-05: Resolved ISSUE-010 — added manifest front matter to `vibe-loop`, forced manifest refresh in global installs, and verified cross-repo/global discovery (including UNC-style `CODEX_HOME` normalization).
+- 2026-02-05: Mitigated ISSUE-009 in local tooling by normalizing `CODEX_HOME`/`AGENT_HOME` paths across resolver/install scripts; external Codex recommended-skills clone behavior still requires product-side verification.
 - 2026-02-05: Logged ISSUE-011 for vibe-run/vibe-one-loop contract drift (documented but not installable); expanded ISSUE-010 with manifest/discovery evidence.
 - 2026-02-05: Advanced checkpoint 20.0 → 20.1 (Chunking engine); status set to NOT_STARTED.
 - 2026-02-05: Review PASS — 20.0 acceptance met; determinism verified, content_hash correct, --stats working; status set to DONE.
@@ -66,22 +69,18 @@ Build a deterministic chunking library that splits files into indexed units suit
 
 ## Evidence
 
-(Pending — checkpoint 20.1 not yet started)
+- `python3 tools/skillctl.py validate .codex/skills/vibe-loop` → `OK`
+- `python3 tools/skillctl.py resolve-set vibe-base --agent codex --format json` includes `vibe-prompts`, `vibe-loop`, `vibe-one-loop`, `vibe-run`
+- `python3 /mnt/c/src/coding-agent-orchestration/tools/skillctl.py list --agent codex` from `/tmp/vibe-skill-check` shows global skills outside this repo
+- `CODEX_HOME='\\\\wsl.localhost\\Ubuntu\\home\\brifl\\.codex' python3 .../skillctl.py list --agent codex --format json` resolves to `/home/brifl/.codex/skills/*`
+- `python3 -m pytest --capture=sys tests/workflow/test_skill_tooling.py tests/workflow/test_bootstrap.py tests/workflow/test_agentctl.py tests/workflow/test_state_parsing.py -q` → `43 passed`
 
 ## Active issues
 
 - [ ] ISSUE-009: Skills fail to load outside current repo (vendor_imports clone collision)
   - Severity: BLOCKER
   - Owner: agent
-  - Notes: Error seen: "Unable to load recommended skills: git clone failed: fatal: destination path '\\wsl.localhost\\Ubuntu\\home\\brifl\\.codex\\vendor_imports\\skills' already exists and is not an empty directory." Likely the loader tries to clone into a shared cache without handling existing repos; should reuse/update if present or clean safely. Confirm behavior against latest docs: https://developers.openai.com/codex/skills/
-- [ ] ISSUE-010: Installed skills not visible in other repos
-  - Severity: BLOCKER
-  - Owner: agent
-  - Notes: Skills installed here (e.g., Vibe Prompts, RAG Index) do not show up elsewhere. Additional evidence: `.codex/skills/vibe-loop/SKILL.md` lacks YAML front matter (manifest parse fails in local validator), which can cause discovery/load failures even when files are present. Verify `skillctl install --global` path resolution, manifest requirements, and environment variables against latest docs: https://developers.openai.com/codex/
-- [ ] ISSUE-011: Base skill contract drift for `vibe-run`/`vibe-one-loop`
-  - Severity: BLOCKER
-  - Owner: agent
-  - Notes: Docs and prompts reference `$vibe-run` and `$vibe-one-loop` for Codex continuous/single-loop flow, but no installable `vibe-run` or `vibe-one-loop` skill exists. Current installer path only installs `vibe-prompts` and `vibe-loop` (`tools/bootstrap.py`), and `skillsets/vibe-base.yaml` also only includes those two. Need decision: implement missing skills (or aliases), or update all docs/prompts to the actual shipped skill names and invocation model.
+  - Notes: External error seen in Codex app: "Unable to load recommended skills: git clone failed: fatal: destination path '\\wsl.localhost\\Ubuntu\\home\\brifl\\.codex\\vendor_imports\\skills' already exists and is not an empty directory." Local tooling now normalizes UNC-style `CODEX_HOME` paths and cross-repo discovery is verified. Remaining work is product-side behavior for recommended skill vendor clone/update handling. Docs for reference: https://developers.openai.com/codex/skills/
 
 ## Decisions
 

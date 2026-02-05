@@ -14,6 +14,8 @@ import argparse
 import os
 from pathlib import Path
 
+from path_utils import resolve_codex_home
+
 # Assume 'gemini' for the agent if not specified.
 DEFAULT_AGENT = "gemini"
 
@@ -25,10 +27,7 @@ def _get_repo_root() -> Path:
 
 
 def _codex_home() -> Path:
-    env_home = os.environ.get("CODEX_HOME")
-    if env_home:
-        return Path(env_home).expanduser().resolve()
-    return Path.home() / ".codex"
+    return resolve_codex_home()
 
 
 def _codex_repo_skill_roots(repo_root: Path) -> list[Path]:

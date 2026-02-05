@@ -1,0 +1,150 @@
+#!/usr/bin/env python3
+"""
+vibe_run.py
+
+Continuous loop helper:
+1) Ask agentctl for the next prompt
+2) Print the prompt body
+3) Repeat until dispatcher returns stop
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import subprocess
+import sys
+from pathlib import Path
+
+
+def _skills_root_from_this_script() -> Path:
+    # .../.codex/skills/vibe-run/scripts/vibe_run.py -> .../.codex/skills
+    return Path(__file__).resolve().parents[2]
+
+
+def _run_agentctl_next(repo_root: Path, agentctl_path: Path) -> dict:
+    cmd = [
+        sys.executable,
+        str(agentctl_path),
+        "--repo-root",
+        str(repo_root),
+        "--format",
+        "json",
+        "next",
+    ]
+    p = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+    if p.returncode != 0:
+        raise RuntimeError(f"agentctl failed ({p.returncode}): {p.stderr.strip() or p.stdout.strip()}")
+    return json.loads(p.stdout)
+
+
+def _print_prompt(prompt_catalog_path: Path, catalog_path: Path, prompt_id: str) -> None:
+    cmd = [sys.executable, str(prompt_catalog_path), str(catalog_path), "get", prompt_id]
+    p = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+    if p.returncode != 0:
+        raise RuntimeError(f"prompt_catalog get failed ({p.returncode}): {p.stderr.strip() or p.stdout.strip()}")
+    sys.stdout.write(p.stdout)
+
+
+def _resolve_tool_paths(repo_root: Path) -> tuple[Path, Path]:
+    skills_root = _skills_root_from_this_script()
+    candidates_agentctl = [
+        repo_root / "tools" / "agentctl.py",
+        skills_root / "vibe-loop" / "scripts" / "agentctl.py",
+    ]
+    candidates_prompt_catalog = [
+        repo_root / "tools" / "prompt_catalog.py",
+        skills_root / "vibe-prompts" / "scripts" / "prompt_catalog.py",
+    ]
+    agentctl_path = next((p for p in candidates_agentctl if p.exists()), None)
+    prompt_catalog_path = next((p for p in candidates_prompt_catalog if p.exists()), None)
+    if agentctl_path is None:
+        raise RuntimeError("agentctl.py not found in repo tools or installed skills.")
+    if prompt_catalog_path is None:
+        raise RuntimeError("prompt_catalog.py not found in repo tools or installed skills.")
+    return agentctl_path, prompt_catalog_path
+
+
+def _resolve_catalog_path(repo_root: Path, decision: dict, user_catalog: str) -> Path:
+    decision_catalog = decision.get("prompt_catalog_path")
+    if isinstance(decision_catalog, str) and decision_catalog:
+        return Path(decision_catalog)
+    if user_catalog:
+        return Path(user_catalog).expanduser().resolve()
+    repo_catalog = repo_root / "prompts" / "template_prompts.md"
+    if repo_catalog.exists():
+        return repo_catalog
+    return _skills_root_from_this_script() / "vibe-prompts" / "resources" / "template_prompts.md"
+
+
+def main() -> int:
+    ap = argparse.ArgumentParser(prog="vibe_run.py")
+    ap.add_argument("--repo-root", default=".", help="Target repo root (default: current directory)")
+    ap.add_argument("--catalog", default="", help="Optional path to template_prompts.md")
+    ap.add_argument("--max-loops", type=int, default=0, help="Loop cap for safety (0 = until stop)")
+    ap.add_argument("--show-decision", action="store_true", help="Print agentctl decision JSON to stderr each loop")
+    ap.add_argument(
+        "--non-interactive",
+        action="store_true",
+        help="Do not pause between loops. Use only when another process updates state.",
+    )
+    args = ap.parse_args()
+
+    repo_root = Path(args.repo_root).expanduser().resolve()
+    if not repo_root.exists():
+        print(f"ERROR: repo root not found: {repo_root}", file=sys.stderr)
+        return 2
+
+    try:
+        agentctl_path, prompt_catalog_path = _resolve_tool_paths(repo_root)
+    except RuntimeError as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
+        return 2
+
+    loop_count = 0
+    while True:
+        if args.max_loops > 0 and loop_count >= args.max_loops:
+            return 0
+
+        try:
+            decision = _run_agentctl_next(repo_root, agentctl_path)
+        except RuntimeError as exc:
+            print(f"ERROR: {exc}", file=sys.stderr)
+            return 2
+
+        if args.show_decision:
+            print(json.dumps(decision, indent=2, sort_keys=True), file=sys.stderr)
+
+        prompt_id = decision.get("recommended_prompt_id")
+        if decision.get("recommended_role") == "stop" or prompt_id == "stop":
+            return 0
+        if not isinstance(prompt_id, str) or not prompt_id:
+            print(f"ERROR: missing recommended_prompt_id in decision: {decision}", file=sys.stderr)
+            return 2
+
+        catalog_path = _resolve_catalog_path(repo_root, decision, args.catalog)
+        if not catalog_path.exists():
+            print(f"ERROR: prompt catalog not found: {catalog_path}", file=sys.stderr)
+            return 2
+
+        try:
+            _print_prompt(prompt_catalog_path, catalog_path, prompt_id)
+        except RuntimeError as exc:
+            print(f"ERROR: {exc}", file=sys.stderr)
+            return 2
+
+        loop_count += 1
+        if args.non_interactive:
+            continue
+        if not sys.stdin.isatty():
+            print("NOTE: stdin is not interactive; stopping after one loop.", file=sys.stderr)
+            return 0
+        try:
+            input("Press Enter after completing this loop to continue (Ctrl+C to stop): ")
+        except KeyboardInterrupt:
+            print("", file=sys.stderr)
+            return 130
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

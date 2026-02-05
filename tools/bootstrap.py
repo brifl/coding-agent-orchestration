@@ -38,6 +38,7 @@ _tools_dir = Path(__file__).parent.resolve()
 if str(_tools_dir) not in sys.path:
     sys.path.insert(0, str(_tools_dir))
 
+from path_utils import normalize_home_path, resolve_codex_home
 from resource_resolver import find_resource
 
 # All supported agents for bulk installation
@@ -220,14 +221,11 @@ def _default_agent_global_dir(agent: str) -> Path:
     Note: Some non-Codex installations use AGENT_HOME. If set, use $AGENT_HOME/skills.
     """
     if agent == "codex":
-        codex_home = os.environ.get("CODEX_HOME")
-        if codex_home:
-            return Path(codex_home).expanduser().resolve() / "skills"
-        return Path.home() / ".codex" / "skills"
+        return resolve_codex_home() / "skills"
 
     agent_home = os.environ.get("AGENT_HOME")
     if agent_home:
-        return Path(agent_home).expanduser().resolve() / "skills"
+        return normalize_home_path(agent_home) / "skills"
     return Path.home() / f".{agent}" / "skills"
 
 
@@ -381,7 +379,7 @@ def install_skills_agent_global(agent: str, force: bool) -> int:
     dst_root.mkdir(parents=True, exist_ok=True)
 
     # Expected skill folders (we install only these by name)
-    skill_names = ["vibe-prompts", "vibe-loop"]
+    skill_names = ["vibe-prompts", "vibe-loop", "vibe-one-loop", "vibe-run"]
 
     updated: list[str] = []
     skipped: list[str] = []
@@ -404,21 +402,12 @@ def install_skills_agent_global(agent: str, force: bool) -> int:
             raise RuntimeError(f"skillctl install failed for '{name}':\n{p.stderr or p.stdout}")
         updated.append(str(dst_root / name))
 
-    # 2) Force-refresh runtime scripts every install (prevents stale behavior)
-    updated.extend(
-        _sync_dir(
-            find_resource("skill", "vibe-prompts", agent=agent) / "scripts",
-            dst_root / "vibe-prompts" / "scripts",
-            force=True,
-        )
-    )
-    updated.extend(
-        _sync_dir(
-            find_resource("skill", "vibe-loop", agent=agent) / "scripts",
-            dst_root / "vibe-loop" / "scripts",
-            force=True,
-        )
-    )
+    # 2) Force-refresh skill contents (including manifests) every install.
+    for name in skill_names:
+        src_dir = find_resource("skill", name, agent=agent)
+        if src_dir is None:
+            raise RuntimeError(f"Could not resolve installed source for skill '{name}'.")
+        updated.extend(_sync_dir(src_dir, dst_root / name, force=True))
 
     # 3) Canonical catalog location
     canonical_catalog = repo_root / "prompts" / "template_prompts.md"

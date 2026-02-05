@@ -10,11 +10,11 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
 import shutil
 from pathlib import Path
 from typing import Any
 
+from path_utils import resolve_codex_home
 from resource_resolver import find_resource
 from skill_registry import DEFAULT_AGENT, discover_skills
 
@@ -48,10 +48,7 @@ def _write_lock(payload: dict[str, Any]) -> None:
 
 
 def _codex_home() -> Path:
-    env_home = os.environ.get("CODEX_HOME")
-    if env_home:
-        return Path(env_home).expanduser().resolve()
-    return Path.home() / ".codex"
+    return resolve_codex_home()
 
 
 def _agent_global_dir(agent: str) -> Path:
