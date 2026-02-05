@@ -13,7 +13,7 @@
 
 - Stage: 19A
 - Checkpoint: 19A.0
-- Status: NOT_STARTED  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
+- Status: IN_REVIEW  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
 
 ## Objective (current checkpoint)
 
@@ -31,6 +31,7 @@ Build a scanner that indexes multiple directories.
 - Respects gitignore and custom exclusions
 
 ## Work log (current session)
+- 2026-02-04: Implemented scanner.py; tested multi-dir, gitignore, exclusions, include/file-type filters, max-depth; all acceptance criteria pass; status set to IN_REVIEW.
 - 2026-02-03: Updated plan to Stage 19A; unblocked and set checkpoint 19A.0 to NOT_STARTED.
 - 2026-02-03: Blocked on Stage 20.0 scope/placement; clarification requested.
 - 2026-02-03: Consolidated Stage 19; advanced to checkpoint 20.0; status set to NOT_STARTED.
@@ -50,7 +51,31 @@ Build a scanner that indexes multiple directories.
 
 ## Evidence
 
-(None yet)
+### Multi-directory scan
+
+```
+$ python skills/rag-index/scanner.py skills/rag-index skills/repo --output manifest.json
+Wrote 2 entries to manifest.json
+```
+Manifest contains entries from both roots with metadata (path, rel_path, size, mtime, type, root).
+
+### Gitignore exclusion (temp dir test)
+
+```
+.gitignore contains: *.log, build/
+Scan result: ['.gitignore', 'keep.py', 'src.py']  # ignore.log and build/ excluded
+--no-gitignore: ['.gitignore', 'ignore.log', 'keep.py', 'src.py', 'build/out.js']
+PASS: gitignore exclusions work
+PASS: --no-gitignore works
+```
+
+### Include/exclude/file-type/depth filters
+
+```
+--include "*.md" --max-depth 1  → 20 .md files
+--file-types .py --max-depth 1  → 11 .py files
+--max-depth 0                   → root-level files only
+```
 
 ## Active issues
 
