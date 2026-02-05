@@ -9,6 +9,7 @@ Run exactly ONE workflow loop for this repository, then stop.
 PROCEDURE (follow exactly)
 1) Determine the next loop to run by executing:
    python ~/.codex/skills/vibe-loop/scripts/vibe_next_and_print.py --repo-root .
+   (If you set `CODEX_HOME`, use `$CODEX_HOME/skills/...` instead.)
 
 2) The script will:
    - compute the recommended prompt loop

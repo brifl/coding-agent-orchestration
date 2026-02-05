@@ -12,7 +12,7 @@ Deterministic:
 Robust install:
 - Locates the skills root from this script's path.
 - Locates vibe-prompts as a sibling skill folder.
-- Also supports AGENT_HOME if needed.
+- Supports CODEX_HOME (or AGENT_HOME) if set.
 """
 
 from __future__ import annotations
@@ -27,18 +27,21 @@ from pathlib import Path
 
 def _skills_root_from_this_script() -> Path:
     """
-    .../skills/vibe-loop/scripts/vibe_next_and_print.py
-    -> .../skills
+    .../.codex/skills/vibe-loop/scripts/vibe_next_and_print.py
+    -> .../.codex/skills
     """
     p = Path(__file__).resolve()
     # parents: [0]=scripts, [1]=vibe-loop, [2]=skills
     return p.parents[2]
 
 
-def _agent_skills_root_env_fallback() -> Path | None:
+def _skills_root_env_fallback() -> Path | None:
     """
-    If AGENT_HOME is set, the agent uses $AGENT_HOME/skills.
+    If CODEX_HOME or AGENT_HOME is set, use $CODEX_HOME/skills or $AGENT_HOME/skills.
     """
+    codex_home = os.environ.get("CODEX_HOME")
+    if codex_home:
+        return Path(codex_home).expanduser().resolve() / "skills"
     agent_home = os.environ.get("AGENT_HOME")
     if not agent_home:
         return None
@@ -57,7 +60,7 @@ def _locate_skills_root() -> Path:
     Prefer the AGENT_HOME-aware install root but fall back to whichever root contains the skills layout.
     """
     candidates: list[Path] = []
-    env_root = _agent_skills_root_env_fallback()
+    env_root = _skills_root_env_fallback()
     if env_root and env_root.exists():
         candidates.append(env_root)
 
@@ -158,9 +161,19 @@ def main() -> int:
     # Prefer repo-local tools when available to keep decisions aligned with the repo.
     repo_tools_dir = repo_root / "tools"
     fallback_tools_dir = skills_root.parent / "tools"
+    installed_tools_dir = skills_root / "vibe-loop" / "scripts"
+    installed_prompt_dir = skills_root / "vibe-prompts" / "scripts"
 
-    agentctl_candidates = [repo_tools_dir / "agentctl.py", fallback_tools_dir / "agentctl.py"]
-    prompt_candidates = [repo_tools_dir / "prompt_catalog.py", fallback_tools_dir / "prompt_catalog.py"]
+    agentctl_candidates = [
+        repo_tools_dir / "agentctl.py",
+        fallback_tools_dir / "agentctl.py",
+        installed_tools_dir / "agentctl.py",
+    ]
+    prompt_candidates = [
+        repo_tools_dir / "prompt_catalog.py",
+        fallback_tools_dir / "prompt_catalog.py",
+        installed_prompt_dir / "prompt_catalog.py",
+    ]
 
     agentctl_path = next((p for p in agentctl_candidates if p.exists()), None)
     prompt_catalog_path = next((p for p in prompt_candidates if p.exists()), None)

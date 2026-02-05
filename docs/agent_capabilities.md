@@ -120,7 +120,7 @@ python tools/bootstrap.py install-skills --global --agent kilo
 # or: --agent <your-agent-name>
 ```
 
-This installs to `~/.<agent>/skills/`.
+This installs to `$CODEX_HOME/skills` for Codex (defaults to `~/.codex/skills`) and `~/.<agent>/skills/` for other agents.
 
 **4. Continuous Mode**
 

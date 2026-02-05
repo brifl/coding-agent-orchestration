@@ -463,7 +463,7 @@ Create a reusable skill that scans directories, builds a searchable index, and s
 
 * **Deliverables:**
 
-  * `skills/rag-index/scanner.py` — recursive directory scanner
+  * `.codex/skills/rag-index/scanner.py` — recursive directory scanner
   * Configurable: include/exclude patterns, file types, depth
   * Output: file manifest with metadata (path, size, mtime, type)
 
@@ -474,7 +474,7 @@ Create a reusable skill that scans directories, builds a searchable index, and s
 
 * **Demo commands:**
 
-  * `python skills/rag-index/scanner.py /path/to/code --output manifest.json`
+  * `python .codex/skills/rag-index/scanner.py /path/to/code --output manifest.json`
 
 * **Evidence:**
 
@@ -489,7 +489,7 @@ Create a reusable skill that scans directories, builds a searchable index, and s
 
 * **Deliverables:**
 
-  * `skills/rag-index/indexer.py` — builds embeddings/keyword index
+  * `.codex/skills/rag-index/indexer.py` — builds embeddings/keyword index
   * Supports: full-text search, semantic search (with embeddings)
   * Storage: local SQLite or JSON for portability
 
@@ -500,8 +500,8 @@ Create a reusable skill that scans directories, builds a searchable index, and s
 
 * **Demo commands:**
 
-  * `python skills/rag-index/indexer.py build --manifest manifest.json --output index.db`
-  * `python skills/rag-index/indexer.py search \"authentication\" --index index.db`
+  * `python .codex/skills/rag-index/indexer.py build --manifest manifest.json --output index.db`
+  * `python .codex/skills/rag-index/indexer.py search \"authentication\" --index index.db`
 
 * **Evidence:**
 
@@ -516,8 +516,8 @@ Create a reusable skill that scans directories, builds a searchable index, and s
 
 * **Deliverables:**
 
-  * `skills/rag-index/SKILL.yaml` — skill manifest
-  * `skills/rag-index/retrieve.py` — retrieval interface for agents
+* `.codex/skills/rag-index/SKILL.md` — skill manifest
+  * `.codex/skills/rag-index/retrieve.py` — retrieval interface for agents
   * Integration: agents can call retriever to augment prompts
 
 * **Acceptance:**
@@ -527,8 +527,8 @@ Create a reusable skill that scans directories, builds a searchable index, and s
 
 * **Demo commands:**
 
-  * `python tools/skillctl.py install skills/rag-index --global`
-  * `python skills/rag-index/retrieve.py \"how does auth work\" --top-k 5`
+* `python tools/skillctl.py install rag-index --global`
+  * `python .codex/skills/rag-index/retrieve.py \"how does auth work\" --top-k 5`
 
 * **Evidence:**
 

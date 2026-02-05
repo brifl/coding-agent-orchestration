@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import shutil
 from pathlib import Path
 from typing import Any
@@ -18,7 +19,7 @@ from resource_resolver import find_resource
 from skill_registry import DEFAULT_AGENT, discover_skills
 
 
-REQUIRED_FIELDS = ["name", "version", "description", "agents", "dependencies", "entry_points"]
+REQUIRED_FIELDS = ["name", "description"]
 
 
 def _repo_root() -> Path:
@@ -46,20 +47,35 @@ def _write_lock(payload: dict[str, Any]) -> None:
     path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
 
 
+def _codex_home() -> Path:
+    env_home = os.environ.get("CODEX_HOME")
+    if env_home:
+        return Path(env_home).expanduser().resolve()
+    return Path.home() / ".codex"
+
+
 def _agent_global_dir(agent: str) -> Path:
+    if agent == "codex":
+        return _codex_home() / "skills"
     return Path.home() / f".{agent}" / "skills"
 
 
 def _repo_skill_source(name: str) -> Path:
-    return _repo_root() / "skills" / "repo" / name
+    primary = _repo_root() / ".codex" / "skills" / name
+    if primary.exists():
+        return primary
+    legacy = _repo_root() / "skills" / name
+    if legacy.exists():
+        return legacy
+    return primary
 
 
 def _repo_skill_dest(name: str) -> Path:
-    return _repo_root() / ".vibe" / "skills" / name
+    return _repo_root() / ".codex" / "skills" / name
 
 
 def _find_manifest(skill_dir: Path) -> Path | None:
-    for name in ("SKILL.yaml", "SKILL.yml", "SKILL.json"):
+    for name in ("SKILL.md", "SKILL.yaml", "SKILL.yml", "SKILL.json"):
         path = skill_dir / name
         if path.exists():
             return path
@@ -98,12 +114,28 @@ def _parse_yaml_minimal(text: str) -> dict[str, Any]:
     return data
 
 
+def _front_matter(text: str) -> str | None:
+    lines = text.splitlines()
+    if not lines or lines[0].strip() != "---":
+        return None
+    for i in range(1, len(lines)):
+        if lines[i].strip() == "---":
+            return "\n".join(lines[1:i])
+    return None
+
+
 def _load_manifest(path: Path) -> dict[str, Any] | None:
     try:
         if path.suffix == ".json":
             return json.loads(path.read_text(encoding="utf-8"))
         if path.suffix in {".yaml", ".yml"}:
             return _parse_yaml_minimal(path.read_text(encoding="utf-8"))
+        if path.suffix == ".md":
+            text = path.read_text(encoding="utf-8")
+            front = _front_matter(text)
+            if front is None:
+                return None
+            return _parse_yaml_minimal(front)
     except Exception:
         return None
     return None
@@ -467,20 +499,20 @@ def main(argv: list[str]) -> int:
     instp = sub.add_parser("install", help="Install a skill")
     instp.add_argument("name")
     instp.add_argument("--global", dest="global_install", action="store_true")
-    instp.add_argument("--repo", dest="repo_install", action="store_true")
+    instp.add_argument("--repo", dest="repo_install", action="store_true", help="Install into .codex/skills in the repo")
     instp.add_argument("--agent", default=DEFAULT_AGENT)
     instp.add_argument("--force", action="store_true")
 
     uninstp = sub.add_parser("uninstall", help="Remove a skill")
     uninstp.add_argument("name")
     uninstp.add_argument("--global", dest="global_install", action="store_true")
-    uninstp.add_argument("--repo", dest="repo_install", action="store_true")
+    uninstp.add_argument("--repo", dest="repo_install", action="store_true", help="Remove from .codex/skills in the repo")
     uninstp.add_argument("--agent", default=DEFAULT_AGENT)
 
     updp = sub.add_parser("update", help="Reinstall a skill")
     updp.add_argument("name")
     updp.add_argument("--global", dest="global_install", action="store_true")
-    updp.add_argument("--repo", dest="repo_install", action="store_true")
+    updp.add_argument("--repo", dest="repo_install", action="store_true", help="Reinstall into .codex/skills in the repo")
     updp.add_argument("--agent", default=DEFAULT_AGENT)
 
     valp = sub.add_parser("validate", help="Validate a skill manifest")

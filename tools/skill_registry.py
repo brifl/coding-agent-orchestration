@@ -3,8 +3,8 @@
 skill_registry.py
 
 Discover and query available skills across:
-1) Repo-local (skills/)
-2) Global (~/.<agent>/skills/)
+1) Repo-local (.codex/skills/)
+2) Global (~/.codex/skills/ or $CODEX_HOME/skills)
 3) Built-in (built_in/skills/)
 
 Provides:
@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -41,16 +42,45 @@ def _repo_root() -> Path:
     return Path.cwd()
 
 
+def _codex_home() -> Path:
+    env_home = os.environ.get("CODEX_HOME")
+    if env_home:
+        return Path(env_home).expanduser().resolve()
+    return Path.home() / ".codex"
+
+
+def _repo_skill_roots(repo_root: Path) -> list[Path]:
+    roots: list[Path] = []
+    current = repo_root.resolve()
+    while True:
+        roots.append(current / ".codex" / "skills")
+        if current.parent == current:
+            break
+        current = current.parent
+
+    legacy = repo_root / "skills"
+    if legacy.exists():
+        roots.append(legacy)
+    return roots
+
+
 def _skill_paths(repo_root: Path, agent: str) -> list[tuple[str, Path]]:
-    return [
-        ("repo", repo_root / "skills"),
-        ("global", Path.home() / f".{agent}" / "skills"),
-        ("built_in", repo_root / "built_in" / "skills"),
-    ]
+    paths: list[tuple[str, Path]] = []
+    for root in _repo_skill_roots(repo_root):
+        paths.append(("repo", root))
+
+    if agent == "codex":
+        paths.append(("global", _codex_home() / "skills"))
+        paths.append(("system", Path("/etc/codex/skills")))
+    else:
+        paths.append(("global", Path.home() / f".{agent}" / "skills"))
+
+    paths.append(("built_in", repo_root / "built_in" / "skills"))
+    return paths
 
 
 def _find_manifest(skill_dir: Path) -> Path | None:
-    for name in ("SKILL.yaml", "SKILL.yml", "SKILL.json"):
+    for name in ("SKILL.md", "SKILL.yaml", "SKILL.yml", "SKILL.json"):
         path = skill_dir / name
         if path.exists():
             return path
@@ -91,12 +121,28 @@ def _parse_yaml_minimal(text: str) -> dict[str, Any]:
     return data
 
 
+def _front_matter(text: str) -> str | None:
+    lines = text.splitlines()
+    if not lines or lines[0].strip() != "---":
+        return None
+    for i in range(1, len(lines)):
+        if lines[i].strip() == "---":
+            return "\n".join(lines[1:i])
+    return None
+
+
 def _load_manifest(path: Path) -> dict[str, Any] | None:
     try:
         if path.suffix == ".json":
             return json.loads(path.read_text(encoding="utf-8"))
         if path.suffix in {".yaml", ".yml"}:
             return _parse_yaml_minimal(path.read_text(encoding="utf-8"))
+        if path.suffix == ".md":
+            text = path.read_text(encoding="utf-8")
+            front = _front_matter(text)
+            if front is None:
+                return None
+            return _parse_yaml_minimal(front)
     except Exception:
         return None
     return None

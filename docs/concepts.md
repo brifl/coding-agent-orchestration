@@ -21,8 +21,8 @@ Fields:
 - `prompt_catalogs`: additional prompt catalog files (array of paths).
 
 Skill precedence:
-- Repo-local skills live in `.vibe/skills` and take precedence over global skills with the same name.
-- Global skills remain in the Codex install directory and are never overwritten by repo-local installs.
+- Repo-local skills live in `.codex/skills` and take precedence over global skills with the same name.
+- Global skills live in `$CODEX_HOME/skills` (defaults to `~/.codex/skills`) and are never overwritten by repo-local installs.
 
 ## Manual execution fallback (non-tool agents)
 

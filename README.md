@@ -44,7 +44,8 @@ Stages are expected to be consolidated before moving to the next stage.
   prompts/                # prompt catalog + bootstrap prompts
   tools/                  # deterministic workflow tools
   templates/              # repo bootstrap + checkpoint/gate templates
-  skills/                 # agent skill packages (Codex reference)
+  .codex/
+    skills/               # Codex skill packages (SKILL.md)
 ```
 
 `.vibe/` is ignored by default to avoid constant churn. If your repo benefits from versioning

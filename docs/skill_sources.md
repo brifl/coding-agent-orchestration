@@ -24,7 +24,7 @@ source:
   type: git
   url: https://github.com/example/skills
   ref: v1.2.0
-  subdir: skills
+  subdir: .codex/skills
 ```
 
 ## Trust levels
@@ -47,6 +47,6 @@ source:
 ```yaml
 source:
   type: local
-  path: ../skills
+  path: ../.codex/skills
   trust: verified
 ```

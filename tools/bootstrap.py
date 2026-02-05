@@ -13,7 +13,7 @@ Commands:
     - Optionally installs <path>/VIBE.md (only if missing unless --overwrite) if a template exists.
 
   install-skills --global --agent <agent_name>
-    - Installs/updates skills for the specified agent into ~/.<agent_name>/skills
+    - Installs/updates skills for the specified agent into ~/.codex/skills (Codex) or ~/.<agent>/skills
     - Syncs prompts/template_prompts.md into the vibe-prompts skill resources.
     - Copies supporting scripts (agentctl.py, prompt_catalog.py) into skill scripts as needed.
 
@@ -172,15 +172,15 @@ def init_repo(target_repo: Path, skillset: str | None = None, overwrite: bool = 
             _write_text(config_path, json.dumps(config_payload, indent=2) + "\n")
             created.append(str(config_path))
 
-        # Auto-install skills from the set into .vibe/skills
+        # Auto-install skills from the set into .codex/skills
         skill_defs = _resolve_skillset(repo_root, skillset)
-        dst_root = vibe_dir / "skills"
+        dst_root = target_repo / ".codex" / "skills"
         dst_root.mkdir(parents=True, exist_ok=True)
         for skill in skill_defs:
             name = skill["name"]
-            src_dir = repo_root / "skills" / name
+            src_dir = repo_root / ".codex" / "skills" / name
             if not src_dir.exists():
-                src_dir = repo_root / "skills" / "repo" / name
+                src_dir = repo_root / "skills" / name
             if not src_dir.exists():
                 raise FileNotFoundError(f"Skill folder not found for '{name}'.")
             dst_dir = dst_root / name
@@ -213,10 +213,18 @@ def init_repo(target_repo: Path, skillset: str | None = None, overwrite: bool = 
 
 def _default_agent_global_dir(agent: str) -> Path:
     """
-    Agent global skills directory. Default: ~/.<agent>/skills
+    Agent global skills directory. Default:
+    - Codex: $CODEX_HOME/skills (fallback: ~/.codex/skills)
+    - Others: ~/.<agent>/skills
 
-    Note: Some installations use AGENT_HOME. If set, use $AGENT_HOME/skills.
+    Note: Some non-Codex installations use AGENT_HOME. If set, use $AGENT_HOME/skills.
     """
+    if agent == "codex":
+        codex_home = os.environ.get("CODEX_HOME")
+        if codex_home:
+            return Path(codex_home).expanduser().resolve() / "skills"
+        return Path.home() / ".codex" / "skills"
+
     agent_home = os.environ.get("AGENT_HOME")
     if agent_home:
         return Path(agent_home).expanduser().resolve() / "skills"
@@ -435,6 +443,9 @@ def install_skills_agent_global(agent: str, force: bool) -> int:
     # 6) Ensure key helper scripts are present inside skills (force refresh)
     helper_pairs = [
         (repo_root / "tools" / "agentctl.py", dst_root / "vibe-loop" / "scripts" / "agentctl.py"),
+        (repo_root / "tools" / "checkpoint_templates.py", dst_root / "vibe-loop" / "scripts" / "checkpoint_templates.py"),
+        (repo_root / "tools" / "resource_resolver.py", dst_root / "vibe-loop" / "scripts" / "resource_resolver.py"),
+        (repo_root / "tools" / "stage_ordering.py", dst_root / "vibe-loop" / "scripts" / "stage_ordering.py"),
         (repo_root / "tools" / "prompt_catalog.py", dst_root / "vibe-prompts" / "scripts" / "prompt_catalog.py"),
     ]
     for src, dst in helper_pairs:
@@ -458,21 +469,17 @@ def install_skills_agent_global(agent: str, force: bool) -> int:
 
 def install_skills_agent_repo(agent: str, target_repo: Path, force: bool) -> int:
     repo_root = _repo_root_from_this_file()
-    src_skills_root = repo_root / "skills" / "repo"
+    src_skills_root = repo_root / ".codex" / "skills"
 
     if not target_repo.exists():
         raise FileNotFoundError(f"Target repo path does not exist: {target_repo}")
     if not target_repo.is_dir():
         raise NotADirectoryError(f"Target repo path is not a directory: {target_repo}")
 
-    vibe_dir = target_repo / ".vibe"
-    if not vibe_dir.exists():
-        raise FileNotFoundError(f"Missing .vibe directory in target repo: {vibe_dir}")
-
     if not src_skills_root.exists():
         raise FileNotFoundError(f"Repo-local skills folder missing: {src_skills_root}")
 
-    dst_root = vibe_dir / "skills"
+    dst_root = target_repo / ".codex" / "skills"
     dst_root.mkdir(parents=True, exist_ok=True)
 
     updated: list[str] = []
@@ -481,21 +488,8 @@ def install_skills_agent_repo(agent: str, target_repo: Path, force: bool) -> int
 
     for src_dir in sorted(p for p in src_skills_root.iterdir() if p.is_dir()):
         skill_names.append(src_dir.name)
-        cmd = [
-            sys.executable,
-            str(repo_root / "tools" / "skillctl.py"),
-            "install",
-            src_dir.name,
-            "--repo",
-            "--agent",
-            agent,
-        ]
-        if force:
-            cmd.append("--force")
-        p = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-        if p.returncode != 0:
-            raise RuntimeError(f"skillctl install failed for '{src_dir.name}':\n{p.stderr or p.stdout}")
-        updated.append(str(dst_root / src_dir.name))
+        dst_dir = dst_root / src_dir.name
+        updated.extend(_sync_dir(src_dir, dst_dir, force=force))
 
     if not skill_names:
         raise RuntimeError(f"No repo-local skills found in: {src_skills_root}")
@@ -531,7 +525,7 @@ def _build_parser() -> argparse.ArgumentParser:
 
     isp = sub.add_parser("install-skills", help="Install skills for a given agent/tool")
     isp.add_argument("--global", dest="global_install", action="store_true", help="Install to user/global location")
-    isp.add_argument("--repo", dest="repo_install", action="store_true", help="Install into .vibe/skills in the repo")
+    isp.add_argument("--repo", dest="repo_install", action="store_true", help="Install into .codex/skills in the repo")
     isp.add_argument("--agent", choices=("all", "codex", "claude", "gemini", "copilot", "kilo"), required=True, help="Which agent to install for (use 'all' to install for all agents)")
     isp.add_argument("--force", action="store_true", help="Force overwrite of SKILL.md and other files")
     return p

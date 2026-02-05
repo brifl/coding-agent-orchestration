@@ -6,7 +6,7 @@ This document defines how skills are added, versioned, and deprecated in the Vib
 
 1. **Stability over features** — Base skills must remain stable; new features go in extension skills
 2. **No breaking changes to base skills** — Once a skill is in `docs/base_skills.md`, its interface is frozen
-3. **Explicit compatibility** — Every skill declares which agents it supports
+3. **Explicit compatibility** — Skills should note which agents they support when relevant
 4. **Graceful degradation** — Skills should work in reduced-capability environments when possible
 
 ## Skill Categories
@@ -37,8 +37,8 @@ Skills not in the base set follow semantic versioning:
 - **PATCH** — Bug fixes only
 
 Extension skills live in:
-- `skills/<agent>/<skill-name>/` — Agent-specific
-- `skills/repo/<skill-name>/` — Repo-local overrides
+- `.codex/skills/<skill-name>/` — Repo-local Codex skills
+- `~/.codex/skills/<skill-name>/` or `$CODEX_HOME/skills/<skill-name>/` — User/global installs
 
 ## Adding a New Skill
 
@@ -117,7 +117,6 @@ Version is declared in SKILL.md frontmatter:
 name: my-validator
 version: 1.2.0
 description: Validates widget configurations
-agents: [codex, claude, gemini]
 ---
 ```
 
@@ -130,12 +129,12 @@ When adding or modifying skills, update:
 
 ## Repo-Local Skills
 
-Repos can override global skills by placing them in `.vibe/skills/<skill-name>/`.
+Repos can override global skills by placing them in `.codex/skills/<skill-name>/`.
 
 **Precedence order:**
-1. `.vibe/skills/<skill-name>/` (repo-local, highest priority)
-2. `~/.codex/skills/<skill-name>/` (global user)
-3. `$CODEX_HOME/skills/<skill-name>/` (environment)
+1. `.codex/skills/<skill-name>/` (repo-local, highest priority)
+2. `$CODEX_HOME/skills/<skill-name>/` (global user, defaults to `~/.codex/skills`)
+3. `/etc/codex/skills/<skill-name>/` (system)
 
 **Rules for repo-local skills:**
 - May shadow global skills (use same name to override)

@@ -1,3 +1,10 @@
+---
+name: vibe-loop
+description: Run a single Vibe workflow loop.
+version: "1.0.0"
+dependencies:
+  - vibe-prompts
+---
 # vibe-loop
 
 ## Purpose
@@ -27,7 +34,7 @@ This skill uses `.vibe/STATE.md` and `.vibe/PLAN.md` to recommend the next loop 
   - Strict mode (recommended in CI): add `--strict`
 - Print the next loop prompt body directly:
   - Run: `python3 scripts/vibe_next_and_print.py --repo-root . --show-decision`
-  - The helper uses the same CODEX_HOME-aware layout detection as `tools/bootstrap.py` so it works from both repo trees and global skill installs.
+  - The helper uses the same CODEX_HOME-aware layout detection as `tools/bootstrap.py` so it works from both repo trees and global installs.
 
 ## Intended usage pattern
 

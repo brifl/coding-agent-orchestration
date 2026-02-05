@@ -21,7 +21,7 @@ Build a scanner that indexes multiple directories.
 
 ## Deliverables (current checkpoint)
 
-- `skills/rag-index/scanner.py` — recursive directory scanner
+- `.codex/skills/rag-index/scanner.py` — recursive directory scanner
 - Configurable: include/exclude patterns, file types, depth
 - Output: file manifest with metadata (path, size, mtime, type)
 
@@ -54,7 +54,7 @@ Build a scanner that indexes multiple directories.
 ### Multi-directory scan
 
 ```
-$ python skills/rag-index/scanner.py skills/rag-index skills/repo --output manifest.json
+$ python .codex/skills/rag-index/scanner.py .codex/skills/rag-index .codex/skills/vibe-loop --output manifest.json
 Wrote 2 entries to manifest.json
 ```
 Manifest contains entries from both roots with metadata (path, rel_path, size, mtime, type, root).

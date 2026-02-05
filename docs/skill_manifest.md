@@ -1,45 +1,33 @@
-# Skill manifest schema
+# Skill manifest format
 
 ## Overview
 
-Each skill ships with a `SKILL.yaml` or `SKILL.json` manifest that describes
-compatibility, dependencies, and entry points. Manifests are intended to be
-machine-readable and stable for tooling.
+Codex skills require a `SKILL.md` file with YAML front matter. The front matter must include
+at least `name` and `description`. Additional fields (for example `version` or `dependencies`)
+may be included for internal tooling, but Codex only requires the two core fields.
 
-## Fields
+## Required front matter
 
-Required:
 - `name` (string): Unique skill identifier.
-- `version` (string): SemVer version or compatible version constraint.
 - `description` (string): Short, human-readable summary.
-- `agents` (list of strings): Compatible agent runtimes (for example `codex`, `claude`).
+
+## Optional front matter
+
+- `version` (string): SemVer or internal version tag.
 - `dependencies` (list): Other skills required by this skill.
-  - `name` (string): Skill name.
-  - `version` (string, optional): Version constraint (for example `">=1.2.0"`).
-- `entry_points` (list): Commands or scripts that expose the skill.
-  - `name` (string): Entry point name.
-  - `command` (string): Command to invoke.
 
-Optional:
-- `capabilities` (list of strings): Required capabilities (for example `filesystem`, `network`).
-- `metadata` (object): Implementation-specific details.
+## Example
 
-## Example (YAML)
-
-```yaml
+```markdown
+---
 name: vibe-loop
-version: "1.0.0"
 description: Run a single Vibe workflow loop.
-agents:
-  - codex
-  - claude
+version: "1.0.0"
 dependencies:
-  - name: vibe-prompts
-    version: ">=1.0.0"
-capabilities:
-  - filesystem
-  - process
-entry_points:
-  - name: loop
-    command: "python ~/.codex/skills/vibe-loop/scripts/vibe_next_and_print.py --repo-root . --show-decision"
+  - vibe-prompts
+---
+
+# vibe-loop
+
+Skill docs go here.
 ```
