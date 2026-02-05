@@ -11,26 +11,29 @@
 
 ## Current focus
 
-- Stage: 19A
-- Checkpoint: 19A.2
-- Status: BLOCKED  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
+- Stage: 20
+- Checkpoint: 20.0
+- Status: NOT_STARTED  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
 
 ## Objective (current checkpoint)
 
-Close out the Stage 19A prototype with a working end-to-end pipeline: scan → index → retrieve.
+Harden the manifest schema for determinism, add content hashing, and report exclusion stats.
 
 ## Deliverables (current checkpoint)
 
-- `.codex/skills/rag-index/retrieve.py` — retrieval CLI and library interface
-- Update `.codex/skills/rag-index/SKILL.md` — add indexer + retriever to manifest
+- Upgrade `scanner.py` manifest entries to include `content_hash` (SHA-256) and `language` (inferred from extension)
+- Stable manifest ordering: entries sorted by `(root, rel_path)` lexicographically
+- `--stats` flag: print exclusion summary to stderr
 
 ## Acceptance (current checkpoint)
 
-- `python tools/skillctl.py install rag-index --global` succeeds (manifest validates)
-- `retrieve.py` returns formatted snippets with provenance headers
-- `retrieve.py pipeline` produces results from raw directories without pre-built index
+- Scanning same tree twice yields byte-identical manifest JSON (determinism)
+- `content_hash` present on every entry; verified by re-hashing file content
+- `--stats` prints exclusion breakdown by reason
 
 ## Work log (current session)
+- 2026-02-05: Review PASS — 19A.2 acceptance met; all deliverables verified; Stage 19A complete; advanced to 20.0; status set to NOT_STARTED.
+- 2026-02-05: Blocker resolved — working tree is now clean (pre-existing files were committed in 3d6dd49); status set to IN_REVIEW.
 - 2026-02-05: Blocked on clean-worktree requirement (repo has pre-existing modified files); need guidance before setting IN_REVIEW.
 - 2026-02-05: Implemented retrieve.py with pipeline mode; updated rag-index SKILL.md; ran skillctl install + retrieval demos; status set to IN_REVIEW.
 - 2026-02-05: Review PASS — 19A.1 acceptance met; all deliverables verified; advanced to 19A.2; status set to NOT_STARTED.
@@ -57,20 +60,11 @@ Close out the Stage 19A prototype with a working end-to-end pipeline: scan → i
 
 ## Evidence
 
-- `python3 tools/skillctl.py install rag-index --global`:
-```
-Installed rag-index to /home/brifl/.gemini/skills/rag-index
-```
-- `python3 .codex/skills/rag-index/retrieve.py pipeline "scan directories" --dirs .codex/skills/rag-index` (excerpt):
-# file: scanner.py
-```
-#!/usr/bin/env python3
-"""Recursive >>>directory<<< scanner for multi->>>directory<<< RAG indexing.
-```
+(Cleared for new checkpoint — see HISTORY.md for 19A evidence)
 
 ## Active issues
 
-- BLOCKER: Repo has pre-existing modified files (git status not clean), so the clean-worktree requirement blocks setting Status to IN_REVIEW. Guidance needed on whether to ignore, stash, or commit those changes.
+(No active issues)
 
 ## Decisions
 
