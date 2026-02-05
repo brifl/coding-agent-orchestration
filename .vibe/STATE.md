@@ -12,26 +12,33 @@
 ## Current focus
 
 - Stage: 20
-- Checkpoint: 20.0
+- Checkpoint: 20.1
 - Status: NOT_STARTED  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
 
 ## Objective (current checkpoint)
 
-Harden the manifest schema for determinism, add content hashing, and report exclusion stats.
+Build a deterministic chunking library that splits files into indexed units suitable for precise retrieval.
 
 ## Deliverables (current checkpoint)
 
-- Upgrade `scanner.py` manifest entries to include `content_hash` (SHA-256) and `language` (inferred from extension)
-- Stable manifest ordering: entries sorted by `(root, rel_path)` lexicographically
-- `--stats` flag: print exclusion summary to stderr
+- `.codex/skills/rag-index/chunker.py` — chunking engine with strategy dispatch
+- Strategies: Python (AST-based), Markdown (heading-based), Generic code (blank-line blocks), Fallback (fixed-size windows)
+- Chunk schema with `chunk_id`, `doc_path`, `start_line`, `end_line`, `text`, `token_estimate`, `hash`, `language`
+- Library API: `chunk_file(path, language, max_chunk_tokens=500) -> list[dict]`
+- CLI: `python chunker.py <file> [--language python] [--max-tokens 500]`
 
 ## Acceptance (current checkpoint)
 
-- Scanning same tree twice yields byte-identical manifest JSON (determinism)
-- `content_hash` present on every entry; verified by re-hashing file content
-- `--stats` prints exclusion breakdown by reason
+- Chunking the same file twice produces identical output (determinism)
+- A Python file with 3 functions produces 3+ chunks (one per function + possible module docstring)
+- A Markdown file with 4 headings produces 4 chunks
+- No chunk exceeds `max_chunk_tokens * 5` characters (hard cap with forced split)
+- Chunks have non-overlapping, contiguous line ranges that cover the entire file
 
 ## Work log (current session)
+- 2026-02-05: Advanced checkpoint 20.0 → 20.1 (Chunking engine); status set to NOT_STARTED.
+- 2026-02-05: Review PASS — 20.0 acceptance met; determinism verified, content_hash correct, --stats working; status set to DONE.
+- 2026-02-05: Implemented 20.0 — content_hash, language field, stable ordering, --stats flag; all acceptance tests pass; commit 132496c; status set to IN_REVIEW.
 - 2026-02-05: Review PASS — 19A.2 acceptance met; all deliverables verified; Stage 19A complete; advanced to 20.0; status set to NOT_STARTED.
 - 2026-02-05: Blocker resolved — working tree is now clean (pre-existing files were committed in 3d6dd49); status set to IN_REVIEW.
 - 2026-02-05: Blocked on clean-worktree requirement (repo has pre-existing modified files); need guidance before setting IN_REVIEW.
@@ -54,17 +61,22 @@ Harden the manifest schema for determinism, add content hashing, and report excl
 - 2026-02-03: Review PASS — 19.0 acceptance met; status set to DONE.
 - 2026-02-03: Added refactor scan/execute/verify prompts; ran demo command; status set to IN_REVIEW.
 ## Workflow state
-- Name: refactor-cycle
-- Last run: 1 step(s)
-- Steps: prompt.checkpoint_implementation
+(none)
 
 ## Evidence
 
-(Cleared for new checkpoint — see HISTORY.md for 19A evidence)
+(Pending — checkpoint 20.1 not yet started)
 
 ## Active issues
 
-(No active issues)
+- [ ] ISSUE-009: Skills fail to load outside current repo (vendor_imports clone collision)
+  - Severity: BLOCKER
+  - Owner: agent
+  - Notes: Error seen: "Unable to load recommended skills: git clone failed: fatal: destination path '\\wsl.localhost\\Ubuntu\\home\\brifl\\.codex\\vendor_imports\\skills' already exists and is not an empty directory." Likely the loader tries to clone into a shared cache without handling existing repos; should reuse/update if present or clean safely. Confirm behavior against latest docs: https://developers.openai.com/codex/skills/
+- [ ] ISSUE-010: Installed skills not visible in other repos
+  - Severity: BLOCKER
+  - Owner: agent
+  - Notes: Skills installed here (e.g., Vibe Prompts, RAG Index) do not show up elsewhere. Likely the install target is repo-local `.codex/skills` rather than a global `$CODEX_HOME/skills` path, or registry discovery is not reading the expected location. Verify `skillctl install --global` path resolution and environment variables against latest docs: https://developers.openai.com/codex/
 
 ## Decisions
 
