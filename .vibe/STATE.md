@@ -13,7 +13,7 @@
 
 - Stage: 20
 - Checkpoint: 20.3
-- Status: NOT_STARTED  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
+- Status: IN_REVIEW  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
 
 ## Objective (current checkpoint)
 
@@ -37,6 +37,7 @@ Upgrade retrieve.py to produce high-quality, budget-aware, diverse context for a
 
 ## Work log (current session)
 
+- 2026-02-06: Implemented 20.3 — retrieve.py now emits provenance headings + language fences, enforces max-per-file and max-context-chars, and supports mode fallback (`sem`/`hybrid` -> `lex`); moved to IN_REVIEW.
 - 2026-02-06: Review PASS — 20.2 acceptance met with adversarial probes; auto-advanced to 20.3; status set to NOT_STARTED.
 - 2026-02-06: Implemented 20.2 follow-up — fixed chunk-level incremental diffing and malformed FTS query handling; acceptance probes now pass; moved to IN_REVIEW.
 - 2026-02-06: Review FAIL — 20.2 unmet: one-line edit re-indexed all chunks for a changed file; opened ISSUE-012 and returned status to IN_PROGRESS.
@@ -46,7 +47,6 @@ Upgrade retrieve.py to produce high-quality, budget-aware, diverse context for a
 - 2026-02-05: Review PASS — 20.1 acceptance met; auto-advanced to 20.2; status set to NOT_STARTED.
 - 2026-02-05: Implemented 20.1 — chunker.py with Python/Markdown/Generic/Fallback strategies; all 5 acceptance criteria pass.
 - 2026-02-05: Resolved ISSUE-011 — added installable `vibe-one-loop` and `vibe-run` skills.
-- 2026-02-05: Resolved ISSUE-010 — added manifest front matter to `vibe-loop`; verified cross-repo/global discovery.
 
 ## Workflow state
 
@@ -54,7 +54,12 @@ Upgrade retrieve.py to produce high-quality, budget-aware, diverse context for a
 
 ## Evidence
 
-(Checkpoint 20.3 — not yet started)
+- 2026-02-06 implementation evidence (checkpoint 20.3):
+  - Build index fixture: `python3 .codex/skills/rag-index/scanner.py /tmp/vibe-20-3-verify --file-types .py --output /tmp/vibe-20-3-verify/manifest.json` and `python3 .codex/skills/rag-index/indexer.py build --manifest /tmp/vibe-20-3-verify/manifest.json --output /tmp/vibe-20-3-verify/index.db`.
+  - Provenance + language formatting: `python3 .codex/skills/rag-index/retrieve.py "parse" --index /tmp/vibe-20-3-verify/index.db --top-k 10 --max-per-file 2` output starts with `<!-- RAG context for: "parse" -->`, contains `### scanner_like.py:<start>-<end>` headings, and includes fenced ` ```python ` blocks.
+  - Diversity cap: parsed headings from the same command show counts `{'scanner_like.py': 2, 'other.py': 1}` (no file > 2 with `--max-per-file 2`).
+  - Budget cap: `python3 .codex/skills/rag-index/retrieve.py "parse" --index /tmp/vibe-20-3-verify/index.db --top-k 10 --max-context-chars 260` produced output length `233` (<= 260).
+  - Mode fallback: `--mode sem` and `--mode hybrid` both exit 0 and print warning `falling back to 'lex'`.
 
 ## Active issues
 
