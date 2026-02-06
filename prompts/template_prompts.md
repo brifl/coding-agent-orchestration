@@ -469,18 +469,38 @@ REQUIRED COMMANDS
 - Additional test/validation commands required by the chosen improvement.
 
 EXECUTION
-1) Choose exactly one improvement that addresses a diagnosed issue.
-2) Keep scope bounded to workflow system assets (not product features).
-3) Add/adjust tests when behavior changes in scripts.
-4) Validate and report pass/fail with concrete command output summaries.
+1) Diversity-first candidate generation:
+   - Generate at least 10 candidate process improvements across at least 3 strategy families
+     (example: reliability-first, clarity-first, automation-first, validation-first).
+   - Tag every candidate with exactly one bracketed idea-impact label:
+     `[MAJOR]`, `[MODERATE]`, or `[MINOR]`.
+   - Cluster/deduplicate by root cause.
+2) Produce Top 5 candidate improvements by idea impact, ordered
+   `[MAJOR] -> [MODERATE] -> [MINOR]`, each with:
+   - Idea impact tag
+   - Expected payoff
+   - Scope boundary
+   - Validation command(s)
+3) Choose exactly one improvement that addresses a diagnosed issue.
+4) Keep scope bounded to workflow system assets (not product features).
+5) Add/adjust tests when behavior changes in scripts.
+6) Validate and report pass/fail with concrete command output summaries.
 
 REQUIRED OUTPUT
 A) Diagnostic findings
-B) Chosen improvement
-C) Files changed
-D) Validation commands + results
-E) Result summary
-F) Remaining workflow issues
+B) Top 5 candidate improvements by idea impact (`[MAJOR]` / `[MODERATE]` / `[MINOR]`)
+C) Chosen improvement
+D) Files changed
+E) Validation commands + results
+F) Result summary
+G) Remaining workflow issues
+
+RULES
+- Every process-improvement idea must include exactly one bracketed tag:
+  `[MAJOR]`, `[MODERATE]`, or `[MINOR]`.
+- Use `MAJOR` for high-leverage system improvements with broad workflow payoff,
+  `MODERATE` for meaningful scoped improvements, and `MINOR` for localized cleanup.
+- Do not use issue-impact labels (`BLOCKER` / `QUESTION`) for process-improvement idea tagging.
 
 REPORT SCHEMA (required)
 - LOOP_RESULT payload must include `report` object with:
@@ -1167,8 +1187,11 @@ OUTPUT FORMAT
 1) Diversity-first candidate generation:
    - Generate at least 10 candidate test gaps across at least 3 strategy families
      (example: failure-mode-first, boundary-first, integration-risk-first, regression-history-first).
+   - Tag every candidate with exactly one bracketed idea-impact label:
+     `[MAJOR]`, `[MODERATE]`, or `[MINOR]`.
    - Cluster/deduplicate by root cause.
-2) Top test gaps by impact (max 5) (table-like):
+2) Top test gaps by idea impact (max 5), ordered `[MAJOR] -> [MODERATE] -> [MINOR]` (table-like):
+  - Idea impact tag (`[MAJOR]` / `[MODERATE]` / `[MINOR]`)
   - Scenario
   - Code location
   - Why it matters (bug class / regression risk)
@@ -1187,6 +1210,11 @@ OUTPUT FORMAT
 
 RULES
 - If framework/runner unknown: output a discovery step first, then propose gaps.
+- Every test-gap idea must include exactly one bracketed tag:
+  `[MAJOR]`, `[MODERATE]`, or `[MINOR]`.
+- Use `MAJOR` for high-risk uncovered paths with broad failure potential, `MODERATE`
+  for meaningful risk reduction in scoped areas, and `MINOR` for low-risk edge/cleanup coverage.
+- Do not use issue-impact labels (`BLOCKER` / `QUESTION`) for test-gap idea tagging.
 - Avoid vanity coverage targets.
 - Do not create or switch branches.
 
