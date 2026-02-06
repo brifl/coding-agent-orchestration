@@ -12,24 +12,32 @@
 ## Current focus
 
 - Stage: 21
-- Checkpoint: 21.8
-- Status: IN_REVIEW  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
+- Checkpoint: 21.10
+- Status: NOT_STARTED  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
 
 ## Objective (current checkpoint)
 
-Make provider choice deterministic and explicit.
+Package RLM as a first-class skill usable across agents.
 
 ## Deliverables (current checkpoint)
 
-- Task schema fields for provider policy
-- Executor logic honoring primary/allowed/fallback ordering
+- `skills/rlm-tools/SKILL.yaml`
+- Entrypoints:
+  - `rlm validate`
+  - `rlm bundle`
+  - `rlm run`
+  - `rlm step`
+  - `rlm resume`
+  - `rlm providers`
+- `docs/rlm_agents.md`
 
 ## Acceptance (current checkpoint)
 
-- Same task and config yields same provider choice.
+- `skillctl validate skills/rlm-tools` passes.
 
 ## Work log (current session)
 
+- 2026-02-06: Review PASS — 21.8 acceptance met with deterministic provider-choice reruns (`provider_choice_match=true`) plus adversarial probes (invalid policy schema rejected, disallowed explicit provider blocked at runtime); auto-advanced to 21.10 and set status to NOT_STARTED.
 - 2026-02-06: Implemented 21.8 — added deterministic provider-policy selection (`primary` + ordered `fallback` + remaining `allowed`) with explicit-provider allowlist enforcement and deterministic provider-fallback behavior; tightened task schema checks (`primary in allowed`, fallback subset), added `tasks/rlm/provider_policy_example.json`, and verified repeat runs yield identical provider-choice sequences; moved status to IN_REVIEW.
 - 2026-02-06: Review PASS — 21.6 acceptance met (`readwrite` -> `readonly` replay produced identical response hashes/final artifact), demo command rerun now works without `--fresh`, and adversarial probes confirmed expected failures for missing cache + subcall budget breach; auto-advanced to 21.8 and set status to NOT_STARTED.
 - 2026-02-06: Issues triage — resolved ISSUE-014 by resetting run-scoped runtime/trace/output artifacts at `executor.py run` start, so non-fresh reruns no longer load finalized runtime state; reran readonly demo command twice successfully; status set back to IN_REVIEW.
@@ -48,11 +56,7 @@ Make provider choice deterministic and explicit.
 
 ## Evidence
 
-- Demo command (closest equivalent due mandatory cache in 21.6): `python3 skills/rlm-tools/executor.py run --task tasks/rlm/provider_policy_example.json --cache readwrite --fresh`.
-- Determinism evidence: `.vibe/rlm/runs/provider_policy_example.providers.run1.json` and `.vibe/rlm/runs/provider_policy_example.providers.run2.json` match on provider-choice sequence; comparison artifact `.vibe/rlm/runs/provider_policy_example.compare.json` has `provider_choice_match=true`.
-- Fallback ordering evidence: first iteration in `provider_policy_example` selects `openai` (auto), then `anthropic` when `openai` is deterministically failed via `FAIL_PROVIDER:openai:...`, then `google` for explicit request.
-- Schema enforcement probe: `python3 tools/rlm/validate_task.py .vibe/rlm/evidence/21.8/provider_policy_invalid_schema.json` fails with `provider_policy.primary must be present in provider_policy.allowed`.
-- Explicit-provider enforcement probe: `.vibe/rlm/runs/provider_policy_invalid_runtime/trace.jsonl` records `Requested provider 'kilo' is not allowed`.
+- (Pending for checkpoint 21.10; add skill packaging and validation evidence during implementation/review.)
 
 ## Active issues
 
