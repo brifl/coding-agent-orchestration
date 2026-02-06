@@ -12,26 +12,28 @@
 ## Current focus
 
 - Stage: 21
-- Checkpoint: 21.3
-- Status: IN_REVIEW  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
+- Checkpoint: 21.4
+- Status: NOT_STARTED  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
 
 ## Objective (current checkpoint)
 
-Provide a safe, persistent execution environment for RLM iterations.
+Implement bounded iteration with constant-size metadata and explicit stop semantics.
 
 ## Deliverables (current checkpoint)
 
-- Add `tools/rlm/runtime.py`
-- Add injected helpers: `context`, `list_chunks()`, `get_chunk()`, `grep()`, `peek()`, `FINAL()`
-- Add deterministic stdout capture + truncation
-- Add state serialization (`state.json`)
+- Add `skills/rlm-tools/executor.py` (`run`, `step`, `resume`)
+- Add run directory output at `.vibe/rlm/runs/<task_id>/`:
+  - `state.json`
+  - `trace.jsonl`
+  - final artifacts
 
 ## Acceptance (current checkpoint)
 
-- Runtime resumes from saved state without ambiguity.
+- Baseline mode completes multi-iteration runs and stops only on `FINAL()` or limits.
 
 ## Work log (current session)
 
+- 2026-02-06: Review PASS — 21.3 acceptance met with selftest + adversarial resume probes (max-stdout mismatch, bundle-fingerprint mismatch); auto-advanced to 21.4 and set status to NOT_STARTED.
 - 2026-02-06: Implemented 21.3 — added `tools/rlm/runtime.py` with helper injection (`context`, `list_chunks`, `get_chunk`, `grep`, `peek`, `FINAL`), deterministic stdout truncation, and persisted `state.json`; added `tools/rlm/runtime_selftest.py` proving resume semantics and finalized-step rejection; moved status to IN_REVIEW.
 - 2026-02-06: Review PASS — 21.2 acceptance met (demo build + malformed-task fail-fast + determinism/locality adversarial probe); auto-advanced to 21.3 and set status to NOT_STARTED.
 - 2026-02-06: Implemented 21.2 — added `tools/rlm/context_bundle.py` with deterministic file ordering and line-stable chunking; demo build produced bundle artifacts and probes confirmed deterministic reruns plus one-line edit locality; moved status to IN_REVIEW.
@@ -41,7 +43,6 @@ Provide a safe, persistent execution environment for RLM iterations.
 - 2026-02-06: Implemented 21.0 — added `docs/rlm_overview.md` and `docs/rlm_glossary.md`, including decision table (`RLM vs RAG vs standard loops`) and baseline/subcall + human-assisted provider explanations; moved status to IN_REVIEW.
 - 2026-02-06: Consolidation — archived Stage 19A and Stage 20, pruned PLAN to Stage 21+, transitioned state pointer to 21.0/NOT_STARTED, set RUN_CONTEXT_CAPTURE.
 - 2026-02-06: Implemented 20.5 — added TF-IDF vectorizer + index `--vectors` build path; implemented semantic and hybrid retrieval modes with lex/sem/hybrid comparison evidence; moved to IN_REVIEW.
-- 2026-02-06: Review PASS — 20.4 acceptance met (docs/policy, install, tartu pipeline); auto-advanced to 20.5; status set to NOT_STARTED.
 
 ## Workflow state
 
@@ -49,12 +50,7 @@ Provide a safe, persistent execution environment for RLM iterations.
 
 ## Evidence
 
-- path: tools/rlm/runtime.py
-  - cmd: `python3 -m py_compile tools/rlm/runtime.py`
-  - result: PASS — runtime module compiles cleanly.
-- path: tools/rlm/runtime_selftest.py
-  - cmd: `python3 tools/rlm/runtime_selftest.py`
-  - result: PASS — selftest reports deterministic stdout truncation, unambiguous resume from `state.json`, and finalized-step rejection.
+(Checkpoint 21.4 — not yet started)
 
 ## Active issues
 
