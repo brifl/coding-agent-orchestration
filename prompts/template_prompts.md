@@ -973,9 +973,12 @@ OUTPUT FORMAT
 1) Diversity-first candidate generation:
    - Generate at least 10 candidate refactors across at least 3 strategy families
      (example: maintainability-first, risk-reduction-first, performance-first, testability-first).
+   - Tag every candidate with exactly one bracketed idea-impact label:
+     `[MAJOR]`, `[MODERATE]`, or `[MINOR]`.
    - Cluster/deduplicate by root cause.
-2) Top findings by impact (max 5), each with:
-   - Impact (perf/maintainability/safety)
+2) Top findings by impact (max 5), ordered `[MAJOR] -> [MODERATE] -> [MINOR]`, each with:
+   - Idea impact tag (`[MAJOR]` / `[MODERATE]` / `[MINOR]`)
+   - Impact type (perf/maintainability/safety)
    - Risk (low/med/high)
    - Effort (S/M/L)
    - Proposed checkpoints (atomic steps)
@@ -983,7 +986,8 @@ OUTPUT FORMAT
    - What I will change
    - How I will prove equivalence
    - Rollback plan
-4) Selection recommendation: pick 1-2 best refactors to do first.
+4) Selection recommendation: pick 1-2 best refactors to do first, each with its
+   impact tag and one-line expected payoff.
 
 ## Results
 - Summarize the chosen top recommendations and why they won vs discarded candidates.
@@ -995,6 +999,11 @@ OUTPUT FORMAT
 - Single next action to start execution.
 
 RULES
+- Every refactor idea must include exactly one bracketed tag:
+  `[MAJOR]`, `[MODERATE]`, or `[MINOR]`.
+- Use `MAJOR` for high-leverage changes with broad quality payoff, `MODERATE` for
+  meaningful scoped improvements, and `MINOR` for localized cleanup.
+- Do not use issue-impact labels (`BLOCKER` / `QUESTION`) for refactor idea tagging.
 - Do not propose a cross-cutting rewrite unless explicitly requested.
 - Identify missing tests as a risk and recommend targeted tests first.
 - Scan for: duplication, high cyclomatic complexity, unclear boundaries, hidden global state,
@@ -1023,7 +1032,7 @@ TASK
 Apply a single refactor checkpoint safely.
 
 INPUTS
-- One checkpoint from scan output (pasted verbatim)
+- One checkpoint from scan output (pasted verbatim, including idea impact tag)
 - File/module list
 - Definition of done (behavioral invariants)
 - Verification commands
@@ -1043,6 +1052,8 @@ OUTPUT FORMAT
 - Any new tests added (and why minimal)
 - Commands run + pass/fail
 - If fail: either fix or revert, and state which
+- Optional follow-up refactor ideas (max 2), each tagged
+  `[MAJOR]` / `[MODERATE]` / `[MINOR]`
 
 ## Results
 - What changed and whether verification passed.
@@ -1055,6 +1066,8 @@ OUTPUT FORMAT
 
 RULES
 - If the checkpoint implies multiple changes, split into smaller sub-checkpoints.
+- Preserve the selected checkpoint's impact tag; if scope materially changes, restate
+  the new tag and why.
 - Do not create or switch branches.
 - Stop after completing the checkpoint + verification; do not proceed to the next checkpoint unless asked.
 
@@ -1096,6 +1109,8 @@ OUTPUT FORMAT
 - Pass/fail matrix: tests/lint/typecheck/build
 - Risk callouts: what remains unverified and why
 - "If this regresses in prod, likely failure modes are ..." (max 3)
+- Optional follow-up refactor ideas (max 2), each tagged
+  `[MAJOR]` / `[MODERATE]` / `[MINOR]`
 - Optional: micro-benchmark suggestion (only if relevant)
 
 ## Results
@@ -1110,6 +1125,8 @@ OUTPUT FORMAT
 RULES
 - Do not create or switch branches.
 - If verification fails, recommend fix or revert.
+- Any future refactor recommendation must include exactly one bracketed impact tag:
+  `[MAJOR]`, `[MODERATE]`, or `[MINOR]`.
 
 DISPATCHER CONTRACT (when selected by `agentctl` workflow)
 - Update `.vibe/STATE.md` work log + evidence with verification matrix and residual risks.
