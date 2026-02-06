@@ -12,26 +12,27 @@
 ## Current focus
 
 - Stage: 21A
-- Checkpoint: 21A.0
-- Status: IN_REVIEW  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
+- Checkpoint: 21A.1
+- Status: NOT_STARTED  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
 
 ## Objective (current checkpoint)
 
-Define documentation scope and severity rubric/schema for deterministic gap/refactor findings.
+Build deterministic gap analysis that identifies missing or incomplete documentation and proposes edits or net-new docs.
 
 ## Deliverables (current checkpoint)
 
-- `docs/continuous_documentation_overview.md`
-- `docs/documentation_severity_rubric.md` with explicit `MAJOR|MODERATE|MINOR` criteria
-- Finding schema for `finding_id`, `phase`, `category`, `severity`, `location`, `recommendation`
+- `prompt.docs_gap_analysis` in `prompts/template_prompts.md`
+- `tools/docs/doc_gap_report.py`
+- `.vibe/docs/gap_report.json` with candidate actions (`edit_section|create_doc|create_wiki_page`)
 
 ## Acceptance (current checkpoint)
 
-- Scope covers README/docs/embedded guides and wiki migration target rules.
-- Rubric includes concrete examples for `MAJOR`, `MODERATE`, and `MINOR`.
+- Re-running on an unchanged repo snapshot produces stable finding IDs/severity ordering.
+- Report includes actionable recommendations and supports net-new document proposals.
 
 ## Work log (current session)
 
+- 2026-02-06: Review PASS — 21A.0 acceptance met by rerunning demo (`cat docs/documentation_severity_rubric.md`) plus adversarial probes validating required schema fields and full severity-example coverage; no blocking findings, so checkpoint auto-advanced to 21A.1 and status set to NOT_STARTED.
 - 2026-02-06: Implemented 21A.0 — added `docs/continuous_documentation_overview.md` (scope + wiki migration rules + finding schema) and `docs/documentation_severity_rubric.md` (deterministic `MAJOR|MODERATE|MINOR` criteria with concrete examples); ran checkpoint demo command and prepared review evidence; moved status to IN_REVIEW.
 - 2026-02-06: Consolidation — transitioned pointer from completed Stage 21 (`21.11/DONE`) to Stage 21A (`21A.0/NOT_STARTED`), refreshed objective/deliverables/acceptance to 21A.0, and pruned work log to latest 10 entries.
 - 2026-02-06: Review PASS — 21.11 acceptance met (`eval_smoke` passed on `repo_comprehension`) with adversarial probes confirming expected failures for invalid task schema and readonly cache miss; no remaining same-stage checkpoints, so checkpoint set to DONE (plan exhausted for Stage 21).
@@ -41,7 +42,6 @@ Define documentation scope and severity rubric/schema for deterministic gap/refa
 - 2026-02-06: Review PASS — 21.8 acceptance met with deterministic provider-choice reruns (`provider_choice_match=true`) plus adversarial probes (invalid policy schema rejected, disallowed explicit provider blocked at runtime); auto-advanced to 21.10 and set status to NOT_STARTED.
 - 2026-02-06: Implemented 21.8 — added deterministic provider-policy selection (`primary` + ordered `fallback` + remaining `allowed`) with explicit-provider allowlist enforcement and deterministic provider-fallback behavior; tightened task schema checks (`primary in allowed`, fallback subset), added `tasks/rlm/provider_policy_example.json`, and verified repeat runs yield identical provider-choice sequences; moved status to IN_REVIEW.
 - 2026-02-06: Review PASS — 21.6 acceptance met (`readwrite` -> `readonly` replay produced identical response hashes/final artifact), demo command rerun now works without `--fresh`, and adversarial probes confirmed expected failures for missing cache + subcall budget breach; auto-advanced to 21.8 and set status to NOT_STARTED.
-- 2026-02-06: Issues triage — resolved ISSUE-014 by resetting run-scoped runtime/trace/output artifacts at `executor.py run` start, so non-fresh reruns no longer load finalized runtime state; reran readonly demo command twice successfully; status set back to IN_REVIEW.
 
 ## Workflow state
 
@@ -49,8 +49,7 @@ Define documentation scope and severity rubric/schema for deterministic gap/refa
 
 ## Evidence
 
-- `cat docs/documentation_severity_rubric.md` prints explicit deterministic criteria for `MAJOR|MODERATE|MINOR` and includes concrete examples for all three severities.
-- `docs/continuous_documentation_overview.md` defines scope across README/docs/embedded guides, wiki migration target rules, and the required finding schema fields (`finding_id`, `phase`, `category`, `severity`, `location`, `recommendation`).
+- (Pending for checkpoint 21A.1; 21A.0 review evidence captured in work-log entry.)
 
 ## Active issues
 
