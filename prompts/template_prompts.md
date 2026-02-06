@@ -907,7 +907,7 @@ OUTPUT FORMAT
 - Stage sections in PLAN.md format:
   - Stage heading
   - Stage objective
-  - 1-3 checkpoint headings (titles only)
+  - 1-5 checkpoint headings (titles only)
 
 RULES
 - Keep stages small and sequential.
