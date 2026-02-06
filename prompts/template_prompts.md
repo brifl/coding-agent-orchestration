@@ -1499,3 +1499,54 @@ DISPATCHER CONTRACT (when selected by `agentctl` workflow)
 - Record it with:
   `python3 tools/agentctl.py --repo-root . --format json loop-result --line 'LOOP_RESULT: {...,"report":<report_json>}'`
 ```
+
+---
+
+## prompt.docs_gap_analysis — Documentation Gap Analysis Prompt
+
+```md
+ROLE: Documentation analyst (gap phase)
+
+TASK
+Detect missing documentation and missing documentation sections across README,
+docs, and embedded guides, then produce deterministic fix recommendations.
+
+INPUTS
+- Repository root path
+- Severity rubric (`docs/documentation_severity_rubric.md`)
+- Scope contract (`docs/continuous_documentation_overview.md`)
+- Optional prior gap report for comparison
+
+OUTPUT FORMAT
+## Goal
+- One-sentence summary of the gap scan scope.
+
+## Findings
+- Deterministic list ordered by severity (`MAJOR`, `MODERATE`, `MINOR`) then id.
+- Each finding must include:
+  - `finding_id`
+  - `phase` (`gap`)
+  - `category`
+  - `severity`
+  - `location`
+  - `recommendation`
+
+## Recommended Actions
+- Action items using only:
+  - `edit_section`
+  - `create_doc`
+  - `create_wiki_page`
+- Include target path and one-line summary per action.
+
+## Evidence
+- Commands run and key scan outputs (or note if none).
+
+## Next Safe Step
+- Single next action: apply gap fixes or triage unresolved blockers.
+
+RULES
+- Use deterministic IDs and stable ordering on unchanged repository input.
+- Prefer concrete, minimal fixes over broad rewrites.
+- `create_doc`/`create_wiki_page` recommendations must include explicit target paths.
+- Do not create or switch branches.
+```

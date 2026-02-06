@@ -13,7 +13,7 @@
 
 - Stage: 21A
 - Checkpoint: 21A.1
-- Status: NOT_STARTED  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
+- Status: IN_REVIEW  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
 
 ## Objective (current checkpoint)
 
@@ -32,6 +32,7 @@ Build deterministic gap analysis that identifies missing or incomplete documenta
 
 ## Work log (current session)
 
+- 2026-02-06: Implemented 21A.1 — added `prompt.docs_gap_analysis` to `prompts/template_prompts.md` and created deterministic scanner `tools/docs/doc_gap_report.py`; demo run produced `.vibe/docs/gap_report.json` with actionable `edit_section|create_doc|create_wiki_page` recommendations and rerun stability check confirmed identical `(finding_id, severity)` ordering; moved status to IN_REVIEW.
 - 2026-02-06: Review PASS — 21A.0 acceptance met by rerunning demo (`cat docs/documentation_severity_rubric.md`) plus adversarial probes validating required schema fields and full severity-example coverage; no blocking findings, so checkpoint auto-advanced to 21A.1 and status set to NOT_STARTED.
 - 2026-02-06: Implemented 21A.0 — added `docs/continuous_documentation_overview.md` (scope + wiki migration rules + finding schema) and `docs/documentation_severity_rubric.md` (deterministic `MAJOR|MODERATE|MINOR` criteria with concrete examples); ran checkpoint demo command and prepared review evidence; moved status to IN_REVIEW.
 - 2026-02-06: Consolidation — transitioned pointer from completed Stage 21 (`21.11/DONE`) to Stage 21A (`21A.0/NOT_STARTED`), refreshed objective/deliverables/acceptance to 21A.0, and pruned work log to latest 10 entries.
@@ -49,7 +50,8 @@ Build deterministic gap analysis that identifies missing or incomplete documenta
 
 ## Evidence
 
-- (Pending for checkpoint 21A.1; 21A.0 review evidence captured in work-log entry.)
+- `python3 tools/docs/doc_gap_report.py --repo-root . --out .vibe/docs/gap_report.json` succeeded and produced actionable findings with action counts: `{\"create_doc\": 2, \"create_wiki_page\": 1, \"edit_section\": 1}`.
+- Rerun determinism check (`gap_report.json` vs `gap_report.rerun.json`) reported `stable_pairs=True` for ordered `(finding_id, severity)` tuples.
 
 ## Active issues
 
