@@ -45,7 +45,7 @@ Define documentation scope and severity rubric/schema for deterministic gap/refa
 
 ## Workflow state
 
-- [x] RUN_CONTEXT_CAPTURE
+- [ ] RUN_CONTEXT_CAPTURE
 
 ## Evidence
 
