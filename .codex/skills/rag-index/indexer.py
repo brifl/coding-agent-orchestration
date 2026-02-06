@@ -184,27 +184,21 @@ def build_index(
         if row is not None:
             existing_id, existing_hash = row
             if existing_hash == content_hash:
-                # File unchanged — all chunks still valid
+                # File unchanged — all chunks still valid.
                 stats["files_skipped"] += 1
                 continue
 
-            # File changed — remove old chunks and FTS entries
+            # File changed: keep unchanged chunks and only rewrite changed/new ones.
             old_chunks = conn.execute(
-                "SELECT chunk_id FROM chunks WHERE doc_id = ?",
+                "SELECT chunk_id, start_line, end_line, chunk_hash FROM chunks WHERE doc_id = ?",
                 (existing_id,),
             ).fetchall()
-            for (old_cid,) in old_chunks:
-                conn.execute(
-                    "DELETE FROM chunks_fts WHERE chunk_id = ?",
-                    (old_cid,),
-                )
-                stats["chunks_removed"] += 1
-            conn.execute(
-                "DELETE FROM chunks WHERE doc_id = ?",
-                (existing_id,),
-            )
+            old_by_signature: dict[tuple[int, int, str], list[str]] = {}
+            for old_cid, old_start, old_end, old_hash in old_chunks:
+                sig = (old_start, old_end, old_hash)
+                old_by_signature.setdefault(sig, []).append(old_cid)
 
-            # Update doc metadata
+            # Update doc metadata before writing chunk deltas.
             conn.execute(
                 "UPDATE docs SET rel_path=?, root=?, size=?, mtime=?, "
                 "mime_type=?, language=?, content_hash=? WHERE doc_id=?",
@@ -220,8 +214,69 @@ def build_index(
                 ),
             )
             doc_id = existing_id
+
+            file_chunks = chunk_file(file_path, language=language)
+            matched_old_ids: set[str] = set()
+
+            for chunk in file_chunks:
+                chunk_hash = chunk["hash"]
+                sig = (chunk["start_line"], chunk["end_line"], chunk_hash)
+                reusable_ids = old_by_signature.get(sig)
+                if reusable_ids:
+                    # Exact same line span + content; keep prior row/FTS entry.
+                    matched_old_ids.add(reusable_ids.pop())
+                    stats["chunks_skipped"] += 1
+                    continue
+
+                chunk_id = chunk["chunk_id"]
+                # Defensive cleanup for rare id collisions.
+                existing_chunk = conn.execute(
+                    "SELECT 1 FROM chunks WHERE chunk_id = ?",
+                    (chunk_id,),
+                ).fetchone()
+                if existing_chunk is not None:
+                    conn.execute(
+                        "DELETE FROM chunks_fts WHERE chunk_id = ?",
+                        (chunk_id,),
+                    )
+                    conn.execute(
+                        "DELETE FROM chunks WHERE chunk_id = ?",
+                        (chunk_id,),
+                    )
+                    stats["chunks_removed"] += 1
+
+                conn.execute(
+                    "INSERT INTO chunks (chunk_id, doc_id, start_line, end_line, "
+                    "token_estimate, chunk_hash) VALUES (?, ?, ?, ?, ?, ?)",
+                    (
+                        chunk_id,
+                        doc_id,
+                        chunk["start_line"],
+                        chunk["end_line"],
+                        chunk["token_estimate"],
+                        chunk_hash,
+                    ),
+                )
+                conn.execute(
+                    "INSERT INTO chunks_fts(chunk_id, chunk_text) VALUES (?, ?)",
+                    (chunk_id, chunk["text"]),
+                )
+                stats["chunks_indexed"] += 1
+
+            for old_cid, _, _, _ in old_chunks:
+                if old_cid in matched_old_ids:
+                    continue
+                conn.execute(
+                    "DELETE FROM chunks_fts WHERE chunk_id = ?",
+                    (old_cid,),
+                )
+                conn.execute(
+                    "DELETE FROM chunks WHERE chunk_id = ?",
+                    (old_cid,),
+                )
+                stats["chunks_removed"] += 1
         else:
-            # New file
+            # New file.
             cur = conn.execute(
                 "INSERT INTO docs (path, rel_path, root, size, mtime, mime_type, language, content_hash) "
                 "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
@@ -238,52 +293,46 @@ def build_index(
             )
             doc_id = cur.lastrowid
 
-        # Chunk the file
-        file_chunks = chunk_file(file_path, language=language)
+            file_chunks = chunk_file(file_path, language=language)
+            for chunk in file_chunks:
+                chunk_id = chunk["chunk_id"]
+                chunk_hash = chunk["hash"]
 
-        # Insert chunks and FTS entries
-        for chunk in file_chunks:
-            chunk_id = chunk["chunk_id"]
-            chunk_hash = chunk["hash"]
-
-            # Check if this exact chunk already exists (shouldn't for changed files,
-            # but handles edge cases)
-            existing_chunk = conn.execute(
-                "SELECT chunk_hash FROM chunks WHERE chunk_id = ?",
-                (chunk_id,),
-            ).fetchone()
-
-            if existing_chunk is not None:
-                if existing_chunk[0] == chunk_hash:
+                existing_chunk = conn.execute(
+                    "SELECT chunk_hash FROM chunks WHERE chunk_id = ?",
+                    (chunk_id,),
+                ).fetchone()
+                if existing_chunk is not None and existing_chunk[0] == chunk_hash:
                     stats["chunks_skipped"] += 1
                     continue
-                # Chunk content changed — remove old FTS entry
-                conn.execute(
-                    "DELETE FROM chunks_fts WHERE chunk_id = ?",
-                    (chunk_id,),
-                )
-                conn.execute(
-                    "DELETE FROM chunks WHERE chunk_id = ?",
-                    (chunk_id,),
-                )
+                if existing_chunk is not None:
+                    conn.execute(
+                        "DELETE FROM chunks_fts WHERE chunk_id = ?",
+                        (chunk_id,),
+                    )
+                    conn.execute(
+                        "DELETE FROM chunks WHERE chunk_id = ?",
+                        (chunk_id,),
+                    )
+                    stats["chunks_removed"] += 1
 
-            conn.execute(
-                "INSERT INTO chunks (chunk_id, doc_id, start_line, end_line, "
-                "token_estimate, chunk_hash) VALUES (?, ?, ?, ?, ?, ?)",
-                (
-                    chunk_id,
-                    doc_id,
-                    chunk["start_line"],
-                    chunk["end_line"],
-                    chunk["token_estimate"],
-                    chunk_hash,
-                ),
-            )
-            conn.execute(
-                "INSERT INTO chunks_fts(chunk_id, chunk_text) VALUES (?, ?)",
-                (chunk_id, chunk["text"]),
-            )
-            stats["chunks_indexed"] += 1
+                conn.execute(
+                    "INSERT INTO chunks (chunk_id, doc_id, start_line, end_line, "
+                    "token_estimate, chunk_hash) VALUES (?, ?, ?, ?, ?, ?)",
+                    (
+                        chunk_id,
+                        doc_id,
+                        chunk["start_line"],
+                        chunk["end_line"],
+                        chunk["token_estimate"],
+                        chunk_hash,
+                    ),
+                )
+                conn.execute(
+                    "INSERT INTO chunks_fts(chunk_id, chunk_text) VALUES (?, ?)",
+                    (chunk_id, chunk["text"]),
+                )
+                stats["chunks_indexed"] += 1
 
         stats["files_processed"] += 1
 
@@ -321,30 +370,32 @@ def search_index(
     Returns list of result dicts with path, rel_path, start_line, end_line,
     snippet, chunk_id, and score.
     """
-    conn = sqlite3.connect(index_path)
-
     results: list[dict[str, Any]] = []
-    rows = conn.execute(
-        """
-        SELECT
-            d.path,
-            d.rel_path,
-            d.root,
-            d.language,
-            c.chunk_id,
-            c.start_line,
-            c.end_line,
-            bm25(chunks_fts, 1.0, 5.0) AS score,
-            snippet(chunks_fts, 1, '>>>', '<<<', '...', 40) AS snippet
-        FROM chunks_fts
-        JOIN chunks c ON c.chunk_id = chunks_fts.chunk_id
-        JOIN docs d ON d.doc_id = c.doc_id
-        WHERE chunks_fts MATCH ?
-        ORDER BY score
-        LIMIT ?
-        """,
-        (query, top_k),
-    ).fetchall()
+    with sqlite3.connect(index_path) as conn:
+        try:
+            rows = conn.execute(
+                """
+                SELECT
+                    d.path,
+                    d.rel_path,
+                    d.root,
+                    d.language,
+                    c.chunk_id,
+                    c.start_line,
+                    c.end_line,
+                    bm25(chunks_fts, 1.0, 5.0) AS score,
+                    snippet(chunks_fts, 1, '>>>', '<<<', '...', 40) AS snippet
+                FROM chunks_fts
+                JOIN chunks c ON c.chunk_id = chunks_fts.chunk_id
+                JOIN docs d ON d.doc_id = c.doc_id
+                WHERE chunks_fts MATCH ?
+                ORDER BY score
+                LIMIT ?
+                """,
+                (query, top_k),
+            ).fetchall()
+        except sqlite3.OperationalError as exc:
+            raise ValueError(f"invalid FTS query: {exc}") from exc
 
     for path, rel_path, root, language, chunk_id, start_line, end_line, score, snippet in rows:
         results.append({
@@ -359,7 +410,6 @@ def search_index(
             "snippet": snippet,
         })
 
-    conn.close()
     return results
 
 
@@ -407,7 +457,11 @@ def main(argv: list[str] | None = None) -> None:
         )
 
     elif args.command == "search":
-        results = search_index(args.query, args.index, top_k=args.top_k)
+        try:
+            results = search_index(args.query, args.index, top_k=args.top_k)
+        except ValueError as exc:
+            print(f"ERROR: {exc}", file=sys.stderr)
+            raise SystemExit(2) from exc
         if not results:
             print("No results found.")
         else:
