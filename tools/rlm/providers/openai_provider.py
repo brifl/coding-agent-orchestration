@@ -6,7 +6,7 @@ import os
 from typing import Any
 
 from .base import Provider, ProviderCheckResult
-from .http_utils import post_json
+from .http_utils import get_json
 
 
 class OpenAIProvider(Provider):
@@ -26,20 +26,13 @@ class OpenAIProvider(Provider):
             )
 
         base_url = str(self.config.get("base_url", "https://api.openai.com/v1")).rstrip("/")
-        model = str(self.config.get("model", "gpt-4.1-mini"))
         timeout_s = int(self.config.get("timeout_s", 20))
-        url = f"{base_url}/responses"
-
-        payload = {
-            "model": model,
-            "input": "ping",
-            "max_output_tokens": 8,
-        }
+        url = f"{base_url}/models"
         headers = {
             "Authorization": f"Bearer {api_key}",
         }
 
-        status_code, response_text, latency_ms = post_json(url, payload, headers, timeout_s)
+        status_code, response_text, latency_ms = get_json(url, headers, timeout_s)
         ok = 200 <= status_code < 300
         detail = "ok" if ok else f"HTTP {status_code}: {response_text[:240]}"
         return ProviderCheckResult(

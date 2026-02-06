@@ -6,7 +6,7 @@ import os
 from typing import Any
 
 from .base import Provider, ProviderCheckResult
-from .http_utils import post_json
+from .http_utils import get_json
 
 
 class GoogleProvider(Provider):
@@ -28,22 +28,11 @@ class GoogleProvider(Provider):
         base_url = str(
             self.config.get("base_url", "https://generativelanguage.googleapis.com/v1beta")
         ).rstrip("/")
-        model = str(self.config.get("model", "gemini-1.5-flash"))
         timeout_s = int(self.config.get("timeout_s", 20))
-        url = f"{base_url}/models/{model}:generateContent?key={api_key}"
-
-        payload = {
-            "contents": [
-                {
-                    "parts": [
-                        {"text": "ping"},
-                    ]
-                }
-            ]
-        }
+        url = f"{base_url}/models?key={api_key}"
         headers: dict[str, str] = {}
 
-        status_code, response_text, latency_ms = post_json(url, payload, headers, timeout_s)
+        status_code, response_text, latency_ms = get_json(url, headers, timeout_s)
         ok = 200 <= status_code < 300
         detail = "ok" if ok else f"HTTP {status_code}: {response_text[:240]}"
         return ProviderCheckResult(

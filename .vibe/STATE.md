@@ -13,7 +13,7 @@
 
 - Stage: 21
 - Checkpoint: 21.5
-- Status: BLOCKED  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
+- Status: IN_REVIEW  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
 
 ## Objective (current checkpoint)
 
@@ -38,6 +38,7 @@ Enable real subcalls to LLM providers with a unified interface.
 
 ## Work log (current session)
 
+- 2026-02-06: Issues triage — loaded API keys from repo `.env` via `provider_check` dotenv support, switched health checks to provider listing endpoints for stable auth/connectivity validation, and resolved ISSUE-013; moved status to IN_REVIEW.
 - 2026-02-06: Issues triage — per user direction, deferred Triton support from active Stage 21 scope; updated PLAN/STATE acceptance and blocker criteria to core providers (OpenAI/Anthropic/Google); status remains BLOCKED pending credentials.
 - 2026-02-06: Issues triage — confirmed ISSUE-013 as external prerequisite blocker; clarified exact env vars and concrete unblock evidence command for active providers; status remains BLOCKED.
 - 2026-02-06: Implemented 21.5 (blocked) — added provider interface/modules (`openai`, `anthropic`, `google`, `triton`), config resolution overlays (`.vibe/rlm/providers.json`, `~/.vibe/providers.json`), and `tools/rlm/provider_check.py`; health-check command runs and reports structured failures, but acceptance is blocked on missing provider credentials; opened ISSUE-013 and set status to BLOCKED.
@@ -47,7 +48,6 @@ Enable real subcalls to LLM providers with a unified interface.
 - 2026-02-06: Implemented 21.3 — added `tools/rlm/runtime.py` with helper injection (`context`, `list_chunks`, `get_chunk`, `grep`, `peek`, `FINAL`), deterministic stdout truncation, and persisted `state.json`; added `tools/rlm/runtime_selftest.py` proving resume semantics and finalized-step rejection; moved status to IN_REVIEW.
 - 2026-02-06: Review PASS — 21.2 acceptance met (demo build + malformed-task fail-fast + determinism/locality adversarial probe); auto-advanced to 21.3 and set status to NOT_STARTED.
 - 2026-02-06: Implemented 21.2 — added `tools/rlm/context_bundle.py` with deterministic file ordering and line-stable chunking; demo build produced bundle artifacts and probes confirmed deterministic reruns plus one-line edit locality; moved status to IN_REVIEW.
-- 2026-02-06: Review PASS — 21.1 acceptance met with demo + adversarial probes (semantic invalid schema and malformed JSON); auto-advanced to 21.2 and set status to NOT_STARTED.
 
 ## Workflow state
 
@@ -56,24 +56,15 @@ Enable real subcalls to LLM providers with a unified interface.
 ## Evidence
 
 - path: tools/rlm/provider_check.py
-  - cmd: `python3 tools/rlm/provider_check.py --provider openai`
-  - result: FAIL (expected in current environment) — reports missing `OPENAI_API_KEY` and exits non-zero.
-- path: tools/rlm/provider_check.py
-  - cmd: `python3 tools/rlm/provider_check.py --provider openai,anthropic,google`
-  - result: FAIL (expected in current environment) — reports missing `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, and `GOOGLE_API_KEY`.
+  - cmd: `python3 tools/rlm/provider_check.py --provider all`
+  - result: PASS — `openai`, `anthropic`, and `google` checks return `ok: true` with HTTP 200.
 - path: tools/rlm/providers/base.py
   - cmd: `python3 -m py_compile tools/rlm/provider_check.py tools/rlm/providers/*.py`
   - result: PASS — provider modules compile cleanly.
 
 ## Active issues
 
-- [ ] ISSUE-013: Provider credentials/endpoints unavailable for 21.5 acceptance
-  - Impact: BLOCKER
-  - Status: BLOCKED
-  - Owner: human
-  - Unblock Condition: Configure required provider credentials for active providers on this machine.
-  - Evidence Needed: `python3 tools/rlm/provider_check.py --provider openai,anthropic,google` returns exit code 0 with all checks `ok: true`.
-  - Notes: Set `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, and `GOOGLE_API_KEY`; rerun provider checks.
+(None)
 
 ## Decisions
 

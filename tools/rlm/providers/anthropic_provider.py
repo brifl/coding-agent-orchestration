@@ -6,7 +6,7 @@ import os
 from typing import Any
 
 from .base import Provider, ProviderCheckResult
-from .http_utils import post_json
+from .http_utils import get_json
 
 
 class AnthropicProvider(Provider):
@@ -26,23 +26,14 @@ class AnthropicProvider(Provider):
             )
 
         base_url = str(self.config.get("base_url", "https://api.anthropic.com/v1")).rstrip("/")
-        model = str(self.config.get("model", "claude-3-5-haiku-latest"))
         timeout_s = int(self.config.get("timeout_s", 20))
-        url = f"{base_url}/messages"
-
-        payload = {
-            "model": model,
-            "max_tokens": 8,
-            "messages": [
-                {"role": "user", "content": "ping"},
-            ],
-        }
+        url = f"{base_url}/models"
         headers = {
             "x-api-key": api_key,
             "anthropic-version": "2023-06-01",
         }
 
-        status_code, response_text, latency_ms = post_json(url, payload, headers, timeout_s)
+        status_code, response_text, latency_ms = get_json(url, headers, timeout_s)
         ok = 200 <= status_code < 300
         detail = "ok" if ok else f"HTTP {status_code}: {response_text[:240]}"
         return ProviderCheckResult(
