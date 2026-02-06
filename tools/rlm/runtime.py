@@ -76,7 +76,13 @@ def _truncate_stdout(text: str, max_chars: int) -> tuple[str, bool]:
 
 
 class RLMRuntime:
-    def __init__(self, bundle_dir: Path, run_dir: Path, max_stdout_chars: int = 4000) -> None:
+    def __init__(
+        self,
+        bundle_dir: Path,
+        run_dir: Path,
+        max_stdout_chars: int = 4000,
+        llm_query_handler: Any | None = None,
+    ) -> None:
         if max_stdout_chars < 1:
             raise ValueError("max_stdout_chars must be >= 1")
 
@@ -85,6 +91,7 @@ class RLMRuntime:
         self.run_dir.mkdir(parents=True, exist_ok=True)
         self.state_path = self.run_dir / "state.json"
         self.max_stdout_chars = int(max_stdout_chars)
+        self.llm_query_handler = llm_query_handler
 
         self.chunks = self._load_chunks(self.bundle_dir)
         self.chunks_by_id = {str(chunk["chunk_id"]): chunk for chunk in self.chunks}
@@ -267,6 +274,8 @@ class RLMRuntime:
             "memory": self.memory,
             "peek": self.peek,
         }
+        if callable(self.llm_query_handler):
+            env["llm_query"] = self.llm_query_handler
 
         try:
             with contextlib.redirect_stdout(stdout_buffer):

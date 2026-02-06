@@ -1,0 +1,43 @@
+{
+  "task_id": "subcalls_example",
+  "query": "Demonstrate deterministic subcall caching and readonly replay.",
+  "context_sources": [
+    {
+      "type": "file",
+      "path": "tasks/rlm/fixtures/baseline_notes.txt"
+    }
+  ],
+  "bundle": {
+    "chunking_strategy": "by_chars",
+    "max_chars": 400
+  },
+  "mode": "subcalls",
+  "provider_policy": {
+    "primary": "mock",
+    "allowed": [
+      "mock"
+    ],
+    "fallback": [],
+    "kilo_requires_human": true
+  },
+  "limits": {
+    "max_root_iters": 4,
+    "max_depth": 1,
+    "max_subcalls_total": 4,
+    "max_subcalls_per_iter": 2,
+    "timeout_s": 120,
+    "max_stdout_chars": 500
+  },
+  "outputs": {
+    "final_path": ".vibe/rlm/runs/subcalls_example/final.md",
+    "artifact_paths": []
+  },
+  "trace": {
+    "trace_path": ".vibe/rlm/runs/subcalls_example/trace.jsonl",
+    "redaction_mode": "metadata_only"
+  },
+  "baseline_program": [
+    "chunk = list_chunks(limit=1)[0]['chunk_id']\nprompt = 'summarize:' + peek(chunk, max_chars=48).strip()\nresp = llm_query(prompt)\nmemory['resp_hash'] = resp['response_hash']\nprint(resp['text'])",
+    "FINAL({'response_hash': memory['resp_hash']})"
+  ]
+}

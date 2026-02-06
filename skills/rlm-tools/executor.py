@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Baseline RLM executor with bounded iteration and resumable state."""
+"""RLM executor with bounded iteration, subcall caching, and resumable state."""
 
 from __future__ import annotations
 
@@ -10,7 +10,7 @@ import shutil
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 TOOLS_RLM_DIR = REPO_ROOT / "tools" / "rlm"
@@ -21,6 +21,9 @@ from context_bundle import _build_bundle, _read_task  # type: ignore
 from runtime import RLMRuntime, RuntimeErrorState  # type: ignore
 
 EXECUTOR_STATE_FILE = "executor_state.json"
+CACHE_MODES = {"readwrite", "readonly", "off"}
+SUPPORTED_MODES = {"baseline", "subcalls"}
+DEFAULT_RETRY_ATTEMPTS = 3
 
 
 def _utc_now() -> str:
@@ -31,32 +34,241 @@ def _sha256_file(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+def _sha256_text(text: str) -> str:
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+
+def _stable_json(value: Any) -> str:
+    return json.dumps(value, separators=(",", ":"), sort_keys=True, ensure_ascii=True)
+
+
 def _resolve_path(value: str, repo_root: Path) -> Path:
     path = Path(value).expanduser()
     return path if path.is_absolute() else (repo_root / path)
 
 
-def _validate_baseline_program(task: dict[str, Any]) -> list[str]:
-    program = task.get("baseline_program")
+def _normalize_mode(task: dict[str, Any]) -> str:
+    mode = str(task.get("mode", "")).strip().lower()
+    if mode not in SUPPORTED_MODES:
+        allowed = ", ".join(sorted(SUPPORTED_MODES))
+        raise RuntimeError(f"Task mode must be one of: {allowed}.")
+    return mode
+
+
+def _program_key(task: dict[str, Any], mode: str) -> str:
+    if mode == "subcalls" and isinstance(task.get("subcalls_program"), list):
+        return "subcalls_program"
+    return "baseline_program"
+
+
+def _validate_program(task: dict[str, Any], mode: str) -> list[str]:
+    key = _program_key(task, mode)
+    program = task.get(key)
     if not isinstance(program, list) or not program:
         raise RuntimeError(
-            "Task must define a non-empty 'baseline_program' list for baseline executor mode."
+            f"Task must define a non-empty '{key}' list for executor mode '{mode}'."
         )
     normalized: list[str] = []
     for idx, item in enumerate(program):
         if not isinstance(item, str) or not item.strip():
-            raise RuntimeError(f"baseline_program[{idx}] must be a non-empty string.")
+            raise RuntimeError(f"{key}[{idx}] must be a non-empty string.")
         normalized.append(item)
     return normalized
+
+
+def _normalize_cache_mode(raw: str | None, *, mode: str) -> str:
+    value = str(raw or "").strip().lower()
+    if mode == "subcalls":
+        if value not in CACHE_MODES:
+            allowed = "|".join(sorted(CACHE_MODES))
+            raise RuntimeError(
+                f"Subcall mode requires explicit --cache {{{allowed}}}."
+            )
+        return value
+    if not value:
+        return "off"
+    if value not in CACHE_MODES:
+        allowed = "|".join(sorted(CACHE_MODES))
+        raise RuntimeError(f"Cache mode must be one of: {allowed}.")
+    return value
+
+
+def _cache_path_for_task(task_id: str, repo_root: Path) -> Path:
+    return repo_root / ".vibe" / "rlm" / "cache" / f"{task_id}.jsonl"
+
+
+def _load_cache_index(path: Path) -> dict[str, dict[str, Any]]:
+    index: dict[str, dict[str, Any]] = {}
+    if not path.exists():
+        return index
+    with path.open("r", encoding="utf-8") as handle:
+        for line in handle:
+            stripped = line.strip()
+            if not stripped:
+                continue
+            payload = json.loads(stripped)
+            if not isinstance(payload, dict):
+                continue
+            request_hash = str(payload.get("request_hash", "")).strip()
+            if not request_hash:
+                continue
+            index.setdefault(request_hash, payload)
+    return index
+
+
+def _append_cache_entry(path: Path, payload: dict[str, Any]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("a", encoding="utf-8") as handle:
+        handle.write(json.dumps(payload, sort_keys=True) + "\n")
+
+
+def _mock_provider_response(provider: str, prompt: str) -> str:
+    request_material = {
+        "prompt": prompt,
+        "provider": provider,
+    }
+    digest = _sha256_text(_stable_json(request_material))
+    return f"{provider}:{digest[:24]}"
+
+
+def _query_with_deterministic_retry(provider: str, prompt: str) -> tuple[str, int]:
+    failures: list[str] = []
+    for attempt in range(1, DEFAULT_RETRY_ATTEMPTS + 1):
+        try:
+            # Deterministic transient failure hook for testing retry behavior.
+            if prompt.startswith("TRANSIENT_FAIL_ONCE:") and attempt == 1:
+                raise RuntimeError("simulated transient provider failure")
+
+            normalized_prompt = prompt
+            if prompt.startswith("TRANSIENT_FAIL_ONCE:"):
+                normalized_prompt = prompt.split(":", 1)[1]
+            return _mock_provider_response(provider, normalized_prompt), attempt
+        except RuntimeError as exc:
+            failures.append(f"attempt {attempt}: {exc}")
+
+    raise RuntimeErrorState(
+        "Subcall failed after deterministic retries: " + "; ".join(failures)
+    )
+
+
+def _build_llm_query_handler(
+    task: dict[str, Any],
+    state: dict[str, Any],
+    trace_path: Path,
+    repo_root: Path,
+    runtime: RLMRuntime,
+) -> Callable[..., dict[str, Any]]:
+    provider_policy = task.get("provider_policy")
+    if not isinstance(provider_policy, dict):
+        raise RuntimeError("Task provider_policy must be an object.")
+
+    default_provider = str(provider_policy.get("primary", "mock")).strip().lower() or "mock"
+    cache_mode = str(state.get("cache_mode", "off")).strip().lower()
+    if cache_mode not in CACHE_MODES:
+        raise RuntimeError(f"Invalid cache mode '{cache_mode}'.")
+
+    cache_path = _resolve_path(str(state.get("cache_path", "")), repo_root)
+    cache_index = _load_cache_index(cache_path) if cache_mode in {"readwrite", "readonly"} else {}
+
+    iteration_subcalls = 0
+    iteration_number = runtime.iteration + 1
+
+    def llm_query(prompt: Any, provider: str | None = None) -> dict[str, Any]:
+        nonlocal iteration_subcalls
+
+        prompt_text = str(prompt)
+        provider_name = str(provider or default_provider).strip().lower() or "mock"
+
+        max_subcalls_per_iter = int(state.get("max_subcalls_per_iter", 0))
+        max_subcalls_total = int(state.get("max_subcalls_total", 0))
+        subcalls_total = int(state.get("subcalls_total", 0))
+
+        if iteration_subcalls >= max_subcalls_per_iter:
+            raise RuntimeErrorState(
+                "Subcall budget exceeded for iteration "
+                f"{iteration_number}: max_subcalls_per_iter={max_subcalls_per_iter}."
+            )
+
+        if subcalls_total >= max_subcalls_total:
+            raise RuntimeErrorState(
+                "Subcall budget exceeded for run: "
+                f"max_subcalls_total={max_subcalls_total}."
+            )
+
+        request_payload = {
+            "prompt": prompt_text,
+            "provider": provider_name,
+        }
+        request_hash = _sha256_text(_stable_json(request_payload))
+
+        cached = cache_index.get(request_hash)
+        cache_status = "miss"
+        attempts = 0
+        if cached is not None:
+            response_text = str(cached.get("response_text", ""))
+            response_hash = str(cached.get("response_hash", "")) or _sha256_text(response_text)
+            cache_status = "hit"
+        elif cache_mode == "readonly":
+            raise RuntimeErrorState(
+                f"Readonly cache miss for request_hash={request_hash} in {cache_path}"
+            )
+        else:
+            response_text, attempts = _query_with_deterministic_retry(provider_name, prompt_text)
+            response_hash = _sha256_text(response_text)
+            if cache_mode == "readwrite":
+                cache_entry = {
+                    "cached_at": _utc_now(),
+                    "provider": provider_name,
+                    "request_hash": request_hash,
+                    "request_payload": request_payload,
+                    "response_hash": response_hash,
+                    "response_text": response_text,
+                }
+                _append_cache_entry(cache_path, cache_entry)
+                cache_index[request_hash] = cache_entry
+
+        iteration_subcalls += 1
+        state["subcalls_total"] = subcalls_total + 1
+        response_hashes = state.get("response_hashes")
+        if not isinstance(response_hashes, list):
+            response_hashes = []
+            state["response_hashes"] = response_hashes
+        response_hashes.append(response_hash)
+
+        _append_trace(
+            trace_path,
+            {
+                "attempts": attempts,
+                "cache_mode": cache_mode,
+                "cache_status": cache_status,
+                "event": "subcall",
+                "iteration": iteration_number,
+                "provider": provider_name,
+                "recorded_at": _utc_now(),
+                "request_hash": request_hash,
+                "response_hash": response_hash,
+                "subcalls_total": state.get("subcalls_total"),
+            },
+        )
+
+        return {
+            "attempts": attempts,
+            "cache": cache_status,
+            "provider": provider_name,
+            "request_hash": request_hash,
+            "response_hash": response_hash,
+            "text": response_text,
+        }
+
+    return llm_query
 
 
 def _load_task(task_path: Path) -> dict[str, Any]:
     task = _read_task(task_path)
     if task is None:
         raise RuntimeError("Task validation failed.")
-    if str(task.get("mode")) != "baseline":
-        raise RuntimeError("Checkpoint 21.4 executor supports only mode='baseline'.")
-    _validate_baseline_program(task)
+    mode = _normalize_mode(task)
+    _validate_program(task, mode)
     return task
 
 
@@ -127,27 +339,47 @@ def _init_executor_state(
     bundle_dir: Path,
     run_dir: Path,
     trace_path: Path,
+    repo_root: Path,
+    cache_mode: str,
 ) -> dict[str, Any]:
     limits = task.get("limits")
     assert isinstance(limits, dict)
 
+    mode = _normalize_mode(task)
+    normalized_cache_mode = _normalize_cache_mode(cache_mode, mode=mode)
+    task_id = str(task["task_id"])
+
     state = {
         "bundle_dir": str(bundle_dir),
+        "cache_mode": normalized_cache_mode,
+        "cache_path": str(_cache_path_for_task(task_id, repo_root)),
         "cursor": 0,
         "final_artifact": None,
         "max_root_iters": int(limits["max_root_iters"]),
         "max_stdout_chars": int(limits["max_stdout_chars"]),
+        "mode": mode,
         "status": "RUNNING",
         "stop_reason": None,
-        "task_id": str(task["task_id"]),
+        "task_id": task_id,
         "task_path": str(task_path),
         "task_sha256": _sha256_file(task_path),
         "trace_path": str(trace_path),
     }
+
+    if mode == "subcalls":
+        state["max_subcalls_per_iter"] = int(limits["max_subcalls_per_iter"])
+        state["max_subcalls_total"] = int(limits["max_subcalls_total"])
+        state["response_hashes"] = []
+        state["subcalls_total"] = 0
+
     return state
 
 
-def _validate_resume_state(state: dict[str, Any], run_dir: Path, repo_root: Path) -> tuple[dict[str, Any], Path, Path]:
+def _validate_resume_state(
+    state: dict[str, Any],
+    run_dir: Path,
+    repo_root: Path,
+) -> tuple[dict[str, Any], Path, Path]:
     task_path = Path(str(state.get("task_path", ""))).resolve()
     if not task_path.exists():
         raise RuntimeError(f"Task path in executor state no longer exists: {task_path}")
@@ -160,6 +392,13 @@ def _validate_resume_state(state: dict[str, Any], run_dir: Path, repo_root: Path
         )
 
     task = _load_task(task_path)
+    mode = _normalize_mode(task)
+    recorded_mode = str(state.get("mode", "")).strip().lower()
+    if recorded_mode and recorded_mode != mode:
+        raise RuntimeError(
+            f"Executor state mode '{recorded_mode}' does not match task mode '{mode}'."
+        )
+
     bundle_dir = Path(str(state.get("bundle_dir", ""))).resolve()
     if not bundle_dir.exists():
         bundle_dir = _bundle_dir_for_task(task, repo_root)
@@ -173,6 +412,9 @@ def _record_step(
     code: str,
     cursor: int,
     trace_path: Path,
+    *,
+    subcalls_this_iter: int,
+    subcalls_total: int,
 ) -> None:
     payload = {
         "code_sha256": hashlib.sha256(code.encode("utf-8")).hexdigest(),
@@ -184,6 +426,8 @@ def _record_step(
         "recorded_at": _utc_now(),
         "stdout_chars": len(str(runtime_result.get("stdout", ""))),
         "stdout_truncated": bool(runtime_result.get("stdout_truncated")),
+        "subcalls_this_iter": subcalls_this_iter,
+        "subcalls_total": subcalls_total,
     }
     _append_trace(trace_path, payload)
 
@@ -217,7 +461,8 @@ def _step_once(
         _record_stop(state, runtime, trace_path)
         return False
 
-    program = _validate_baseline_program(task)
+    mode = _normalize_mode(task)
+    program = _validate_program(task, mode)
     cursor = int(state.get("cursor", 0))
     if cursor >= len(program):
         state["status"] = "LIMIT_REACHED"
@@ -225,9 +470,24 @@ def _step_once(
         _record_stop(state, runtime, trace_path)
         return False
 
+    if mode == "subcalls":
+        runtime.llm_query_handler = _build_llm_query_handler(task, state, trace_path, repo_root, runtime)
+    else:
+        runtime.llm_query_handler = None
+
     code = program[cursor]
+    subcalls_before = int(state.get("subcalls_total", 0))
     result = runtime.step(code)
-    _record_step(result, code, cursor, trace_path)
+    subcalls_after = int(state.get("subcalls_total", 0))
+
+    _record_step(
+        result,
+        code,
+        cursor,
+        trace_path,
+        subcalls_this_iter=max(0, subcalls_after - subcalls_before),
+        subcalls_total=subcalls_after,
+    )
 
     state["cursor"] = cursor + 1
 
@@ -254,21 +514,46 @@ def _step_once(
 
 
 def _summary(run_dir: Path, state: dict[str, Any], runtime: RLMRuntime) -> dict[str, Any]:
-    return {
+    payload = {
+        "cache_mode": state.get("cache_mode"),
+        "cache_path": state.get("cache_path"),
         "cursor": state.get("cursor"),
         "final_artifact": state.get("final_artifact"),
         "iteration": runtime.iteration,
+        "mode": state.get("mode"),
         "run_dir": str(run_dir),
         "status": state.get("status"),
         "stop_reason": state.get("stop_reason"),
         "trace_path": state.get("trace_path"),
     }
+    if state.get("mode") == "subcalls":
+        payload["response_hashes"] = state.get("response_hashes", [])
+        payload["subcalls_total"] = state.get("subcalls_total", 0)
+    return payload
+
+
+def _assert_cache_override_matches_state(requested: str | None, state: dict[str, Any]) -> None:
+    if not requested:
+        return
+    requested_mode = str(requested).strip().lower()
+    if requested_mode not in CACHE_MODES:
+        allowed = "|".join(sorted(CACHE_MODES))
+        raise RuntimeError(f"Cache mode must be one of: {allowed}.")
+    state_mode = str(state.get("cache_mode", "")).strip().lower() or "off"
+    if requested_mode != state_mode:
+        raise RuntimeError(
+            "Resume cache mode mismatch: "
+            f"state cache mode is '{state_mode}', requested '{requested_mode}'."
+        )
 
 
 def cmd_run(args: argparse.Namespace) -> int:
     repo_root = REPO_ROOT
     task_path = _resolve_path(args.task, repo_root).resolve()
     task = _load_task(task_path)
+    mode = _normalize_mode(task)
+
+    requested_cache = _normalize_cache_mode(args.cache, mode=mode)
 
     run_dir = _resolve_path(args.run_dir, repo_root).resolve() if args.run_dir else _default_run_dir(task, repo_root)
     if args.fresh and run_dir.exists():
@@ -278,7 +563,7 @@ def cmd_run(args: argparse.Namespace) -> int:
     bundle_dir = _bundle_dir_for_task(task, repo_root)
     trace_path = _resolve_path(str(task["trace"]["trace_path"]), repo_root)
 
-    state = _init_executor_state(task, task_path, bundle_dir, run_dir, trace_path)
+    state = _init_executor_state(task, task_path, bundle_dir, run_dir, trace_path, repo_root, requested_cache)
     _save_executor_state(run_dir, state)
 
     runtime = RLMRuntime(
@@ -299,6 +584,7 @@ def cmd_step(args: argparse.Namespace) -> int:
     repo_root = REPO_ROOT
     run_dir = _resolve_path(args.run_dir, repo_root).resolve()
     state = _load_executor_state(run_dir)
+    _assert_cache_override_matches_state(args.cache, state)
     task, bundle_dir, trace_path = _validate_resume_state(state, run_dir, repo_root)
 
     runtime = RLMRuntime(
@@ -317,6 +603,7 @@ def cmd_resume(args: argparse.Namespace) -> int:
     repo_root = REPO_ROOT
     run_dir = _resolve_path(args.run_dir, repo_root).resolve()
     state = _load_executor_state(run_dir)
+    _assert_cache_override_matches_state(args.cache, state)
     task, bundle_dir, trace_path = _validate_resume_state(state, run_dir, repo_root)
 
     runtime = RLMRuntime(
@@ -334,21 +621,36 @@ def cmd_resume(args: argparse.Namespace) -> int:
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="RLM baseline executor")
+    parser = argparse.ArgumentParser(description="RLM executor")
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     run_cmd = subparsers.add_parser("run", help="Create a run and execute until stop.")
     run_cmd.add_argument("--task", required=True, help="Task JSON path")
     run_cmd.add_argument("--run-dir", help="Override run directory")
     run_cmd.add_argument("--fresh", action="store_true", help="Delete existing run directory before start")
+    run_cmd.add_argument(
+        "--cache",
+        choices=sorted(CACHE_MODES),
+        help="Subcall cache mode. Required for mode=subcalls.",
+    )
     run_cmd.set_defaults(func=cmd_run)
 
     step_cmd = subparsers.add_parser("step", help="Execute one iteration for an existing run.")
     step_cmd.add_argument("--run-dir", required=True, help="Existing run directory")
+    step_cmd.add_argument(
+        "--cache",
+        choices=sorted(CACHE_MODES),
+        help="Optional cache mode check for resume safety.",
+    )
     step_cmd.set_defaults(func=cmd_step)
 
     resume_cmd = subparsers.add_parser("resume", help="Resume an existing run until stop.")
     resume_cmd.add_argument("--run-dir", required=True, help="Existing run directory")
+    resume_cmd.add_argument(
+        "--cache",
+        choices=sorted(CACHE_MODES),
+        help="Optional cache mode check for resume safety.",
+    )
     resume_cmd.set_defaults(func=cmd_resume)
 
     return parser
@@ -360,7 +662,7 @@ def main(argv: list[str] | None = None) -> int:
 
     try:
         return int(args.func(args))
-    except (RuntimeError, RuntimeErrorState) as exc:
+    except (RuntimeError, RuntimeErrorState, json.JSONDecodeError) as exc:
         print(f"ERROR: {exc}", file=sys.stderr)
         return 1
 
