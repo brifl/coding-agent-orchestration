@@ -13,7 +13,7 @@
 
 - Stage: 21A
 - Checkpoint: 21A.0
-- Status: NOT_STARTED  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
+- Status: IN_REVIEW  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
 
 ## Objective (current checkpoint)
 
@@ -32,6 +32,7 @@ Define documentation scope and severity rubric/schema for deterministic gap/refa
 
 ## Work log (current session)
 
+- 2026-02-06: Implemented 21A.0 — added `docs/continuous_documentation_overview.md` (scope + wiki migration rules + finding schema) and `docs/documentation_severity_rubric.md` (deterministic `MAJOR|MODERATE|MINOR` criteria with concrete examples); ran checkpoint demo command and prepared review evidence; moved status to IN_REVIEW.
 - 2026-02-06: Consolidation — transitioned pointer from completed Stage 21 (`21.11/DONE`) to Stage 21A (`21A.0/NOT_STARTED`), refreshed objective/deliverables/acceptance to 21A.0, and pruned work log to latest 10 entries.
 - 2026-02-06: Review PASS — 21.11 acceptance met (`eval_smoke` passed on `repo_comprehension`) with adversarial probes confirming expected failures for invalid task schema and readonly cache miss; no remaining same-stage checkpoints, so checkpoint set to DONE (plan exhausted for Stage 21).
 - 2026-02-06: Implemented 21.11 — added reference tasks (`repo_comprehension`, `change_impact`, `doc_synthesis`) and `tools/rlm/eval_smoke.py`; smoke eval confirms one task exercises bundling + multi-iteration reasoning + subcalls + final artifact creation; moved status to IN_REVIEW.
@@ -41,7 +42,6 @@ Define documentation scope and severity rubric/schema for deterministic gap/refa
 - 2026-02-06: Implemented 21.8 — added deterministic provider-policy selection (`primary` + ordered `fallback` + remaining `allowed`) with explicit-provider allowlist enforcement and deterministic provider-fallback behavior; tightened task schema checks (`primary in allowed`, fallback subset), added `tasks/rlm/provider_policy_example.json`, and verified repeat runs yield identical provider-choice sequences; moved status to IN_REVIEW.
 - 2026-02-06: Review PASS — 21.6 acceptance met (`readwrite` -> `readonly` replay produced identical response hashes/final artifact), demo command rerun now works without `--fresh`, and adversarial probes confirmed expected failures for missing cache + subcall budget breach; auto-advanced to 21.8 and set status to NOT_STARTED.
 - 2026-02-06: Issues triage — resolved ISSUE-014 by resetting run-scoped runtime/trace/output artifacts at `executor.py run` start, so non-fresh reruns no longer load finalized runtime state; reran readonly demo command twice successfully; status set back to IN_REVIEW.
-- 2026-02-06: Review FAIL — reran 21.6 demo command exactly (`python3 skills/rlm-tools/executor.py run --task tasks/rlm/subcalls_example.json --cache readonly`) and found non-fresh reruns fail with `Runtime already finalized`; opened ISSUE-014 and moved status to IN_PROGRESS for targeted executor run-reset fix.
 
 ## Workflow state
 
@@ -49,7 +49,8 @@ Define documentation scope and severity rubric/schema for deterministic gap/refa
 
 ## Evidence
 
-- (Pending for checkpoint 21A.0; add rubric/scope artifacts during implementation/review.)
+- `cat docs/documentation_severity_rubric.md` prints explicit deterministic criteria for `MAJOR|MODERATE|MINOR` and includes concrete examples for all three severities.
+- `docs/continuous_documentation_overview.md` defines scope across README/docs/embedded guides, wiki migration target rules, and the required finding schema fields (`finding_id`, `phase`, `category`, `severity`, `location`, `recommendation`).
 
 ## Active issues
 
