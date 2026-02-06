@@ -60,7 +60,7 @@ def test_validate_non_strict_warns_for_missing_issue_fields(temp_repo: Path) -> 
         temp_repo,
         """
 - [ ] ISSUE-101: Missing fields
-  - Severity: MINOR
+  - Impact: MINOR
   - Owner: agent
 """,
     )
@@ -75,7 +75,7 @@ def test_validate_strict_errors_for_missing_issue_fields(temp_repo: Path) -> Non
         temp_repo,
         """
 - [ ] ISSUE-102: Missing fields
-  - Severity: MAJOR
+  - Impact: MAJOR
   - Owner: agent
 """,
     )
@@ -90,7 +90,7 @@ def test_validate_strict_passes_with_complete_issue_schema(temp_repo: Path) -> N
         temp_repo,
         """
 - [ ] ISSUE-103: Fully specified issue
-  - Severity: QUESTION
+  - Impact: QUESTION
   - Status: OPEN
   - Owner: agent
   - Unblock Condition: Need reproduction steps.

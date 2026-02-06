@@ -856,7 +856,7 @@ This reduces variance across agents.
   * Repro steps
   * Frequency
   * Logs/screenshots pointers
-  * Severity suggestion
+  * Impact suggestion
   * Workaround (if any)
 
 ---
@@ -872,7 +872,7 @@ This reduces variance across agents.
 
 **Required output**
 
-* Issue list with severity + owners
+* Issue list with impact + owners
 * Checkpoint proposals using standard template
 
 ### Archived backlog — Stage 17

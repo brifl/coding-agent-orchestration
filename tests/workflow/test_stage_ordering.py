@@ -85,7 +85,7 @@ def test_blocker_issue_overrides_ordering(tmp_path: Path) -> None:
         checkpoint="12A.0",
         status="NOT_STARTED",
         issues="""- [ ] ISSUE-999: Blocked
-  - Severity: BLOCKER
+  - Impact: BLOCKER
 """,
     )
     _write_plan(

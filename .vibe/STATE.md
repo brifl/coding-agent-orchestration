@@ -85,7 +85,7 @@ Build a deterministic chunking library that splits files into indexed units suit
 ## Active issues
 
 - [ ] ISSUE-009: Skills fail to load outside current repo (vendor_imports clone collision)
-  - Severity: MINOR
+  - Impact: MINOR
   - Status: OPEN
   - Owner: agent
   - Unblock Condition: Confirm Codex recommended-skill clone/update behavior no longer fails when vendor_imports target already exists.

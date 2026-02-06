@@ -49,8 +49,8 @@ ALLOWED_STATUS = {
 }
 
 # For prioritization (highest -> lowest)
-SEVERITY_ORDER = ["BLOCKER", "MAJOR", "MINOR", "QUESTION"]
-SEVERITIES = tuple(SEVERITY_ORDER)
+IMPACT_ORDER = ["BLOCKER", "MAJOR", "MINOR", "QUESTION"]
+IMPACTS = tuple(IMPACT_ORDER)
 
 Role = Literal[
     "issues_triage",
@@ -66,7 +66,7 @@ Role = Literal[
 
 @dataclass(frozen=True)
 class Issue:
-    severity: str
+    impact: str
     title: str
     line: str
 
@@ -280,7 +280,7 @@ def _parse_issues_checkbox_format(text: str) -> tuple[Issue, ...]:
     Parse issues only from the '## Active issues' section:
 
     - [ ] ISSUE-001: Title
-      - Severity: QUESTION
+      - Impact: QUESTION
       - Notes: ...
     """
     section_lines = _slice_active_issues_section(text)
@@ -289,7 +289,7 @@ def _parse_issues_checkbox_format(text: str) -> tuple[Issue, ...]:
 
     issues: list[Issue] = []
     issue_head = re.compile(r"^\s*-\s*\[\s*([xX ]?)\s*\]\s*(.+?)\s*$")
-    severity_line = re.compile(r"(?im)^\s*-\s*Severity\s*:\s*(.+?)\s*$")
+    impact_line = re.compile(r"(?im)^\s*-\s*Impact\s*:\s*(.+?)\s*$")
 
     i = 0
     while i < len(section_lines):
@@ -313,15 +313,15 @@ def _parse_issues_checkbox_format(text: str) -> tuple[Issue, ...]:
                 break
             if nxt.strip() == "":
                 break
-            sm = severity_line.match(nxt)
+            sm = impact_line.match(nxt)
             if sm and sev is None:
                 sev = sm.group(1).strip().split()[0].upper()
             j += 1
 
-        if sev not in SEVERITIES:
+        if sev not in IMPACTS:
             sev = "QUESTION"
 
-        issues.append(Issue(severity=sev, title=title, line=line))
+        issues.append(Issue(impact=sev, title=title, line=line))
         i = j
 
     return tuple(issues)
@@ -439,7 +439,7 @@ def _parse_issues_legacy(text: str) -> tuple[Issue, ...]:
     """
     issues: list[Issue] = []
     pat = re.compile(
-        rf"^\s*-\s*(?:\*\*)?\s*({'|'.join(SEVERITIES)}|RISK)\s*:\s*(.+?)(?:\s*\*\*)?\s*$",
+        rf"^\s*-\s*(?:\*\*)?\s*({'|'.join(IMPACTS)}|RISK)\s*:\s*(.+?)(?:\s*\*\*)?\s*$",
         re.IGNORECASE,
     )
     for raw in text.splitlines():
@@ -453,7 +453,7 @@ def _parse_issues_legacy(text: str) -> tuple[Issue, ...]:
         if sev == "RISK":
             sev = "MAJOR"
         title = m.group(2).strip()
-        issues.append(Issue(severity=sev, title=title, line=line.rstrip()))
+        issues.append(Issue(impact=sev, title=title, line=line.rstrip()))
     return tuple(issues)
 
 
@@ -810,13 +810,13 @@ def run_gates(repo_root: Path, checkpoint_id: str | None) -> list[GateResult]:
     return results
 
 
-def _top_issue_severity(issues: tuple[Issue, ...]) -> str | None:
+def _top_issue_impact(issues: tuple[Issue, ...]) -> str | None:
     if not issues:
         return None
-    # choose highest severity by SEVERITY_ORDER
-    order = {sev: idx for idx, sev in enumerate(SEVERITY_ORDER)}
-    best = min(issues, key=lambda i: order.get(i.severity, 999))
-    return best.severity
+    # choose highest impact by IMPACT_ORDER
+    order = {sev: idx for idx, sev in enumerate(IMPACT_ORDER)}
+    best = min(issues, key=lambda i: order.get(i.impact, 999))
+    return best.impact
 
 
 def _recommend_next(state: StateInfo, repo_root: Path) -> tuple[Role, str]:
@@ -824,7 +824,7 @@ def _recommend_next(state: StateInfo, repo_root: Path) -> tuple[Role, str]:
     if state.status == "BLOCKED":
         return ("issues_triage", "Checkpoint status is BLOCKED.")
 
-    top = _top_issue_severity(state.issues)
+    top = _top_issue_impact(state.issues)
     if top == "BLOCKER":
         return ("issues_triage", "BLOCKER issue present.")
 
@@ -878,7 +878,7 @@ def _recommend_next(state: StateInfo, repo_root: Path) -> tuple[Role, str]:
     if state.status in {"NOT_STARTED", "IN_PROGRESS"}:
         # If there are non-blocking issues, triage can be recommended (your choice)
         if top in {"MAJOR", "QUESTION"}:
-            return ("issues_triage", f"Active issues present (top severity: {top}).")
+            return ("issues_triage", f"Active issues present (top impact: {top}).")
         return ("implement", f"Checkpoint status is {state.status}.")
 
     # 4) Default
@@ -947,7 +947,7 @@ def cmd_validate(args: argparse.Namespace) -> int:
             "checkpoint": res.state.checkpoint,
             "status": res.state.status,
             "evidence_path": res.state.evidence_path,
-            "issues": [{"severity": i.severity, "title": i.title} for i in res.state.issues],
+            "issues": [{"impact": i.impact, "title": i.title} for i in res.state.issues],
         }
     if res.plan_check:
         payload["plan_check"] = {
@@ -977,10 +977,10 @@ def cmd_status(args: argparse.Namespace) -> int:
         "status": state.status,
         "evidence_path": state.evidence_path,
         "issues_count": len(state.issues),
-        "issues_top_severity": _top_issue_severity(state.issues),
-        "blockers": [i.title for i in state.issues if i.severity == "BLOCKER"],
-        "majors": [i.title for i in state.issues if i.severity == "MAJOR"],
-        "questions": [i.title for i in state.issues if i.severity == "QUESTION"],
+        "issues_top_impact": _top_issue_impact(state.issues),
+        "blockers": [i.title for i in state.issues if i.impact == "BLOCKER"],
+        "majors": [i.title for i in state.issues if i.impact == "MAJOR"],
+        "questions": [i.title for i in state.issues if i.impact == "QUESTION"],
         "recommended_next_role": role,
         "recommended_next_reason": reason,
         "recommended_prompt_id": PROMPT_MAP[role]["id"],

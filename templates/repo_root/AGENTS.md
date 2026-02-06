@@ -90,7 +90,7 @@ Each active issue in `.vibe/STATE.md` should use this format:
 
 ```
 - [ ] ISSUE-123: Short title
-  - Severity: QUESTION|MINOR|MAJOR|BLOCKER
+  - Impact: QUESTION|MINOR|MAJOR|BLOCKER
   - Status: OPEN|IN_PROGRESS|BLOCKED|RESOLVED
   - Owner: agent|human
   - Unblock Condition: <what must be true to proceed>
@@ -99,7 +99,7 @@ Each active issue in `.vibe/STATE.md` should use this format:
 ```
 
 - `ISSUE-<id>` must be stable across updates.
-- `Severity` drives triage priority.
+- `Impact` drives triage priority.
 - `Status` reflects current resolution state.
 - `Unblock Condition` and `Evidence Needed` should be concrete and testable.
 - `python tools/agentctl.py --repo-root . validate --strict` should fail if required fields are missing.

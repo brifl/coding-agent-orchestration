@@ -163,7 +163,7 @@ def _parse_state() -> dict[str, Any]:
             sm = re.match(r"^\s*-\s*\[(\w+)\]\s*(.+)$", line)
             if sm:
                 issues.append(sm.group(1))
-            sm2 = re.match(r"^\s*-\s*Severity\s*:\s*(\w+)", line, re.IGNORECASE)
+            sm2 = re.match(r"^\s*-\s*Impact\s*:\s*(\w+)", line, re.IGNORECASE)
             if sm2:
                 issues.append(sm2.group(1).upper())
     return {"stage": kv.get("stage"), "checkpoint": kv.get("checkpoint"), "status": kv.get("status"), "issues": issues}

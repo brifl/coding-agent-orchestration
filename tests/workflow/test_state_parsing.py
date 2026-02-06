@@ -139,7 +139,7 @@ class TestParseIssues:
         text = """## Active issues
 
 - [ ] ISSUE-001: Test issue
-  - Severity: MAJOR
+  - Impact: MAJOR
   - Status: OPEN
   - Owner: agent
   - Unblock Condition: Clarify API contract
@@ -148,8 +148,8 @@ class TestParseIssues:
 """
         issues = _parse_issues(text)
         assert len(issues) == 1
-        # Issue has: severity, title, line (not id)
-        assert issues[0].severity == "MAJOR"
+        # Issue has: impact, title, line (not id)
+        assert issues[0].impact == "MAJOR"
         assert issues[0].issue_id == "ISSUE-001"
         assert issues[0].status == "OPEN"
         assert issues[0].owner == "agent"
@@ -165,13 +165,13 @@ class TestParseIssues:
 """
         issues = _parse_issues(text)
         assert len(issues) == 1
-        assert issues[0].severity == "BLOCKER"
+        assert issues[0].impact == "BLOCKER"
 
     def test_issue_schema_validation(self):
         text = """## Active issues
 
 - [ ] ISSUE-123: Missing fields example
-  - Severity: MINOR
+  - Impact: MINOR
   - Owner: agent
 """
         issues = _parse_issues(text)

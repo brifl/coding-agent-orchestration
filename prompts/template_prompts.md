@@ -81,7 +81,7 @@ REQUIRED STATE MUTATIONS
 
 ACTIVE ISSUE BLOCK (required format)
 - [ ] ISSUE-123: Short title
-  - Severity: QUESTION|MINOR|MAJOR|BLOCKER
+  - Impact: QUESTION|MINOR|MAJOR|BLOCKER
   - Status: OPEN|IN_PROGRESS|BLOCKED|RESOLVED
   - Owner: agent|human
   - Unblock Condition: Specific condition to proceed
@@ -91,6 +91,7 @@ ACTIVE ISSUE BLOCK (required format)
 REQUIRED COMMANDS
 - Run checkpoint demo commands from `.vibe/PLAN.md` (or closest equivalent if paths changed).
 - Run `git status --porcelain` before and after commit.
+- Run `python3 tools/agentctl.py --repo-root . validate --strict` before emitting LOOP_RESULT.
 
 EXECUTION
 1) Implement only current checkpoint deliverables.
@@ -98,6 +99,7 @@ EXECUTION
 3) Run verification/demo commands.
 4) If verification fails and fix is not strictly in-scope, record issue and stop.
 5) Commit at least once using `<checkpoint_id>:` prefix (imperative mood).
+6) If unresolved `Impact: MAJOR|BLOCKER` issues remain, do not hand off as ready-for-review; set status to `BLOCKED` and route to triage.
 
 REQUIRED OUTPUT
 - Checkpoint ID.
@@ -151,7 +153,7 @@ REQUIRED STATE MUTATIONS
 
 ACTIVE ISSUE BLOCK (required format)
 - [ ] ISSUE-123: Short title
-  - Severity: QUESTION|MINOR|MAJOR|BLOCKER
+  - Impact: QUESTION|MINOR|MAJOR|BLOCKER
   - Status: OPEN|IN_PROGRESS|BLOCKED|RESOLVED
   - Owner: agent|human
   - Unblock Condition: Specific condition to proceed
@@ -161,18 +163,28 @@ ACTIVE ISSUE BLOCK (required format)
 REQUIRED COMMANDS
 - Re-run demo commands from the active checkpoint (or equivalent).
 - Run focused checks needed to verify acceptance claims.
+- Run at least 2 adversarial probes (negative-path, boundary, or regression probe).
+- Run `python3 tools/agentctl.py --repo-root . validate --strict` before emitting LOOP_RESULT.
 
 EXECUTION
-1) Verify deliverables and acceptance criteria.
-2) Record evidence for each acceptance item (pass/fail).
-3) Apply FAIL or PASS state mutation rules above.
-4) On FAIL, capture precise gaps instead of broad "needs work" notes.
+1) Pass A: Verify deliverables and every acceptance criterion with explicit evidence (pass/fail per item).
+2) Pass B: Adversarial review:
+   - attempt to falsify at least 2 acceptance claims,
+   - run targeted negative/boundary checks,
+   - document what breaks, what is unverified, and residual risk.
+3) Build a "Top 5 findings by impact" list from both passes (highest impact first, include evidence line per finding).
+4) Apply FAIL/PASS mutation rules:
+   - FAIL if any acceptance item is unmet,
+   - FAIL if any unresolved finding is `Impact: MAJOR|BLOCKER`,
+   - PASS only when remaining findings are explicitly accepted as `MINOR|QUESTION`.
+5) On FAIL, capture precise gaps and exact unblock evidence needed.
 
 REQUIRED OUTPUT
 A) Verdict: PASS | FAIL
-B) Acceptance and demo evidence matrix
-C) Issues created/updated
-D) State transition applied (including whether auto-advanced)
+B) Acceptance evidence matrix (criterion -> command/evidence -> pass/fail)
+C) Top 5 findings by impact (Impact, finding, evidence, required fix)
+D) Issues created/updated
+E) State transition applied (including whether auto-advanced)
 
 LOOP_RESULT (required final line)
 Emit exactly one line:
@@ -197,8 +209,9 @@ change set.
 
 PREFLIGHT
 1) Read `AGENTS.md` (optional if already read), `.vibe/STATE.md`, `.vibe/PLAN.md`, `README.md` (optional).
-2) Rank issues by severity: `BLOCKER > MAJOR > MINOR > QUESTION`.
-3) Select top 1-2 issues only.
+2) Rank issues using impact-first ordering: `BLOCKER > MAJOR > MINOR > QUESTION`, then by unblock value and blast radius.
+3) Produce a "Top 5 issues by impact" list before editing anything.
+4) Select only the top 1-2 issues for active resolution in this loop.
 
 ALLOWED FILES
 - `.vibe/STATE.md`
@@ -213,7 +226,7 @@ REQUIRED STATE MUTATIONS
 
 ACTIVE ISSUE BLOCK (required format)
 - [ ] ISSUE-123: Short title
-  - Severity: QUESTION|MINOR|MAJOR|BLOCKER
+  - Impact: QUESTION|MINOR|MAJOR|BLOCKER
   - Status: OPEN|IN_PROGRESS|BLOCKED|RESOLVED
   - Owner: agent|human
   - Unblock Condition: Specific condition to proceed
@@ -222,14 +235,18 @@ ACTIVE ISSUE BLOCK (required format)
 
 REQUIRED COMMANDS
 - Run only commands needed to prove issue resolution (or validate no code change needed).
+- Run `python3 tools/agentctl.py --repo-root . validate --strict` before emitting LOOP_RESULT.
 
 EXECUTION
-1) Resolve one issue at a time.
-2) Prefer docs/plan/config changes over product code changes.
-3) Avoid scope expansion; do not silently start implementation work.
+1) Produce Top 5 by impact with: `Issue ID`, `Impact`, `Why now`, `Unblock condition`, `Evidence needed`.
+2) Resolve one issue at a time (top 1-2 only).
+3) Prefer docs/plan/config changes over product code changes.
+4) Avoid scope expansion; do not silently start implementation work.
+5) Re-rank remaining issues after updates and record the next recommended issue.
 
 REQUIRED OUTPUT
-- Issues addressed (IDs + severity).
+- Top 5 issues by impact (ordered).
+- Issues addressed this loop (IDs + impact + resolution status).
 - Files changed.
 - Commands run + short results.
 - Remaining unresolved questions (max 2).
@@ -647,6 +664,13 @@ RULES
 - Keep the list actionable and implementation-oriented.
 - If inputs are missing, make minimal assumptions and state them.
 
+DISPATCHER CONTRACT (when selected by `agentctl` workflow)
+- Append a short work-log note + evidence pointer in `.vibe/STATE.md`.
+- Emit exactly one line:
+  `LOOP_RESULT: {"loop":"design","result":"updated|blocked","stage":"<id>","checkpoint":"<id>","status":"<status>","next_role_hint":"implement|issues_triage|stop"}`
+- Record it with:
+  `python3 tools/agentctl.py --repo-root . --format json loop-result --line 'LOOP_RESULT: {...}'`
+
 STOP CONDITION
 Stop after producing the structured feature list.
 ```
@@ -679,6 +703,13 @@ RULES
 - Aim for slices that are independently shippable.
 - Keep scope tight; avoid architecture detours.
 - If missing info, call it out under Risks / open questions.
+
+DISPATCHER CONTRACT (when selected by `agentctl` workflow)
+- Append a short work-log note + evidence pointer in `.vibe/STATE.md`.
+- Emit exactly one line:
+  `LOOP_RESULT: {"loop":"design","result":"updated|blocked","stage":"<id>","checkpoint":"<id>","status":"<status>","next_role_hint":"implement|issues_triage|stop"}`
+- Record it with:
+  `python3 tools/agentctl.py --repo-root . --format json loop-result --line 'LOOP_RESULT: {...}'`
 
 STOP CONDITION
 Stop after listing sub-features and any risks.
@@ -713,6 +744,13 @@ RULES
 - Prefer explicit component boundaries.
 - If inputs are missing, note assumptions.
 
+DISPATCHER CONTRACT (when selected by `agentctl` workflow)
+- Append a short work-log note + evidence pointer in `.vibe/STATE.md`.
+- Emit exactly one line:
+  `LOOP_RESULT: {"loop":"design","result":"updated|blocked","stage":"<id>","checkpoint":"<id>","status":"<status>","next_role_hint":"implement|issues_triage|stop"}`
+- Record it with:
+  `python3 tools/agentctl.py --repo-root . --format json loop-result --line 'LOOP_RESULT: {...}'`
+
 STOP CONDITION
 Stop after producing the architecture output.
 ```
@@ -744,6 +782,13 @@ RULES
 - Dependencies should be explicit.
 - Highlight any risk if sequencing is uncertain.
 
+DISPATCHER CONTRACT (when selected by `agentctl` workflow)
+- Append a short work-log note + evidence pointer in `.vibe/STATE.md`.
+- Emit exactly one line:
+  `LOOP_RESULT: {"loop":"design","result":"updated|blocked","stage":"<id>","checkpoint":"<id>","status":"<status>","next_role_hint":"implement|issues_triage|stop"}`
+- Record it with:
+  `python3 tools/agentctl.py --repo-root . --format json loop-result --line 'LOOP_RESULT: {...}'`
+
 STOP CONDITION
 Stop after listing the milestones.
 ```
@@ -772,6 +817,13 @@ RULES
 - Keep stages small and sequential.
 - Use consistent numbering (next available stage ID if provided).
 - Do not write full checkpoint details here.
+
+DISPATCHER CONTRACT (when selected by `agentctl` workflow)
+- Append a short work-log note + evidence pointer in `.vibe/STATE.md`.
+- Emit exactly one line:
+  `LOOP_RESULT: {"loop":"design","result":"updated|blocked","stage":"<id>","checkpoint":"<id>","status":"<status>","next_role_hint":"implement|issues_triage|stop"}`
+- Record it with:
+  `python3 tools/agentctl.py --repo-root . --format json loop-result --line 'LOOP_RESULT: {...}'`
 
 STOP CONDITION
 Stop after producing the stage sections.
@@ -804,6 +856,13 @@ RULES
 - Each checkpoint should be implementable in one focused iteration.
 - Keep demo commands minimal and local.
 - Match the PLAN.md checkpoint template exactly.
+
+DISPATCHER CONTRACT (when selected by `agentctl` workflow)
+- Append a short work-log note + evidence pointer in `.vibe/STATE.md`.
+- Emit exactly one line:
+  `LOOP_RESULT: {"loop":"design","result":"updated|blocked","stage":"<id>","checkpoint":"<id>","status":"<status>","next_role_hint":"implement|issues_triage|stop"}`
+- Record it with:
+  `python3 tools/agentctl.py --repo-root . --format json loop-result --line 'LOOP_RESULT: {...}'`
 
 STOP CONDITION
 Stop after generating the checkpoint sections.
@@ -863,6 +922,14 @@ RULES
 - Prefer refactors that can be proven with existing tests or add minimal tests first.
 - Do not create or switch branches.
 - If you modify code, run the minimal verification command available.
+
+DISPATCHER CONTRACT (when selected by `agentctl` workflow)
+- Update `.vibe/STATE.md` work log + evidence with scan findings.
+- Run `python3 tools/agentctl.py --repo-root . validate --strict` before handoff.
+- Emit exactly one line:
+  `LOOP_RESULT: {"loop":"implement","result":"ready_for_review|blocked","stage":"<id>","checkpoint":"<id>","status":"IN_REVIEW|BLOCKED","next_role_hint":"review|issues_triage"}`
+- Record it with:
+  `python3 tools/agentctl.py --repo-root . --format json loop-result --line 'LOOP_RESULT: {...}'`
 ```
 
 ---
@@ -910,6 +977,14 @@ RULES
 - If the checkpoint implies multiple changes, split into smaller sub-checkpoints.
 - Do not create or switch branches.
 - Stop after completing the checkpoint + verification; do not proceed to the next checkpoint unless asked.
+
+DISPATCHER CONTRACT (when selected by `agentctl` workflow)
+- Update `.vibe/STATE.md` work log + evidence with file edits and verification outputs.
+- Run `python3 tools/agentctl.py --repo-root . validate --strict` before handoff.
+- Emit exactly one line:
+  `LOOP_RESULT: {"loop":"implement","result":"ready_for_review|blocked","stage":"<id>","checkpoint":"<id>","status":"IN_REVIEW|BLOCKED","next_role_hint":"review|issues_triage"}`
+- Record it with:
+  `python3 tools/agentctl.py --repo-root . --format json loop-result --line 'LOOP_RESULT: {...}'`
 ```
 
 ---
@@ -955,6 +1030,14 @@ OUTPUT FORMAT
 RULES
 - Do not create or switch branches.
 - If verification fails, recommend fix or revert.
+
+DISPATCHER CONTRACT (when selected by `agentctl` workflow)
+- Update `.vibe/STATE.md` work log + evidence with verification matrix and residual risks.
+- Run `python3 tools/agentctl.py --repo-root . validate --strict` before handoff.
+- Emit exactly one line:
+  `LOOP_RESULT: {"loop":"review","result":"pass|fail","stage":"<id>","checkpoint":"<id>","status":"NOT_STARTED|DONE|IN_PROGRESS|BLOCKED","next_role_hint":"implement|consolidation|issues_triage|stop"}`
+- Record it with:
+  `python3 tools/agentctl.py --repo-root . --format json loop-result --line 'LOOP_RESULT: {...}'`
 ```
 
 ---
@@ -1005,6 +1088,13 @@ RULES
 - If framework/runner unknown: output a discovery step first, then propose gaps.
 - Avoid vanity coverage targets.
 - Do not create or switch branches.
+
+DISPATCHER CONTRACT (when selected by `agentctl` workflow)
+- Update `.vibe/STATE.md` work log + evidence with prioritized test gaps.
+- Emit exactly one line:
+  `LOOP_RESULT: {"loop":"design","result":"updated|blocked","stage":"<id>","checkpoint":"<id>","status":"<status>","next_role_hint":"implement|issues_triage|stop"}`
+- Record it with:
+  `python3 tools/agentctl.py --repo-root . --format json loop-result --line 'LOOP_RESULT: {...}'`
 ```
 
 ---
@@ -1051,6 +1141,14 @@ RULES
 - Follow existing repo conventions (fixtures, snapshot style, etc.).
 - Avoid overspecifying behavior; assert stable contracts.
 - Do not create or switch branches.
+
+DISPATCHER CONTRACT (when selected by `agentctl` workflow)
+- Update `.vibe/STATE.md` work log + evidence with generated tests and run output.
+- Run `python3 tools/agentctl.py --repo-root . validate --strict` before handoff.
+- Emit exactly one line:
+  `LOOP_RESULT: {"loop":"implement","result":"ready_for_review|blocked","stage":"<id>","checkpoint":"<id>","status":"IN_REVIEW|BLOCKED","next_role_hint":"review|issues_triage"}`
+- Record it with:
+  `python3 tools/agentctl.py --repo-root . --format json loop-result --line 'LOOP_RESULT: {...}'`
 ```
 
 ---
@@ -1095,6 +1193,14 @@ OUTPUT FORMAT
 RULES
 - Be explicit about outcome vs implementation assertions.
 - Do not create or switch branches.
+
+DISPATCHER CONTRACT (when selected by `agentctl` workflow)
+- Update `.vibe/STATE.md` work log + evidence with test quality verdict and top fixes.
+- Run `python3 tools/agentctl.py --repo-root . validate --strict` before handoff.
+- Emit exactly one line:
+  `LOOP_RESULT: {"loop":"review","result":"pass|fail","stage":"<id>","checkpoint":"<id>","status":"NOT_STARTED|DONE|IN_PROGRESS|BLOCKED","next_role_hint":"implement|consolidation|issues_triage|stop"}`
+- Record it with:
+  `python3 tools/agentctl.py --repo-root . --format json loop-result --line 'LOOP_RESULT: {...}'`
 ```
 
 ---
@@ -1139,6 +1245,13 @@ OUTPUT FORMAT
 RULES
 - Avoid jargon without a parenthetical definition.
 - Do not create or switch branches.
+
+DISPATCHER CONTRACT (when selected by `agentctl` workflow)
+- Update `.vibe/STATE.md` work log + evidence with the generated demo script.
+- Emit exactly one line:
+  `LOOP_RESULT: {"loop":"design","result":"updated|blocked","stage":"<id>","checkpoint":"<id>","status":"<status>","next_role_hint":"implement|issues_triage|stop"}`
+- Record it with:
+  `python3 tools/agentctl.py --repo-root . --format json loop-result --line 'LOOP_RESULT: {...}'`
 ```
 
 ---
@@ -1173,7 +1286,7 @@ OUTPUT FORMAT
   - Repro steps
   - Frequency
   - Logs/screenshots pointers
-  - Severity suggestion
+  - Impact suggestion
   - Workaround (if any)
 
 ## Results
@@ -1188,6 +1301,14 @@ OUTPUT FORMAT
 RULES
 - Keep the form concise and unambiguous.
 - Do not create or switch branches.
+
+DISPATCHER CONTRACT (when selected by `agentctl` workflow)
+- Update `.vibe/STATE.md` work log + evidence with delivered intake form and open questions.
+- Run `python3 tools/agentctl.py --repo-root . validate --strict` before handoff.
+- Emit exactly one line:
+  `LOOP_RESULT: {"loop":"issues_triage","result":"resolved|partial|blocked","stage":"<id>","checkpoint":"<id>","status":"<status>","next_role_hint":"implement|review|issues_triage|stop"}`
+- Record it with:
+  `python3 tools/agentctl.py --repo-root . --format json loop-result --line 'LOOP_RESULT: {...}'`
 ```
 
 ---
@@ -1217,7 +1338,7 @@ OUTPUT FORMAT
 ## Actions
 - Issue list:
   - Title
-  - Severity (BLOCKER/MAJOR/MINOR/QUESTION)
+  - Impact (BLOCKER/MAJOR/MINOR/QUESTION)
   - Summary
   - Proposed owner
 - Checkpoint proposals (if appropriate):
@@ -1240,4 +1361,12 @@ OUTPUT FORMAT
 RULES
 - Keep proposed checkpoints small and implementable in one iteration.
 - Do not create or switch branches.
+
+DISPATCHER CONTRACT (when selected by `agentctl` workflow)
+- Update `.vibe/STATE.md` work log + evidence with triage decisions and checkpoint proposals.
+- Run `python3 tools/agentctl.py --repo-root . validate --strict` before handoff.
+- Emit exactly one line:
+  `LOOP_RESULT: {"loop":"issues_triage","result":"resolved|partial|blocked","stage":"<id>","checkpoint":"<id>","status":"<status>","next_role_hint":"implement|review|issues_triage|stop"}`
+- Record it with:
+  `python3 tools/agentctl.py --repo-root . --format json loop-result --line 'LOOP_RESULT: {...}'`
 ```

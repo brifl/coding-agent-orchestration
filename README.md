@@ -98,7 +98,7 @@ Use one strict issue format in `.vibe/STATE.md`:
 
 ```
 - [ ] ISSUE-123: Short title
-  - Severity: QUESTION|MINOR|MAJOR|BLOCKER
+  - Impact: QUESTION|MINOR|MAJOR|BLOCKER
   - Status: OPEN|IN_PROGRESS|BLOCKED|RESOLVED
   - Owner: agent|human
   - Unblock Condition: ...

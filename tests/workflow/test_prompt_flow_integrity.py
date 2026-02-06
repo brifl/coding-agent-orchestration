@@ -102,3 +102,29 @@ def test_repo_workflow_prompt_ids_exist_and_are_mapped() -> None:
     unmapped = [f"{workflow}:{prompt_id}" for workflow, prompt_id in refs if _role_for_prompt_id(prompt_id) is None]
     assert not missing
     assert not unmapped
+
+
+def test_skill_prompt_catalog_is_synced_with_repo_catalog() -> None:
+    repo_root = Path(__file__).resolve().parents[2]
+    canonical = repo_root / "prompts" / "template_prompts.md"
+    skill_copy = repo_root / ".codex" / "skills" / "vibe-prompts" / "resources" / "template_prompts.md"
+
+    assert canonical.exists()
+    assert skill_copy.exists()
+    assert canonical.read_text(encoding="utf-8") == skill_copy.read_text(encoding="utf-8")
+
+
+def test_issue_schema_language_uses_impact() -> None:
+    repo_root = Path(__file__).resolve().parents[2]
+    targets = [
+        repo_root / "AGENTS.md",
+        repo_root / "templates" / "repo_root" / "AGENTS.md",
+        repo_root / "README.md",
+        repo_root / "prompts" / "template_prompts.md",
+        repo_root / "templates" / "vibe_folder" / "STATE.md",
+    ]
+
+    for path in targets:
+        text = path.read_text(encoding="utf-8")
+        assert "Severity:" not in text
+        assert "Severity " not in text

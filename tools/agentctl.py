@@ -52,8 +52,8 @@ ALLOWED_STATUS = {
 }
 
 # For prioritization (highest -> lowest)
-SEVERITY_ORDER = ["BLOCKER", "MAJOR", "MINOR", "QUESTION"]
-SEVERITIES = tuple(SEVERITY_ORDER)
+IMPACT_ORDER = ["BLOCKER", "MAJOR", "MINOR", "QUESTION"]
+IMPACTS = tuple(IMPACT_ORDER)
 ISSUE_STATUS_VALUES = ("OPEN", "IN_PROGRESS", "BLOCKED", "RESOLVED")
 LOOP_RESULT_PROTOCOL_VERSION = 1
 LOOP_RESULT_REQUIRED_FIELDS = (
@@ -90,7 +90,7 @@ Role = Literal[
 
 @dataclass(frozen=True)
 class Issue:
-    severity: str
+    impact: str
     title: str
     line: str
     issue_id: str | None = None
@@ -99,7 +99,7 @@ class Issue:
     unblock_condition: str | None = None
     evidence_needed: str | None = None
     checked: bool = False
-    severity_specified: bool = False
+    impact_specified: bool = False
 
 
 @dataclass(frozen=True)
@@ -416,7 +416,7 @@ def _parse_issues_checkbox_format(text: str) -> tuple[Issue, ...]:
     Parse issues only from the '## Active issues' section:
 
     - [ ] ISSUE-001: Title
-      - Severity: QUESTION
+      - Impact: QUESTION
       - Notes: ...
     """
     section_lines = _slice_active_issues_section(text)
@@ -463,17 +463,17 @@ def _parse_issues_checkbox_format(text: str) -> tuple[Issue, ...]:
                     fields[key] = dm.group("val").strip()
             j += 1
 
-        sev_raw = fields.get("severity")
-        sev = sev_raw.split()[0].upper() if sev_raw else None
-        if sev not in SEVERITIES:
-            sev = "QUESTION"
+        impact_raw = fields.get("impact")
+        impact = impact_raw.split()[0].upper() if impact_raw else None
+        if impact not in IMPACTS:
+            impact = "QUESTION"
 
         status_raw = fields.get("status")
         status = status_raw.split()[0].upper() if status_raw else None
 
         issues.append(
             Issue(
-                severity=sev,
+                impact=impact,
                 title=title,
                 line=line,
                 issue_id=issue_id,
@@ -482,7 +482,7 @@ def _parse_issues_checkbox_format(text: str) -> tuple[Issue, ...]:
                 unblock_condition=fields.get("unblock_condition"),
                 evidence_needed=fields.get("evidence_needed"),
                 checked=checked,
-                severity_specified=sev_raw is not None,
+                impact_specified=impact_raw is not None,
             )
         )
         i = j
@@ -493,7 +493,7 @@ def _parse_issues_checkbox_format(text: str) -> tuple[Issue, ...]:
 def _normalize_issue_detail_key(raw_key: str) -> str | None:
     normalized = re.sub(r"[^a-z0-9]+", "_", raw_key.strip().lower()).strip("_")
     aliases = {
-        "severity": "severity",
+        "impact": "impact",
         "owner": "owner",
         "status": "status",
         "unblock_condition": "unblock_condition",
@@ -527,8 +527,8 @@ def _validate_issue_schema(issues: tuple[Issue, ...]) -> tuple[str, ...]:
             continue
 
         missing: list[str] = []
-        if not issue.severity_specified:
-            missing.append("Severity")
+        if not issue.impact_specified:
+            missing.append("Impact")
         if _is_placeholder_value(issue.owner):
             missing.append("Owner")
         if _is_placeholder_value(issue.status):
@@ -823,7 +823,7 @@ def _parse_issues_legacy(text: str) -> tuple[Issue, ...]:
     """
     issues: list[Issue] = []
     pat = re.compile(
-        rf"^\s*-\s*(?:\*\*)?\s*({'|'.join(SEVERITIES)}|RISK)\s*:\s*(.+?)(?:\s*\*\*)?\s*$",
+        rf"^\s*-\s*(?:\*\*)?\s*({'|'.join(IMPACTS)}|RISK)\s*:\s*(.+?)(?:\s*\*\*)?\s*$",
         re.IGNORECASE,
     )
     for raw in text.splitlines():
@@ -837,7 +837,7 @@ def _parse_issues_legacy(text: str) -> tuple[Issue, ...]:
         if sev == "RISK":
             sev = "MAJOR"
         title = m.group(2).strip()
-        issues.append(Issue(severity=sev, title=title, line=line.rstrip()))
+        issues.append(Issue(impact=sev, title=title, line=line.rstrip()))
     return tuple(issues)
 
 
@@ -1234,13 +1234,13 @@ def run_gates(repo_root: Path, checkpoint_id: str | None) -> list[GateResult]:
     return results
 
 
-def _top_issue_severity(issues: tuple[Issue, ...]) -> str | None:
+def _top_issue_impact(issues: tuple[Issue, ...]) -> str | None:
     if not issues:
         return None
-    # choose highest severity by SEVERITY_ORDER
-    order = {sev: idx for idx, sev in enumerate(SEVERITY_ORDER)}
-    best = min(issues, key=lambda i: order.get(i.severity, 999))
-    return best.severity
+    # choose highest impact by IMPACT_ORDER
+    order = {sev: idx for idx, sev in enumerate(IMPACT_ORDER)}
+    best = min(issues, key=lambda i: order.get(i.impact, 999))
+    return best.impact
 
 
 def _get_section_lines(sections: dict[str, list[str]], section_name: str) -> list[str]:
@@ -1357,7 +1357,7 @@ def _recommend_next(state: StateInfo, repo_root: Path) -> tuple[Role, str]:
     if state.status == "BLOCKED":
         return ("issues_triage", "Checkpoint status is BLOCKED.")
 
-    top = _top_issue_severity(state.issues)
+    top = _top_issue_impact(state.issues)
     if top == "BLOCKER":
         return ("issues_triage", "BLOCKER issue present.")
 
@@ -1411,7 +1411,7 @@ def _recommend_next(state: StateInfo, repo_root: Path) -> tuple[Role, str]:
     if state.status in {"NOT_STARTED", "IN_PROGRESS"}:
         # If there are non-blocking issues, triage can be recommended (your choice)
         if top in {"MAJOR", "QUESTION"}:
-            return ("issues_triage", f"Active issues present (top severity: {top}).")
+            return ("issues_triage", f"Active issues present (top impact: {top}).")
 
         # Context capture is a first-class maintenance loop.
         if state.status == "NOT_STARTED":
@@ -1627,7 +1627,7 @@ def cmd_validate(args: argparse.Namespace) -> int:
             "issues": [
                 {
                     "id": i.issue_id,
-                    "severity": i.severity,
+                    "impact": i.impact,
                     "status": i.status,
                     "owner": i.owner,
                     "title": i.title,
@@ -1663,10 +1663,10 @@ def cmd_status(args: argparse.Namespace) -> int:
         "status": state.status,
         "evidence_path": state.evidence_path,
         "issues_count": len(state.issues),
-        "issues_top_severity": _top_issue_severity(state.issues),
-        "blockers": [i.title for i in state.issues if i.severity == "BLOCKER"],
-        "majors": [i.title for i in state.issues if i.severity == "MAJOR"],
-        "questions": [i.title for i in state.issues if i.severity == "QUESTION"],
+        "issues_top_impact": _top_issue_impact(state.issues),
+        "blockers": [i.title for i in state.issues if i.impact == "BLOCKER"],
+        "majors": [i.title for i in state.issues if i.impact == "MAJOR"],
+        "questions": [i.title for i in state.issues if i.impact == "QUESTION"],
         "recommended_next_role": role,
         "recommended_next_reason": reason,
         "recommended_prompt_id": PROMPT_MAP[role]["id"],

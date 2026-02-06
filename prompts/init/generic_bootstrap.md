@@ -51,7 +51,7 @@ VCS RULES (hard)
 - Stay on the current branch.
 - Do not create/switch/delete branches unless explicitly instructed.
 - Before setting `.vibe/STATE.md` Status to `IN_REVIEW`, ensure:
-  - `git status --porcelain` is clean, and
+  - files touched by the active checkpoint are clean in the working tree (unrelated changes in other files are allowed), and
   - you created at least one commit for the checkpoint (`<id>: <imperative summary>`).
 - If branch/commit is not possible due to repo policy, record a BLOCKER issue in `.vibe/STATE.md` and stop.
 
@@ -69,6 +69,6 @@ STOP CONDITIONS
 
 ERROR HANDLING
 If you cannot complete a task:
-1. Add an issue to `.vibe/STATE.md` with appropriate severity
-2. Set status to BLOCKED if severity is BLOCKER
+1. Add an issue to `.vibe/STATE.md` with appropriate impact
+2. Set status to BLOCKED if impact is BLOCKER
 3. Stop and wait for human intervention
