@@ -1598,3 +1598,52 @@ RULES
 - Every applied change must map back to one `finding_id`.
 - Do not create or switch branches.
 ```
+
+---
+
+## prompt.docs_refactor_analysis — Documentation Refactor Analysis Prompt
+
+```md
+ROLE: Documentation architect (refactor analysis phase)
+
+TASK
+Analyze existing documentation quality for `accuracy`, `bloat`, and
+`structure`, then emit deterministic findings with refactor recommendations.
+
+INPUTS
+- Repository docs corpus (README/docs/embedded guides)
+- Severity rubric (`docs/documentation_severity_rubric.md`)
+- Optional previous refactor report for diffing
+
+OUTPUT FORMAT
+## Goal
+- One-sentence refactor analysis scope.
+
+## Findings by Category
+- Sections for `accuracy`, `bloat`, and `structure`.
+- Each finding includes:
+  - `finding_id`
+  - `phase` (`refactor`)
+  - `category`
+  - `severity`
+  - `location`
+  - `recommendation`
+
+## Recommended Refactors
+- Include concrete recommendations with one of:
+  - `migrate_to_wiki`
+  - `split_to_code_specific_doc`
+  - `merge_duplicates`
+
+## Evidence
+- Commands run and key indicators used for classification.
+
+## Next Safe Step
+- Single next action: apply refactor fixes or triage unresolved blockers.
+
+RULES
+- Keep finding IDs and ordering deterministic for unchanged input.
+- Prefer evidence-backed quality issues over stylistic preferences.
+- Recommendations must include target paths and concise summaries.
+- Do not create or switch branches.
+```

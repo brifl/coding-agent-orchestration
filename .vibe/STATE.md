@@ -13,7 +13,7 @@
 
 - Stage: 21A
 - Checkpoint: 21A.3
-- Status: NOT_STARTED  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
+- Status: IN_REVIEW  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
 
 ## Objective (current checkpoint)
 
@@ -33,6 +33,7 @@ Analyze existing documentation for stale/inaccurate content, bloat, and structur
 
 ## Work log (current session)
 
+- 2026-02-06: Implemented 21A.3 — added `prompt.docs_refactor_analysis` and deterministic analyzer `tools/docs/doc_refactor_report.py`; demo report `.vibe/docs/refactor_report.json` produced severity-ranked findings across `accuracy|bloat|structure` with concrete migration recommendations (`migrate_to_wiki`, `split_to_code_specific_doc`, `merge_duplicates`), and rerun stability check confirmed identical ordered `(finding_id, severity, category)` tuples; moved status to IN_REVIEW.
 - 2026-02-06: Review PASS — 21A.2 acceptance met using recorded before/after artifacts (`MAJOR|MODERATE` reduced from `1|2` to `0|0`) and adversarial probes validating expected target coverage in remediation commit plus unique required finding fields; no blocking findings, so checkpoint auto-advanced to 21A.3 and status set to NOT_STARTED.
 - 2026-02-06: Implemented 21A.2 — added `prompt.docs_gap_fix` and remediation tool `tools/docs/apply_gap_fixes.py`; executed before/apply/after demo flow, generated `.vibe/docs/gap_fix_log.jsonl` linking `finding_id -> changed_files`, and created/updated docs (`docs/index.md`, `docs/embedded_guides.md`, `docs/wiki-export/config_schema.md`, `README.md`) reducing `MAJOR|MODERATE` gap counts from `1|2` to `0|0`; moved status to IN_REVIEW.
 - 2026-02-06: Review PASS — 21A.1 acceptance met by rerunning `doc_gap_report` and adversarial probes for deterministic ordering, unique IDs, and action-schema bounds; no blocking findings, so checkpoint auto-advanced to 21A.2 and status set to NOT_STARTED.
@@ -42,7 +43,6 @@ Analyze existing documentation for stale/inaccurate content, bloat, and structur
 - 2026-02-06: Consolidation — transitioned pointer from completed Stage 21 (`21.11/DONE`) to Stage 21A (`21A.0/NOT_STARTED`), refreshed objective/deliverables/acceptance to 21A.0, and pruned work log to latest 10 entries.
 - 2026-02-06: Review PASS — 21.11 acceptance met (`eval_smoke` passed on `repo_comprehension`) with adversarial probes confirming expected failures for invalid task schema and readonly cache miss; no remaining same-stage checkpoints, so checkpoint set to DONE (plan exhausted for Stage 21).
 - 2026-02-06: Implemented 21.11 — added reference tasks (`repo_comprehension`, `change_impact`, `doc_synthesis`) and `tools/rlm/eval_smoke.py`; smoke eval confirms one task exercises bundling + multi-iteration reasoning + subcalls + final artifact creation; moved status to IN_REVIEW.
-- 2026-02-06: Review PASS — 21.10 acceptance met (`skillctl validate skills/rlm-tools` passed) with adversarial probes confirming validation failures for malformed skill manifest and invalid provider selection; auto-advanced to 21.11 and set status to NOT_STARTED.
 
 ## Workflow state
 
@@ -50,7 +50,8 @@ Analyze existing documentation for stale/inaccurate content, bloat, and structur
 
 ## Evidence
 
-- (Pending for checkpoint 21A.3; 21A.2 review evidence captured in work-log entry.)
+- `python3 tools/docs/doc_refactor_report.py --repo-root . --out .vibe/docs/refactor_report.json` produced 3 findings with category counts `{\"accuracy\": 1, \"bloat\": 1, \"structure\": 1}` and recommendation counts `{\"merge_duplicates\": 1, \"migrate_to_wiki\": 1, \"split_to_code_specific_doc\": 1}`.
+- Determinism rerun check (`refactor_report.json` vs `refactor_report.rerun.json`) reported `stable_pairs=True` for ordered `(finding_id, severity, category)` tuples.
 
 ## Active issues
 
