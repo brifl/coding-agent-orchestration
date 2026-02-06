@@ -32,6 +32,7 @@ Prevent runaway recursion and make subcalls replayable.
 
 ## Work log (current session)
 
+- 2026-02-06: Consolidation — pruned STATE work log to the most recent 10 entries and cleared stale 21.5 evidence; stage/checkpoint/status remain aligned at 21.6 / NOT_STARTED.
 - 2026-02-06: Review PASS — 21.5 acceptance met with demo rerun plus adversarial probes (invalid provider selection rejects with exit 2, and credential-scrubbed run reports missing env vars); auto-advanced to 21.6 and set status to NOT_STARTED.
 - 2026-02-06: Issues triage — loaded API keys from repo `.env` via `provider_check` dotenv support, switched health checks to provider listing endpoints for stable auth/connectivity validation, and resolved ISSUE-013; moved status to IN_REVIEW.
 - 2026-02-06: Issues triage — per user direction, deferred Triton support from active Stage 21 scope; updated PLAN/STATE acceptance and blocker criteria to core providers (OpenAI/Anthropic/Google); status remains BLOCKED pending credentials.
@@ -41,8 +42,6 @@ Prevent runaway recursion and make subcalls replayable.
 - 2026-02-06: Implemented 21.4 — added `skills/rlm-tools/executor.py` (`run/step/resume`) with bounded baseline iteration, run-state persistence, trace logging, and final artifact writeout; added `tasks/rlm/baseline_example.json` + fixture context; demo run completed multi-iteration execution and stopped on `FINAL`; moved status to IN_REVIEW.
 - 2026-02-06: Review PASS — 21.3 acceptance met with selftest + adversarial resume probes (max-stdout mismatch, bundle-fingerprint mismatch); auto-advanced to 21.4 and set status to NOT_STARTED.
 - 2026-02-06: Implemented 21.3 — added `tools/rlm/runtime.py` with helper injection (`context`, `list_chunks`, `get_chunk`, `grep`, `peek`, `FINAL`), deterministic stdout truncation, and persisted `state.json`; added `tools/rlm/runtime_selftest.py` proving resume semantics and finalized-step rejection; moved status to IN_REVIEW.
-- 2026-02-06: Review PASS — 21.2 acceptance met (demo build + malformed-task fail-fast + determinism/locality adversarial probe); auto-advanced to 21.3 and set status to NOT_STARTED.
-- 2026-02-06: Implemented 21.2 — added `tools/rlm/context_bundle.py` with deterministic file ordering and line-stable chunking; demo build produced bundle artifacts and probes confirmed deterministic reruns plus one-line edit locality; moved status to IN_REVIEW.
 
 ## Workflow state
 
@@ -50,12 +49,7 @@ Prevent runaway recursion and make subcalls replayable.
 
 ## Evidence
 
-- path: tools/rlm/provider_check.py
-  - cmd: `python3 tools/rlm/provider_check.py --provider all`
-  - result: PASS — `openai`, `anthropic`, and `google` checks return `ok: true` with HTTP 200.
-- path: tools/rlm/providers/base.py
-  - cmd: `python3 -m py_compile tools/rlm/provider_check.py tools/rlm/providers/*.py`
-  - result: PASS — provider modules compile cleanly.
+- (Pending for checkpoint 21.6; add replay/cache evidence during implementation/review.)
 
 ## Active issues
 

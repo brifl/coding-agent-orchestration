@@ -113,6 +113,7 @@ Introduced stable prompt IDs with a shared catalog and updated agent control too
 
 ### Work log (archived)
 
+- 2026-02-06 — Consolidation at checkpoint 21.6 pruned STATE work log from 11 to 10 entries and cleared stale checkpoint 21.5 evidence.
 - 2026-02-06 — Pruned STATE work log from 32 to 10 entries (2026-02-03 through 2026-02-05 entries covering Stages 19/19A/20.0 implementation, review, and issue resolution).
 - 2026-02-02 — Pruned older STATE work log entries from 2026-01-29 through 2026-02-02 during Stage 13A consolidation.
 
