@@ -169,8 +169,8 @@ Implement a bounded, auditable Recursive Language Model (RLM) execution harness 
 
 ---
 
-### 21.7 — Kilo provider (human-assisted via external queue)
-
+### (DEFERRED) 21.7 — Kilo provider (human-assisted via external queue)
+* **Important:**  This is deferred. Mark it as complete/skipped for now. We are not going to support Kilo until much later on.
 * **Objective:**  
   Support Kilo (VS Code extension) as a human-assisted provider with full auditability.
 * **Deliverables:**
