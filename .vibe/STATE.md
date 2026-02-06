@@ -39,6 +39,7 @@ Enable real subcalls to LLM providers with a unified interface.
 
 ## Work log (current session)
 
+- 2026-02-06: Issues triage — confirmed ISSUE-013 as external prerequisite blocker; clarified exact env vars/endpoints and concrete unblock evidence command (`provider_check --all` must return all `ok: true`); status remains BLOCKED.
 - 2026-02-06: Implemented 21.5 (blocked) — added provider interface/modules (`openai`, `anthropic`, `google`, `triton`), config resolution overlays (`.vibe/rlm/providers.json`, `~/.vibe/providers.json`), and `tools/rlm/provider_check.py`; health-check command runs and reports structured failures, but acceptance is blocked on missing provider credentials and unavailable Triton endpoint; opened ISSUE-013 and set status to BLOCKED.
 - 2026-02-06: Review PASS — 21.4 acceptance met with demo rerun and adversarial probes (max-root-iters limit stop + resume rejection on mutated task hash); auto-advanced to 21.5 and set status to NOT_STARTED.
 - 2026-02-06: Implemented 21.4 — added `skills/rlm-tools/executor.py` (`run/step/resume`) with bounded baseline iteration, run-state persistence, trace logging, and final artifact writeout; added `tasks/rlm/baseline_example.json` + fixture context; demo run completed multi-iteration execution and stopped on `FINAL`; moved status to IN_REVIEW.
@@ -48,7 +49,6 @@ Enable real subcalls to LLM providers with a unified interface.
 - 2026-02-06: Implemented 21.2 — added `tools/rlm/context_bundle.py` with deterministic file ordering and line-stable chunking; demo build produced bundle artifacts and probes confirmed deterministic reruns plus one-line edit locality; moved status to IN_REVIEW.
 - 2026-02-06: Review PASS — 21.1 acceptance met with demo + adversarial probes (semantic invalid schema and malformed JSON); auto-advanced to 21.2 and set status to NOT_STARTED.
 - 2026-02-06: Implemented 21.1 — added `docs/rlm_task_schema.md`, `tools/rlm/validate_task.py`, and example tasks under `tasks/rlm/`; validated pass path on `tasks/rlm/example.json` and fail-fast diagnostics on malformed input; moved status to IN_REVIEW.
-- 2026-02-06: Review PASS — 21.0 acceptance met (`rlm_overview` + `rlm_glossary` + decision table) with adversarial probes for required sections/terms; auto-advanced to 21.1 and set status to NOT_STARTED.
 
 ## Workflow state
 
@@ -74,7 +74,7 @@ Enable real subcalls to LLM providers with a unified interface.
   - Owner: human
   - Unblock Condition: Configure required provider credentials and a reachable Triton HTTP endpoint on this machine.
   - Evidence Needed: `python3 tools/rlm/provider_check.py --provider all` returns exit code 0 with all provider checks `ok: true`.
-  - Notes: Current failures are missing `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GOOGLE_API_KEY`, and Triton connection refusal at `http://localhost:8000`.
+  - Notes: Set `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, and `GOOGLE_API_KEY`; start/configure Triton at configured `base_url` (default `http://localhost:8000`) with expected model name; rerun provider checks.
 
 ## Decisions
 
