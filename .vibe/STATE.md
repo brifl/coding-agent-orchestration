@@ -13,7 +13,7 @@
 
 - Stage: 21
 - Checkpoint: 21.3
-- Status: NOT_STARTED  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
+- Status: IN_REVIEW  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
 
 ## Objective (current checkpoint)
 
@@ -32,6 +32,7 @@ Provide a safe, persistent execution environment for RLM iterations.
 
 ## Work log (current session)
 
+- 2026-02-06: Implemented 21.3 — added `tools/rlm/runtime.py` with helper injection (`context`, `list_chunks`, `get_chunk`, `grep`, `peek`, `FINAL`), deterministic stdout truncation, and persisted `state.json`; added `tools/rlm/runtime_selftest.py` proving resume semantics and finalized-step rejection; moved status to IN_REVIEW.
 - 2026-02-06: Review PASS — 21.2 acceptance met (demo build + malformed-task fail-fast + determinism/locality adversarial probe); auto-advanced to 21.3 and set status to NOT_STARTED.
 - 2026-02-06: Implemented 21.2 — added `tools/rlm/context_bundle.py` with deterministic file ordering and line-stable chunking; demo build produced bundle artifacts and probes confirmed deterministic reruns plus one-line edit locality; moved status to IN_REVIEW.
 - 2026-02-06: Review PASS — 21.1 acceptance met with demo + adversarial probes (semantic invalid schema and malformed JSON); auto-advanced to 21.2 and set status to NOT_STARTED.
@@ -41,7 +42,6 @@ Provide a safe, persistent execution environment for RLM iterations.
 - 2026-02-06: Consolidation — archived Stage 19A and Stage 20, pruned PLAN to Stage 21+, transitioned state pointer to 21.0/NOT_STARTED, set RUN_CONTEXT_CAPTURE.
 - 2026-02-06: Implemented 20.5 — added TF-IDF vectorizer + index `--vectors` build path; implemented semantic and hybrid retrieval modes with lex/sem/hybrid comparison evidence; moved to IN_REVIEW.
 - 2026-02-06: Review PASS — 20.4 acceptance met (docs/policy, install, tartu pipeline); auto-advanced to 20.5; status set to NOT_STARTED.
-- 2026-02-06: Implemented 20.4 — expanded rag-index SKILL.md usage docs + RAG usage policy; validated `skillctl install` and pipeline query against `/mnt/c/src/tartu`; moved to IN_REVIEW.
 
 ## Workflow state
 
@@ -49,7 +49,12 @@ Provide a safe, persistent execution environment for RLM iterations.
 
 ## Evidence
 
-(Checkpoint 21.3 — not yet started)
+- path: tools/rlm/runtime.py
+  - cmd: `python3 -m py_compile tools/rlm/runtime.py`
+  - result: PASS — runtime module compiles cleanly.
+- path: tools/rlm/runtime_selftest.py
+  - cmd: `python3 tools/rlm/runtime_selftest.py`
+  - result: PASS — selftest reports deterministic stdout truncation, unambiguous resume from `state.json`, and finalized-step rejection.
 
 ## Active issues
 
