@@ -13,7 +13,7 @@
 
 - Stage: 20
 - Checkpoint: 20.2
-- Status: IN_PROGRESS  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
+- Status: IN_REVIEW  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
 
 ## Objective (current checkpoint)
 
@@ -35,6 +35,7 @@ Upgrade the indexer to work at chunk granularity with chunk-level incremental up
 
 ## Work log (current session)
 
+- 2026-02-06: Implemented 20.2 follow-up — fixed chunk-level incremental diffing and malformed FTS query handling; acceptance probes now pass; moved to IN_REVIEW.
 - 2026-02-06: Review FAIL — 20.2 unmet: one-line edit re-indexed all chunks for a changed file; opened ISSUE-012 and returned status to IN_PROGRESS.
 - 2026-02-06: Consolidation — pruned work log from 32 to 10 entries; archived older entries to HISTORY.md.
 - 2026-02-06: Process improvement — work log bloat now routes to consolidation (not improvements); split _consolidation_trigger_reason; all 40 tests pass.
@@ -44,7 +45,6 @@ Upgrade the indexer to work at chunk granularity with chunk-level incremental up
 - 2026-02-05: Resolved ISSUE-011 — added installable `vibe-one-loop` and `vibe-run` skills.
 - 2026-02-05: Resolved ISSUE-010 — added manifest front matter to `vibe-loop`; verified cross-repo/global discovery.
 - 2026-02-05: Mitigated ISSUE-009 in local tooling by normalizing `CODEX_HOME`/`AGENT_HOME` paths.
-- 2026-02-05: Advanced checkpoint 20.0 → 20.1 (Chunking engine); status set to NOT_STARTED.
 
 ## Workflow state
 
@@ -52,14 +52,14 @@ Upgrade the indexer to work at chunk granularity with chunk-level incremental up
 
 ## Evidence
 
-- 2026-02-06 review evidence (checkpoint 20.2):
-  - Build baseline: `python3 .codex/skills/rag-index/indexer.py build --manifest /tmp/vibe-review-20-2/manifest1.json --output /tmp/vibe-review-20-2/index.db` -> `2 files processed ... 5 chunks indexed ... 0 errors`.
+- 2026-02-06 implementation evidence (checkpoint 20.2):
+  - Build baseline: `python3 .codex/skills/rag-index/indexer.py build --manifest /tmp/vibe-impl-20-2/manifest1.json --output /tmp/vibe-impl-20-2/index.db` -> `2 files processed ... 5 chunks indexed ... 0 errors`.
   - Rebuild unchanged: same command with same manifest -> `0 files processed ... 0 chunks indexed`.
-  - One-line change probe: after editing one line in `main.py`, build with `manifest2.json` -> `1 files processed ... 4 chunks indexed ... 4 chunks removed` (expected affected-chunk-only behavior not met).
+  - One-line change probe: after editing one line in `main.py`, build with `manifest2.json` -> `1 files processed ... 1 chunks indexed ... 3 chunks skipped ... 1 chunks removed`.
   - Delete-file probe: after deleting `util.py`, build with `manifest3_deleted.json` -> `1 files removed ... 1 chunks removed`.
-  - Search output probe: `python3 .codex/skills/rag-index/indexer.py search "parse_gitignore" --index /tmp/vibe-review-20-2/index.db --top-k 3` returned JSON including `start_line` and `end_line`.
-  - Migration probe (v1 -> v2): build against synthetic v1 DB printed warning `Dropping and rebuilding for v2.` and meta `schema_version` read back as `2`.
-  - Adversarial boundary probe: `python3 .codex/skills/rag-index/indexer.py search '"' --index /tmp/vibe-review-20-2/index.db --top-k 3` exits with `sqlite3.OperationalError: unterminated string` traceback.
+  - Search output probe: `python3 .codex/skills/rag-index/indexer.py search "parse_gitignore" --index /tmp/vibe-impl-20-2/index.db --top-k 3` returned JSON including `start_line` and `end_line`.
+  - Migration probe (v1 -> v2): build against synthetic v1 DB printed warning `Dropping and rebuilding for v2.`.
+  - Adversarial boundary probe: `python3 .codex/skills/rag-index/indexer.py search '"' --index /tmp/vibe-impl-20-2/index.db --top-k 3` exits cleanly with `ERROR: invalid FTS query: unterminated string` (no traceback).
 
 ## Active issues
 
@@ -70,22 +70,6 @@ Upgrade the indexer to work at chunk granularity with chunk-level incremental up
   - Unblock Condition: Confirm Codex recommended-skill clone/update behavior no longer fails when vendor_imports target already exists.
   - Evidence Needed: Successful recommended-skills load in Codex app (or product-side fix/confirmation) without manual cleanup.
   - Notes: External error seen in Codex app: "Unable to load recommended skills: git clone failed: fatal: destination path '\\wsl.localhost\\Ubuntu\\home\\brifl\\.codex\\vendor_imports\\skills' already exists and is not an empty directory." Local tooling now normalizes UNC-style `CODEX_HOME` paths and cross-repo discovery is verified. Remaining work is product-side behavior for recommended skill vendor clone/update handling. Docs for reference: https://developers.openai.com/codex/skills/
-
-- [ ] ISSUE-012: Single-line edit re-indexes all chunks for changed file
-  - Impact: MAJOR
-  - Status: OPEN
-  - Owner: agent
-  - Unblock Condition: Build path preserves unchanged chunks when a file changes and re-indexes only chunks whose `hash` changed.
-  - Evidence Needed: One-line edit in a 4-chunk file reports only affected-chunk reindex counts (for example `chunks_indexed=1`, `chunks_removed=1`) rather than full-file chunk churn.
-  - Notes: Current flow deletes all chunks for `doc_id` whenever `docs.content_hash` changes, then re-inserts all chunks. Also, `chunk_id` includes file `content_hash`, so unchanged chunk text still gets new IDs.
-
-- [ ] ISSUE-013: Search CLI crashes on malformed FTS query syntax
-  - Impact: MINOR
-  - Status: OPEN
-  - Owner: agent
-  - Unblock Condition: Invalid FTS syntax is handled with a user-facing error path instead of an uncaught traceback.
-  - Evidence Needed: `python3 .codex/skills/rag-index/indexer.py search '"' --index /tmp/vibe-review-20-2/index.db --top-k 3` exits cleanly with non-traceback error output.
-  - Notes: Current behavior raises `sqlite3.OperationalError: unterminated string` from `MATCH ?`.
 
 ## Decisions
 
