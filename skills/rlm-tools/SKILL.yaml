@@ -1,0 +1,16 @@
+name: rlm-tools
+description: RLM execution harness tooling with deterministic bundle, runtime, provider, and replay commands.
+version: "1.0.0"
+agents:
+  - codex
+  - claude
+  - gemini
+  - copilot
+  - kilo
+entrypoints:
+  - rlm validate
+  - rlm bundle
+  - rlm run
+  - rlm step
+  - rlm resume
+  - rlm providers

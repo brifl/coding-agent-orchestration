@@ -13,7 +13,7 @@
 
 - Stage: 21
 - Checkpoint: 21.10
-- Status: NOT_STARTED  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
+- Status: IN_REVIEW  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
 
 ## Objective (current checkpoint)
 
@@ -37,6 +37,7 @@ Package RLM as a first-class skill usable across agents.
 
 ## Work log (current session)
 
+- 2026-02-06: Implemented 21.10 — packaged `rlm-tools` skill with `skills/rlm-tools/SKILL.yaml`, added multi-command wrapper `skills/rlm-tools/rlm.py` for `rlm validate|bundle|run|step|resume|providers`, and documented cross-agent usage in `docs/rlm_agents.md`; `skillctl validate skills/rlm-tools` passes; moved status to IN_REVIEW.
 - 2026-02-06: Review PASS — 21.8 acceptance met with deterministic provider-choice reruns (`provider_choice_match=true`) plus adversarial probes (invalid policy schema rejected, disallowed explicit provider blocked at runtime); auto-advanced to 21.10 and set status to NOT_STARTED.
 - 2026-02-06: Implemented 21.8 — added deterministic provider-policy selection (`primary` + ordered `fallback` + remaining `allowed`) with explicit-provider allowlist enforcement and deterministic provider-fallback behavior; tightened task schema checks (`primary in allowed`, fallback subset), added `tasks/rlm/provider_policy_example.json`, and verified repeat runs yield identical provider-choice sequences; moved status to IN_REVIEW.
 - 2026-02-06: Review PASS — 21.6 acceptance met (`readwrite` -> `readonly` replay produced identical response hashes/final artifact), demo command rerun now works without `--fresh`, and adversarial probes confirmed expected failures for missing cache + subcall budget breach; auto-advanced to 21.8 and set status to NOT_STARTED.
@@ -54,7 +55,9 @@ Package RLM as a first-class skill usable across agents.
 
 ## Evidence
 
-- (Pending for checkpoint 21.10; add skill packaging and validation evidence during implementation/review.)
+- `python3 tools/skillctl.py validate skills/rlm-tools` -> `OK: skills/rlm-tools`.
+- `python3 skills/rlm-tools/rlm.py --help` shows entrypoints `validate|bundle|run|step|resume|providers`.
+- `python3 skills/rlm-tools/rlm.py validate tasks/rlm/provider_policy_example.json` -> `VALID: tasks/rlm/provider_policy_example.json`.
 
 ## Active issues
 
