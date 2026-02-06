@@ -183,10 +183,13 @@ def _append_doc_link(index_path: Path, link_line: str) -> bool:
 def _apply_merge_duplicates(repo_root: Path, recommendation: dict[str, Any]) -> tuple[str, list[str]]:
     target = str(recommendation.get("target_path", "")).strip() or "docs/skill_reference.md"
     target_path = repo_root / target
+    target_rel = _rel(target_path, repo_root)
     skill_docs = sorted(
         _rel(path, repo_root)
         for path in _iter_files(repo_root)
-        if _rel(path, repo_root).startswith("docs/skill_") and _rel(path, repo_root).endswith(".md")
+        if _rel(path, repo_root).startswith("docs/skill_")
+        and _rel(path, repo_root).endswith(".md")
+        and _rel(path, repo_root) != target_rel
     )
 
     lines = [
