@@ -54,13 +54,20 @@ Each checkpoint should define:
 
 ### Role loops
 
-The agent should operate in one of these loops, as appropriate to `.vibe/STATE.md`:
-- **Stage Design**: refine checkpoints in `.vibe/PLAN.md`
-- **Implementation**: implement the active checkpoint
-- **Review**: verify acceptance; write evidence; identify issues
-- **Triage**: classify and resolve issues; adjust plan/state accordingly
-- **Consolidation**: move completed content into history; reduce clutter
-- **Process Improvement**: improve this orchestration system with minimal churn
+The agent should operate in one of these loops, as appropriate to `.vibe/STATE.md`.
+This registry is canonical and must stay aligned with `tools/agentctl.py` role mapping.
+
+| Role key | Loop name | Intent | Typical transition |
+| --- | --- | --- | --- |
+| `design` | Stage Design | refine checkpoints in `.vibe/PLAN.md` | unclear/invalid status -> `design` |
+| `implement` | Implementation | implement active checkpoint deliverables | `NOT_STARTED`/`IN_PROGRESS` -> `implement` |
+| `review` | Review | verify acceptance and decide PASS/FAIL | `IN_REVIEW` -> `review` |
+| `issues_triage` | Triage | resolve/clarify active issues with minimal scope | issues or blocked state -> `issues_triage` |
+| `advance` | Advance | move pointer to next checkpoint (fallback/manual) | `DONE` + same-stage next checkpoint |
+| `consolidation` | Consolidation | archive completed stage and sync docs/state | `DONE` + stage transition |
+| `context_capture` | Context Capture | refresh `.vibe/CONTEXT.md` and clear context flags | post-consolidation or stale context |
+| `improvements` | Process Improvement | improve orchestration system itself | workflow debt or explicit flag |
+| `stop` | Stop | end loop when plan is exhausted | no remaining active checkpoints |
 
 ## Stop conditions (hard)
 
@@ -77,6 +84,26 @@ Stop and ask for input (as issue) if any of the following occurs:
 - Keep `.vibe/HISTORY.md` for resolved issues or postmortems.
 - Don’t invent new “issue taxonomies” unless the repo explicitly needs it.
 
+### Required active issue schema
+
+Each active issue in `.vibe/STATE.md` should use this format:
+
+```
+- [ ] ISSUE-123: Short title
+  - Severity: QUESTION|MINOR|MAJOR|BLOCKER
+  - Status: OPEN|IN_PROGRESS|BLOCKED|RESOLVED
+  - Owner: agent|human
+  - Unblock Condition: <what must be true to proceed>
+  - Evidence Needed: <command/output/link proving resolution>
+  - Notes: <optional context>
+```
+
+- `ISSUE-<id>` must be stable across updates.
+- `Severity` drives triage priority.
+- `Status` reflects current resolution state.
+- `Unblock Condition` and `Evidence Needed` should be concrete and testable.
+- `python tools/agentctl.py --repo-root . validate --strict` should fail if required fields are missing.
+
 ## Version control policy (required)
 
 ### Branch discipline (hard rule)
@@ -92,8 +119,13 @@ Stop and ask for input (as issue) if any of the following occurs:
 
 - If you change tracked files, you must produce commits.
 - **Before setting Status to `IN_REVIEW`**, ensure:
-  - `git status --porcelain` is empty (clean working tree), and
-  - at least one commit exists that implements the checkpoint deliverables.
+  - at least one commit exists that implements the checkpoint deliverables, and
+  - files touched by the active checkpoint are clean in the working tree.
+- Unrelated pre-existing changes in other files are allowed:
+  - do not revert them unless explicitly instructed,
+  - keep your checkpoint diff scoped and reviewable,
+  - document any relevant constraints in `.vibe/STATE.md` work log.
+- If unrelated changes make a scoped commit impossible, record a **BLOCKER** issue and stop.
 - Minimum standard: **≥ 1 commit per completed checkpoint** (more is fine if each commit is a coherent step).
 
 ### Commit messages
