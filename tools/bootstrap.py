@@ -393,6 +393,7 @@ def install_skills_agent_global(agent: str, force: bool) -> int:
         "vibe-run",
         "continuous-refactor",
         "continuous-test-generation",
+        "continuous-documentation",
     ]
 
     updated: list[str] = []

@@ -35,6 +35,8 @@ skills:
     version: ">=1.0.0"
   - name: continuous-test-generation
     version: ">=1.0.0"
+  - name: continuous-documentation
+    version: ">=1.0.0"
 ```
 
 ```yaml

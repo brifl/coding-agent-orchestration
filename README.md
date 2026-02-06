@@ -152,7 +152,8 @@ python3 tools/bootstrap.py init-repo /path/to/your/repo
 
 This creates `.vibe/`, adds `.vibe/` to `.gitignore`, installs a baseline `AGENTS.md`,
 and installs repo-local skills into `.codex/skills` from the default `vibe-base` set
-(`vibe-run`, `continuous-refactor`, and `continuous-test-generation` included).
+(`vibe-run`, `continuous-refactor`, `continuous-test-generation`, and
+`continuous-documentation` included).
 
 Use a different set if needed:
 
@@ -174,7 +175,9 @@ manual bootstraps found in `prompts/init/`.
 ## Single-loop vs continuous
 
 - **Single loop**: run one loop and stop (use `$vibe-one-loop` or manual prompts).
-- **Continuous**: loop until `agentctl` returns `recommended_role == "stop"` (use `$vibe-run`, `$continuous-refactor`, or `$continuous-test-generation`).
+- **Continuous**: loop until `agentctl` returns `recommended_role == "stop"` (use
+  `$vibe-run`, `$continuous-refactor`, `$continuous-test-generation`, or
+  `$continuous-documentation`).
 
 Codex's `$vibe-run` skill implements continuous mode. It must keep looping until
 the dispatcher says stop--never just one cycle.
@@ -207,6 +210,11 @@ Use `refactor-cycle` if you want to continue through minor-only refinements.
 `continuous-test-generation` is the parallel test workflow: it runs
 `prompt.test_gap_analysis`, `prompt.test_generation`, and `prompt.test_review`,
 and exits once gap analysis reports only `[MINOR]` additions (no `[MAJOR]`/`[MODERATE]`).
+
+`continuous-documentation` runs the documentation loop:
+`prompt.docs_gap_analysis`, `prompt.docs_gap_fix`,
+`prompt.docs_refactor_analysis`, and `prompt.docs_refactor_fix`,
+and exits once unresolved documentation findings contain no `MAJOR`/`MODERATE`.
 
 ### `$vibe-run` decision flow (happy path + alternate paths)
 
