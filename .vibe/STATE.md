@@ -12,31 +12,30 @@
 ## Current focus
 
 - Stage: 20
-- Checkpoint: 20.1
-- Status: IN_REVIEW  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
+- Checkpoint: 20.2
+- Status: NOT_STARTED  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
 
 ## Objective (current checkpoint)
 
-Build a deterministic chunking library that splits files into indexed units suitable for precise retrieval.
+Upgrade the indexer to work at chunk granularity with chunk-level incremental updates.
 
 ## Deliverables (current checkpoint)
 
-- `.codex/skills/rag-index/chunker.py` — chunking engine with strategy dispatch
-- Strategies: Python (AST-based), Markdown (heading-based), Generic code (blank-line blocks), Fallback (fixed-size windows)
-- Chunk schema with `chunk_id`, `doc_path`, `start_line`, `end_line`, `text`, `token_estimate`, `hash`, `language`
-- Library API: `chunk_file(path, language, max_chunk_tokens=500) -> list[dict]`
-- CLI: `python chunker.py <file> [--language python] [--max-tokens 500]`
+- Upgrade `indexer.py` schema (bump `_SCHEMA_VERSION` to 2): new `chunks` table, FTS5 indexes chunk text
+- Upgrade `build` subcommand: chunk via `chunker.py`, incremental at chunk level, remove stale chunks
+- Upgrade `search` subcommand: return `start_line`, `end_line`, `snippet`, `chunk_id`
+- Migration: if existing v1 DB detected, drop and rebuild (print warning)
 
 ## Acceptance (current checkpoint)
 
-- Chunking the same file twice produces identical output (determinism)
-- A Python file with 3 functions produces 3+ chunks (one per function + possible module docstring)
-- A Markdown file with 4 headings produces 4 chunks
-- No chunk exceeds `max_chunk_tokens * 5` characters (hard cap with forced split)
-- Chunks have non-overlapping, contiguous line ranges that cover the entire file
+- Changing one line in a file only re-indexes affected chunks (verify via stats output)
+- Deleting a file removes all its chunks
+- Search results include `start_line` and `end_line` (not just file path)
+- Re-indexing unchanged files reports 0 indexed
 
 ## Work log (current session)
 
+- 2026-02-05: Review PASS — 20.1 acceptance met; all 5 criteria verified with HIGH confidence; auto-advanced to 20.2; status set to NOT_STARTED.
 - 2026-02-05: Implemented 20.1 — chunker.py with Python/Markdown/Generic/Fallback strategies; import grouping; all 5 acceptance criteria pass; status set to IN_REVIEW.
 - 2026-02-05: Resolved ISSUE-011 — added installable `vibe-one-loop` and `vibe-run` skills; wired bootstrap + skillset + docs to include them.
 - 2026-02-05: Resolved ISSUE-010 — added manifest front matter to `vibe-loop`, forced manifest refresh in global installs, and verified cross-repo/global discovery (including UNC-style `CODEX_HOME` normalization).
@@ -73,14 +72,7 @@ Build a deterministic chunking library that splits files into indexed units suit
 
 ## Evidence
 
-- Determinism: chunking scanner.py twice → identical JSON output (PASS)
-- Python 3+ function chunks: scanner.py → 9 function/class chunks (PASS)
-- Markdown 4-heading file → 4 chunks (PASS)
-- Max size cap: largest chunk 2490 chars < 2500 limit (PASS)
-- Contiguous coverage: lines 1-383, no gaps or overlaps (PASS)
-- Import grouping: 8 imports → 1 chunk (lines 7-18)
-- scanner.py: 15 total chunks (docstring, imports, dict, 8 functions, class, 2 force-split pieces, main, guard)
-- README.md: 19 heading-level chunks
+(Checkpoint 20.2 — not yet started)
 
 ## Active issues
 
