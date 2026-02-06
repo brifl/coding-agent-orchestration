@@ -34,7 +34,7 @@ VCS RULES (hard)
 
 OUTPUT
 A) Current focus (stage / checkpoint / status)
-B) Next loop choice (design / implement / review / triage / consolidation / improvements)
+B) Next loop choice (design / implement / review / issues_triage / advance / consolidation / context_capture / improvements / stop)
 C) Clarifying questions (max 2) if blocking; otherwise "None"
 
 STOP

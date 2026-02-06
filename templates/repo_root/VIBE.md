@@ -29,4 +29,4 @@ Log an issue in .vibe/STATE.md and stop if you hit missing info, conflicting ins
 * `IN_PROGRESS` → dispatcher picks implementation → loop ends → dispatcher continues
 * `IN_REVIEW` → dispatcher picks review → PASS sets `DONE` → dispatcher picks advance → continues
 * `DONE` and no next checkpoint → dispatcher returns `stop` → continuous runner exits
-* `BLOCKED` or `BLOCKER` issue → dispatcher returns triage (or stop if you choose) → runner handles accordingly
+* `BLOCKED` or `BLOCKER` issue → dispatcher returns `issues_triage` (or stop if you choose) → runner handles accordingly

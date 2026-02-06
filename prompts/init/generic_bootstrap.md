@@ -55,7 +55,7 @@ VCS RULES (hard)
 
 REQUIRED OUTPUT
 1) Current focus (stage / checkpoint / status)
-2) Next loop (design / implement / review / triage / consolidation / improvements)
+2) Next loop (design / implement / review / issues_triage / advance / consolidation / context_capture / improvements / stop)
 3) Files you will update in that loop
 4) Clarifying questions (max 2) if blocking; otherwise "None"
 

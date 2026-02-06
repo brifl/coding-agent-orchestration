@@ -473,7 +473,7 @@ READ ORDER
 
 OUTPUT
 A) Current focus (stage / checkpoint / status / issues count)
-B) Next loop (`design` / `implement` / `review` / `issues_triage` / `advance` / `consolidation` / `context_capture` / `improvements`)
+B) Next loop (`design` / `implement` / `review` / `issues_triage` / `advance` / `consolidation` / `context_capture` / `improvements` / `stop`)
 C) If running a loop, do it now and stop afterward.
 D) If blocked, add up to 2 questions as issues in `.vibe/STATE.md`, then stop.
 ```
@@ -509,7 +509,7 @@ STANDARD COMMANDS
 
 OUTPUT
 A) Current focus (stage / checkpoint / status)
-B) Next loop choice (`design` / `implement` / `review` / `issues_triage` / `advance` / `consolidation` / `context_capture` / `improvements`)
+B) Next loop choice (`design` / `implement` / `review` / `issues_triage` / `advance` / `consolidation` / `context_capture` / `improvements` / `stop`)
 C) Clarifying questions (max 2) if blocking; otherwise "None"
 
 STOP
@@ -547,7 +547,7 @@ STANDARD COMMANDS
 
 REQUIRED OUTPUT
 1) Current focus (stage / checkpoint / status).
-2) Next loop (`design` / `implement` / `review` / `issues_triage` / `advance` / `consolidation` / `context_capture` / `improvements`).
+2) Next loop (`design` / `implement` / `review` / `issues_triage` / `advance` / `consolidation` / `context_capture` / `improvements` / `stop`).
 3) Files you will update in that loop.
 4) Clarifying questions (max 2) if needed; otherwise "None".
 
@@ -586,7 +586,7 @@ STANDARD COMMANDS
 
 REQUIRED OUTPUT
 1) Current focus (stage / checkpoint / status).
-2) Next loop (`design` / `implement` / `review` / `issues_triage` / `advance` / `consolidation` / `context_capture` / `improvements`).
+2) Next loop (`design` / `implement` / `review` / `issues_triage` / `advance` / `consolidation` / `context_capture` / `improvements` / `stop`).
 3) Files you expect to update in that loop.
 4) Clarifying questions (max 2) if needed; otherwise "None".
 

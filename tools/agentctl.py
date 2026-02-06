@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import subprocess
 import sys
@@ -264,6 +265,111 @@ def _next_checkpoint_after(plan_ids: list[str], current_id: str) -> str | None:
     if idx + 1 < len(plan_ids):
         return plan_ids[idx + 1]
     return None
+
+
+def _resolve_prompt_catalog_path(repo_root: Path) -> Path | None:
+    local_path = repo_root / "prompts" / "template_prompts.md"
+    if local_path.exists():
+        return local_path
+
+    resolved = find_resource("prompt", "template_prompts.md")
+    if resolved and resolved.exists():
+        return resolved
+    return None
+
+
+def _load_prompt_catalog_index(
+    repo_root: Path,
+) -> tuple[dict[str, str], Path | None, str | None]:
+    catalog_path = _resolve_prompt_catalog_path(repo_root)
+    if catalog_path is None:
+        return ({}, None, "Prompt catalog not found (expected prompts/template_prompts.md).")
+    try:
+        from prompt_catalog import load_catalog  # type: ignore
+
+        entries = load_catalog(catalog_path)
+        index = {entry.key: entry.title for entry in entries}
+        return (index, catalog_path, None)
+    except Exception:
+        # Fallback for environments where prompt_catalog.py is not importable
+        # from the current script location (for example copied skill scripts).
+        try:
+            raw = _read_text(catalog_path)
+        except OSError as exc:
+            return ({}, catalog_path, f"Failed to read prompt catalog at {catalog_path}: {exc}")
+
+        index: dict[str, str] = {}
+        header_pat = re.compile(r"(?im)^##\s+(?P<id>[a-z0-9_.-]+)\s+[—–-]\s+(?P<title>.+?)\s*$")
+        for match in header_pat.finditer(raw):
+            prompt_id = match.group("id").strip()
+            if prompt_id and prompt_id not in index:
+                index[prompt_id] = match.group("title").strip()
+
+        if not index:
+            return ({}, catalog_path, f"Failed to parse prompt catalog at {catalog_path}: no prompt headers found.")
+
+    return (index, catalog_path, None)
+
+
+def _strip_scalar(value: str) -> str:
+    cleaned = value.split("#", 1)[0].strip()
+    if (
+        (cleaned.startswith('"') and cleaned.endswith('"'))
+        or (cleaned.startswith("'") and cleaned.endswith("'"))
+    ) and len(cleaned) >= 2:
+        return cleaned[1:-1].strip()
+    return cleaned
+
+
+def _collect_workflow_prompt_refs(repo_root: Path) -> tuple[list[tuple[str, str]], tuple[str, ...]]:
+    workflows_root = repo_root / "workflows"
+    if not workflows_root.exists():
+        return ([], ())
+
+    refs: list[tuple[str, str]] = []
+    warnings: list[str] = []
+    yaml_prompt_pat = re.compile(r"^\s*(?:-\s*)?prompt_id\s*:\s*(?P<value>.+?)\s*$")
+
+    for workflow_path in sorted(workflows_root.iterdir()):
+        if not workflow_path.is_file():
+            continue
+        suffix = workflow_path.suffix.lower()
+        if suffix not in {".yaml", ".yml", ".json"}:
+            continue
+
+        try:
+            raw = _read_text(workflow_path)
+        except OSError as exc:
+            warnings.append(f"{workflow_path}: unreadable workflow file ({exc}).")
+            continue
+
+        if suffix == ".json":
+            try:
+                payload = json.loads(raw)
+            except json.JSONDecodeError as exc:
+                warnings.append(f"{workflow_path}: invalid JSON workflow ({exc}).")
+                continue
+            steps = payload.get("steps", [])
+            if not isinstance(steps, list):
+                warnings.append(f"{workflow_path}: steps must be a list.")
+                continue
+            for step in steps:
+                if not isinstance(step, dict):
+                    continue
+                prompt_id = step.get("prompt_id")
+                if isinstance(prompt_id, str) and prompt_id.strip():
+                    refs.append((workflow_path.name, prompt_id.strip()))
+            continue
+
+        for line in raw.splitlines():
+            match = yaml_prompt_pat.match(line)
+            if not match:
+                continue
+            prompt_id = _strip_scalar(match.group("value"))
+            if prompt_id:
+                refs.append((workflow_path.name, prompt_id))
+
+    return (refs, tuple(warnings))
 
 
 def _slice_active_issues_section(text: str) -> list[str]:
@@ -799,6 +905,42 @@ def validate(repo_root: Path, strict: bool) -> ValidationResult:
             for w in plan_check.warnings:
                 (errors if strict else warnings).append(f".vibe/PLAN.md: {w}")
 
+    catalog_index, catalog_path, catalog_error = _load_prompt_catalog_index(repo_root)
+    if catalog_error:
+        warnings.append(catalog_error)
+    else:
+        catalog_ids = set(catalog_index.keys())
+
+        for role, metadata in PROMPT_MAP.items():
+            prompt_id = metadata["id"]
+            if prompt_id == "stop":
+                continue
+            if prompt_id not in catalog_ids:
+                (errors if strict else warnings).append(
+                    f"Prompt map for role '{role}' references missing prompt id '{prompt_id}'."
+                )
+
+        workflow_refs, workflow_warnings = _collect_workflow_prompt_refs(repo_root)
+        for message in workflow_warnings:
+            (errors if strict else warnings).append(message)
+
+        for workflow_name, prompt_id in workflow_refs:
+            if prompt_id != "stop" and prompt_id not in catalog_ids:
+                (errors if strict else warnings).append(
+                    f"{workflow_name}: unknown prompt id '{prompt_id}' (not present in template_prompts.md)."
+                )
+            mapped_role = _role_for_prompt_id(prompt_id)
+            if mapped_role is None:
+                (errors if strict else warnings).append(
+                    f"{workflow_name}: prompt id '{prompt_id}' has no role mapping in PROMPT_ROLE_MAP."
+                )
+
+        if catalog_path and not (repo_root / "prompts" / "template_prompts.md").exists():
+            warnings.append(
+                f"Using non-local prompt catalog at {catalog_path}; "
+                "repo-local prompts/template_prompts.md is recommended."
+            )
+
     ok = len(errors) == 0
     return ValidationResult(
         ok=ok,
@@ -1166,6 +1308,99 @@ PROMPT_MAP: dict[Role, dict[str, str]] = {
     },
 }
 
+# Non-dispatcher prompts can still be selected by configured workflows.
+# Map them onto an existing role to keep status transitions coherent.
+EXTRA_WORKFLOW_PROMPT_ROLES: dict[str, Role] = {
+    "prompt.ideation": "design",
+    "prompt.feature_breakdown": "design",
+    "prompt.architecture": "design",
+    "prompt.milestones": "design",
+    "prompt.stages_from_milestones": "design",
+    "prompt.checkpoints_from_stage": "design",
+    "prompt.refactor_scan": "implement",
+    "prompt.refactor_execute": "implement",
+    "prompt.refactor_verify": "review",
+    "prompt.test_gap_analysis": "design",
+    "prompt.test_generation": "implement",
+    "prompt.test_review": "review",
+    "prompt.demo_script": "design",
+    "prompt.feedback_intake": "issues_triage",
+    "prompt.feedback_triage": "issues_triage",
+}
+
+PROMPT_ROLE_MAP: dict[str, Role] = {meta["id"]: role for role, meta in PROMPT_MAP.items()}
+PROMPT_ROLE_MAP.update(EXTRA_WORKFLOW_PROMPT_ROLES)
+
+
+def _role_for_prompt_id(prompt_id: str) -> Role | None:
+    return PROMPT_ROLE_MAP.get(prompt_id)
+
+
+def _resolve_next_prompt_selection(
+    state: StateInfo,
+    repo_root: Path,
+    workflow: str | None,
+) -> tuple[Role, str, str, str]:
+    base_role, base_reason = _recommend_next(state, repo_root)
+    base_prompt_id = PROMPT_MAP[base_role]["id"]
+    base_prompt_title = PROMPT_MAP[base_role]["title"]
+
+    if not workflow or base_role == "stop":
+        return (base_role, base_prompt_id, base_prompt_title, base_reason)
+
+    catalog_index, _, catalog_error = _load_prompt_catalog_index(repo_root)
+    if catalog_error:
+        raise RuntimeError(catalog_error)
+
+    try:
+        from workflow_engine import select_next_prompt
+    except Exception as exc:
+        raise RuntimeError(f"Failed to load workflow engine: {exc}") from exc
+
+    current_cwd = Path.cwd()
+    try:
+        os.chdir(repo_root)
+        workflow_prompt_id = select_next_prompt(workflow)
+    finally:
+        os.chdir(current_cwd)
+    if not workflow_prompt_id:
+        return (
+            base_role,
+            base_prompt_id,
+            base_prompt_title,
+            f"{base_reason} Workflow {workflow} had no matching step; using dispatcher role {base_role}.",
+        )
+
+    workflow_role = _role_for_prompt_id(workflow_prompt_id)
+    if workflow_role is None:
+        raise RuntimeError(
+            f"Workflow {workflow} selected unmapped prompt id '{workflow_prompt_id}'. "
+            "Add it to PROMPT_ROLE_MAP."
+        )
+
+    if workflow_prompt_id != "stop" and workflow_prompt_id not in catalog_index:
+        raise RuntimeError(
+            f"Workflow {workflow} selected unknown prompt id '{workflow_prompt_id}' "
+            "(not found in template_prompts.md)."
+        )
+
+    if workflow_role != base_role:
+        return (
+            base_role,
+            base_prompt_id,
+            base_prompt_title,
+            f"{base_reason} Workflow {workflow} suggested {workflow_prompt_id} "
+            f"({workflow_role}); using dispatcher role {base_role}.",
+        )
+
+    workflow_title = catalog_index.get(workflow_prompt_id, base_prompt_title)
+    return (
+        workflow_role,
+        workflow_prompt_id,
+        workflow_title,
+        f"{base_reason} Workflow {workflow} selected {workflow_prompt_id}.",
+    )
+
 
 def cmd_validate(args: argparse.Namespace) -> int:
     res = validate(Path(args.repo_root), strict=args.strict)
@@ -1212,7 +1447,7 @@ def cmd_status(args: argparse.Namespace) -> int:
 
     role, reason = _recommend_next(state, repo_root)
     summary, sections = _context_summary(repo_root)
-    prompt_catalog_path = find_resource("prompt", "template_prompts.md")
+    prompt_catalog_path = _resolve_prompt_catalog_path(repo_root)
 
     payload: dict[str, Any] = {
         "stage": state.stage,
@@ -1240,55 +1475,7 @@ def cmd_status(args: argparse.Namespace) -> int:
 def cmd_next(args: argparse.Namespace) -> int:
     repo_root = Path(args.repo_root)
     state = load_state(repo_root)
-    prompt_catalog_path = find_resource("prompt", "template_prompts.md")
-
-    if args.workflow:
-        try:
-            from workflow_engine import select_next_prompt
-        except Exception as exc:
-            payload = {
-                "recommended_role": "stop",
-                "recommended_prompt_id": "stop",
-                "recommended_prompt_title": "Stop (workflow unavailable)",
-                "reason": f"Failed to load workflow engine: {exc}",
-                "workflow": args.workflow,
-                "stage": state.stage,
-                "checkpoint": state.checkpoint,
-                "status": state.status,
-                "prompt_catalog_path": str(prompt_catalog_path) if prompt_catalog_path else None,
-            }
-            print(_render_output(payload, args.format))
-            return 2
-
-        prompt_id = select_next_prompt(args.workflow)
-        if not prompt_id:
-            payload = {
-                "recommended_role": "stop",
-                "recommended_prompt_id": "stop",
-                "recommended_prompt_title": "Stop (no workflow match)",
-                "reason": f"No workflow step matched for {args.workflow}.",
-                "workflow": args.workflow,
-                "stage": state.stage,
-                "checkpoint": state.checkpoint,
-                "status": state.status,
-                "prompt_catalog_path": str(prompt_catalog_path) if prompt_catalog_path else None,
-            }
-            print(_render_output(payload, args.format))
-            return 1
-
-        payload = {
-            "recommended_role": "implement",
-            "recommended_prompt_id": prompt_id,
-            "recommended_prompt_title": f"Workflow-selected prompt ({prompt_id})",
-            "reason": f"Workflow {args.workflow} selected {prompt_id}.",
-            "workflow": args.workflow,
-            "stage": state.stage,
-            "checkpoint": state.checkpoint,
-            "status": state.status,
-            "prompt_catalog_path": str(prompt_catalog_path) if prompt_catalog_path else None,
-        }
-        print(_render_output(payload, args.format))
-        return 0
+    prompt_catalog_path = _resolve_prompt_catalog_path(repo_root)
 
     if args.run_gates and state.status in {"NOT_STARTED", "IN_PROGRESS"}:
         gate_results = run_gates(repo_root, state.checkpoint)
@@ -1318,18 +1505,39 @@ def cmd_next(args: argparse.Namespace) -> int:
             print(_render_output(payload, args.format))
             return 1
 
-    role, reason = _recommend_next(state, repo_root)
+    try:
+        role, prompt_id, prompt_title, reason = _resolve_next_prompt_selection(
+            state,
+            repo_root,
+            args.workflow,
+        )
+    except RuntimeError as exc:
+        payload = {
+            "recommended_role": "stop",
+            "recommended_prompt_id": "stop",
+            "recommended_prompt_title": "Stop (workflow unavailable)",
+            "reason": str(exc),
+            "workflow": args.workflow,
+            "stage": state.stage,
+            "checkpoint": state.checkpoint,
+            "status": state.status,
+            "prompt_catalog_path": str(prompt_catalog_path) if prompt_catalog_path else None,
+        }
+        print(_render_output(payload, args.format))
+        return 2
 
     payload: dict[str, Any] = {
         "recommended_role": role,
-        "recommended_prompt_id": PROMPT_MAP[role]["id"],
-        "recommended_prompt_title": PROMPT_MAP[role]["title"],
+        "recommended_prompt_id": prompt_id,
+        "recommended_prompt_title": prompt_title,
         "reason": reason,
         "stage": state.stage,
         "checkpoint": state.checkpoint,
         "status": state.status,
         "prompt_catalog_path": str(prompt_catalog_path) if prompt_catalog_path else None,
     }
+    if args.workflow:
+        payload["workflow"] = args.workflow
     
     if args.run_gates and state.status in {"NOT_STARTED", "IN_PROGRESS"}:
         gate_results = run_gates(repo_root, state.checkpoint)

@@ -29,6 +29,6 @@ VCS RULES (hard)
 
 OUTPUT
 A) Current focus (stage / checkpoint / status / issues count)
-B) Next loop (design / implement / review / triage / consolidation / improvements)
+B) Next loop (design / implement / review / issues_triage / advance / consolidation / context_capture / improvements / stop)
 C) If running a loop, do it now and stop afterward.
 D) If blocked, add up to 2 questions as issues in `.vibe/STATE.md`, then stop.

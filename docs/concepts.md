@@ -30,7 +30,7 @@ If an agent cannot edit files or run commands, it should still execute **exactly
 producing explicit instructions for a human (or tool-enabled agent) to apply. The fallback is:
 
 1) Read `AGENTS.md`, `.vibe/STATE.md`, `.vibe/PLAN.md`.
-2) Decide the next loop (design / implement / review / triage / consolidation / improvements).
+2) Decide the next loop (design / implement / review / issues_triage / advance / consolidation / context_capture / improvements / stop).
 3) Provide the concrete file edits or commands a tool-enabled operator should perform.
 4) Stop after one loop and wait for the updated `.vibe/STATE.md`.
 

@@ -3,6 +3,6 @@ description: Run refactor work periodically alongside implementation.
 triggers:
   - type: manual
 steps:
-  - prompt_id: prompt.refactor_checkpoint
+  - prompt_id: prompt.refactor_scan
     every: 3
   - prompt_id: prompt.checkpoint_implementation

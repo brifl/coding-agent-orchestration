@@ -9,7 +9,7 @@ from pathlib import Path
 # Add tools directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent.parent / "tools"))
 
-from agentctl import StateInfo, _recommend_next  # type: ignore
+from agentctl import StateInfo, _recommend_next, _resolve_next_prompt_selection  # type: ignore
 
 
 def _write_state(repo_root: Path, body: str) -> None:
@@ -20,6 +20,18 @@ def _write_state(repo_root: Path, body: str) -> None:
 def _write_plan(repo_root: Path, body: str) -> None:
     plan_path = repo_root / ".vibe" / "PLAN.md"
     plan_path.write_text(body, encoding="utf-8")
+
+
+def _write_prompt_catalog(repo_root: Path, body: str) -> None:
+    prompts_dir = repo_root / "prompts"
+    prompts_dir.mkdir(parents=True, exist_ok=True)
+    (prompts_dir / "template_prompts.md").write_text(body, encoding="utf-8")
+
+
+def _write_workflow(repo_root: Path, name: str, body: str) -> None:
+    workflows_dir = repo_root / "workflows"
+    workflows_dir.mkdir(parents=True, exist_ok=True)
+    (workflows_dir / f"{name}.yaml").write_text(body, encoding="utf-8")
 
 
 def test_context_capture_flag_routes_to_context_capture(temp_repo: Path) -> None:
@@ -140,3 +152,102 @@ def test_stale_context_routes_to_context_capture(temp_repo: Path) -> None:
     role, reason = _recommend_next(state, temp_repo)
     assert role == "context_capture"
     assert "stale" in reason.lower()
+
+
+def test_workflow_overlay_preserves_dispatcher_role(temp_repo: Path) -> None:
+    _write_state(
+        temp_repo,
+        """# STATE
+
+## Current focus
+- Stage: 1
+- Checkpoint: 1.0
+- Status: IN_REVIEW
+""",
+    )
+    _write_plan(
+        temp_repo,
+        """# PLAN
+
+## Stage 1 — Demo
+### 1.0 — First
+""",
+    )
+    _write_prompt_catalog(
+        temp_repo,
+        """## prompt.stage_design - Stage Design
+```md
+stage
+```
+
+## prompt.checkpoint_review - Checkpoint Review
+```md
+review
+```
+""",
+    )
+    _write_workflow(
+        temp_repo,
+        "standard",
+        """name: standard
+description: test
+triggers:
+  - type: manual
+steps:
+  - prompt_id: prompt.stage_design
+""",
+    )
+
+    state = StateInfo(stage="1", checkpoint="1.0", status="IN_REVIEW", evidence_path=None, issues=())
+    role, prompt_id, _title, reason = _resolve_next_prompt_selection(state, temp_repo, "standard")
+    assert role == "review"
+    assert prompt_id == "prompt.checkpoint_review"
+    assert "using dispatcher role review" in reason
+
+
+def test_workflow_overlay_rejects_unknown_prompt_ids(temp_repo: Path) -> None:
+    _write_state(
+        temp_repo,
+        """# STATE
+
+## Current focus
+- Stage: 1
+- Checkpoint: 1.0
+- Status: IN_PROGRESS
+""",
+    )
+    _write_plan(
+        temp_repo,
+        """# PLAN
+
+## Stage 1 — Demo
+### 1.0 — First
+""",
+    )
+    _write_prompt_catalog(
+        temp_repo,
+        """## prompt.checkpoint_implementation - Checkpoint Implementation
+```md
+impl
+```
+""",
+    )
+    _write_workflow(
+        temp_repo,
+        "broken",
+        """name: broken
+description: test
+triggers:
+  - type: manual
+steps:
+  - prompt_id: prompt.refactor_checkpoint
+""",
+    )
+
+    state = StateInfo(stage="1", checkpoint="1.0", status="IN_PROGRESS", evidence_path=None, issues=())
+    try:
+        _resolve_next_prompt_selection(state, temp_repo, "broken")
+    except RuntimeError as exc:
+        assert "unmapped prompt id 'prompt.refactor_checkpoint'" in str(exc)
+    else:
+        raise AssertionError("Expected RuntimeError for unknown workflow prompt id")
