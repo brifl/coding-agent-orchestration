@@ -21,6 +21,7 @@ from context_bundle import _build_bundle, _read_task  # type: ignore
 from runtime import RLMRuntime, RuntimeErrorState  # type: ignore
 
 EXECUTOR_STATE_FILE = "executor_state.json"
+RUNTIME_STATE_FILE = "state.json"
 CACHE_MODES = {"readwrite", "readonly", "off"}
 SUPPORTED_MODES = {"baseline", "subcalls"}
 DEFAULT_RETRY_ATTEMPTS = 3
@@ -306,6 +307,39 @@ def _save_executor_state(run_dir: Path, state: dict[str, Any]) -> None:
     _write_json(_state_path(run_dir), state)
 
 
+def _safe_remove_file(path: Path) -> None:
+    try:
+        if path.exists() and path.is_file():
+            path.unlink()
+    except OSError:
+        # Best effort cleanup; stale files should not hard-fail run initialization.
+        return
+
+
+def _prepare_new_run_artifacts(
+    task: dict[str, Any],
+    run_dir: Path,
+    trace_path: Path,
+    repo_root: Path,
+) -> None:
+    _safe_remove_file(run_dir / RUNTIME_STATE_FILE)
+    _safe_remove_file(trace_path)
+
+    outputs = task.get("outputs")
+    if not isinstance(outputs, dict):
+        return
+
+    final_path_raw = outputs.get("final_path")
+    if isinstance(final_path_raw, str) and final_path_raw.strip():
+        _safe_remove_file(_resolve_path(final_path_raw, repo_root))
+
+    artifact_paths = outputs.get("artifact_paths")
+    if isinstance(artifact_paths, list):
+        for raw in artifact_paths:
+            if isinstance(raw, str) and raw.strip():
+                _safe_remove_file(_resolve_path(raw, repo_root))
+
+
 def _append_trace(trace_path: Path, payload: dict[str, Any]) -> None:
     trace_path.parent.mkdir(parents=True, exist_ok=True)
     with trace_path.open("a", encoding="utf-8") as handle:
@@ -562,6 +596,7 @@ def cmd_run(args: argparse.Namespace) -> int:
 
     bundle_dir = _bundle_dir_for_task(task, repo_root)
     trace_path = _resolve_path(str(task["trace"]["trace_path"]), repo_root)
+    _prepare_new_run_artifacts(task, run_dir, trace_path, repo_root)
 
     state = _init_executor_state(task, task_path, bundle_dir, run_dir, trace_path, repo_root, requested_cache)
     _save_executor_state(run_dir, state)

@@ -13,7 +13,7 @@
 
 - Stage: 21
 - Checkpoint: 21.6
-- Status: IN_PROGRESS  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
+- Status: IN_REVIEW  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
 
 ## Objective (current checkpoint)
 
@@ -32,6 +32,7 @@ Prevent runaway recursion and make subcalls replayable.
 
 ## Work log (current session)
 
+- 2026-02-06: Issues triage — resolved ISSUE-014 by resetting run-scoped runtime/trace/output artifacts at `executor.py run` start, so non-fresh reruns no longer load finalized runtime state; reran readonly demo command twice successfully; status set back to IN_REVIEW.
 - 2026-02-06: Review FAIL — reran 21.6 demo command exactly (`python3 skills/rlm-tools/executor.py run --task tasks/rlm/subcalls_example.json --cache readonly`) and found non-fresh reruns fail with `Runtime already finalized`; opened ISSUE-014 and moved status to IN_PROGRESS for targeted executor run-reset fix.
 - 2026-02-06: Implemented 21.6 — added subcall-mode cache policy enforcement (`readwrite|readonly|off` with mandatory explicit selection), per-iteration/per-run subcall budgets, deterministic retry tracing, and `tools/rlm/replay.py`; verified readonly replay reproduces identical response hashes/final artifact and captured adversarial budget/cache probes; moved status to IN_REVIEW.
 - 2026-02-06: Consolidation — pruned STATE work log to the most recent 10 entries and cleared stale 21.5 evidence; stage/checkpoint/status remain aligned at 21.6 / NOT_STARTED.
@@ -59,16 +60,11 @@ Prevent runaway recursion and make subcalls replayable.
 - Per-iteration budget probe: `.vibe/rlm/runs/probe_per_iter_limit/trace.jsonl` records `Subcall budget exceeded for iteration 1`.
 - Per-run budget probe: `.vibe/rlm/runs/probe_total_limit/trace.jsonl` records `Subcall budget exceeded for run: max_subcalls_total=1`.
 - Deterministic retry probe: `.vibe/rlm/runs/probe_retry/trace.jsonl` subcall event shows `attempts=2` on first-call transient failure scenario.
+- ISSUE-014 fix verification: `python3 skills/rlm-tools/executor.py run --task tasks/rlm/subcalls_example.json --cache readonly` succeeds on repeated non-fresh invocations (no `Runtime already finalized` failure).
 
 ## Active issues
 
-- [ ] ISSUE-014: Non-fresh executor rerun fails after finalized state
-  - Impact: MAJOR
-  - Status: OPEN
-  - Owner: agent
-  - Unblock Condition: `executor.py run` resets runtime state for new runs (or safely replaces stale run-state artifacts) so the checkpoint demo command works repeatedly without requiring `--fresh`.
-  - Evidence Needed: `python3 skills/rlm-tools/executor.py run --task tasks/rlm/subcalls_example.json --cache readonly` succeeds twice in a row and preserves replay consistency.
-  - Notes: Current behavior raises `Runtime already finalized; additional steps are not allowed.`
+(None)
 
 ## Decisions
 
