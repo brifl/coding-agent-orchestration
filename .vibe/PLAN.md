@@ -316,4 +316,3 @@ scanner.py  →  manifest.json  →  chunker.py  →  indexer.py  →  index.db 
   * Side-by-side comparison of lex vs sem vs hybrid for the same query
 
 ---
-
