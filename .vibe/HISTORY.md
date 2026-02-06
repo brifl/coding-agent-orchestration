@@ -13,6 +13,14 @@
 
 ## Completed stages
 
+### 2026-02-06 — Stage 20: RAG Pipeline Hardening (completed)
+
+Hardened the RAG stack end-to-end: deterministic scanner metadata, chunk-aware indexing, chunk-level retrieval formatting/diversity controls, agent-facing packaging, and stdlib TF-IDF semantic/hybrid search.
+
+### 2026-02-06 — Stage 19A: Multi-Directory RAG Skill (completed)
+
+Delivered the foundational scan -> index -> retrieve prototype and packaged it as the `rag-index` skill, establishing the baseline later hardened in Stage 20.
+
 ### 2026-02-03 — Stage 19: Templated Prompts Expansion (completed)
 
 Added refactor, testing, and human feedback prompt templates with standardized output formats (checkpoints 19.0–19.2).
