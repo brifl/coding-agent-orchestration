@@ -74,6 +74,16 @@ LOOP_RESULT_LOOPS = {
     "improvements",
     "advance",
 }
+LOOP_REPORT_REQUIRED_FIELDS = (
+    "acceptance_matrix",
+    "top_findings",
+    "state_transition",
+    "loop_result",
+)
+LOOP_REPORT_ITEM_STATUS = ("PASS", "FAIL", "N/A")
+EVIDENCE_STRENGTH_VALUES = ("LOW", "MEDIUM", "HIGH")
+LOOP_REPORT_MAX_FINDINGS = 5
+CONFIDENCE_MIN_REQUIRED = 0.75
 
 Role = Literal[
     "issues_triage",
@@ -679,6 +689,182 @@ def _parse_loop_result_payload(raw: str) -> dict[str, Any]:
     return payload
 
 
+def _coerce_confidence(raw: Any) -> float | None:
+    if isinstance(raw, (int, float)):
+        value = float(raw)
+    elif isinstance(raw, str):
+        try:
+            value = float(raw.strip())
+        except ValueError:
+            return None
+    else:
+        return None
+    if value < 0.0 or value > 1.0:
+        return None
+    return value
+
+
+def _next_role_hint_values(raw: Any) -> set[str]:
+    if not isinstance(raw, str):
+        return set()
+    return {part.strip() for part in raw.split("|") if part.strip()}
+
+
+def _validate_loop_report_schema(payload: dict[str, Any]) -> tuple[str, ...]:
+    errors: list[str] = []
+    loop_name = str(payload.get("loop", "")).strip()
+    report = payload.get("report")
+    if not isinstance(report, dict):
+        return ("Missing or invalid LOOP_RESULT field 'report' (object required).",)
+
+    for field in LOOP_REPORT_REQUIRED_FIELDS:
+        if field not in report:
+            errors.append(f"LOOP_RESULT report missing required field '{field}'.")
+
+    acceptance_matrix = report.get("acceptance_matrix")
+    if not isinstance(acceptance_matrix, list):
+        errors.append("LOOP_RESULT report field 'acceptance_matrix' must be a list.")
+        acceptance_matrix = []
+    elif loop_name in {"implement", "review", "issues_triage"} and not acceptance_matrix:
+        errors.append(f"LOOP_RESULT report field 'acceptance_matrix' must not be empty for {loop_name} loops.")
+
+    top_findings = report.get("top_findings")
+    if not isinstance(top_findings, list):
+        errors.append("LOOP_RESULT report field 'top_findings' must be a list.")
+        top_findings = []
+    elif len(top_findings) > LOOP_REPORT_MAX_FINDINGS:
+        errors.append(
+            f"LOOP_RESULT report field 'top_findings' exceeds max length {LOOP_REPORT_MAX_FINDINGS}."
+        )
+
+    finding_order: list[int] = []
+    for idx, finding in enumerate(top_findings):
+        if not isinstance(finding, dict):
+            errors.append(f"top_findings[{idx}] must be an object.")
+            continue
+        impact = str(finding.get("impact", "")).strip().upper()
+        title = finding.get("title")
+        evidence = finding.get("evidence")
+        action = finding.get("action")
+        if impact not in IMPACTS:
+            errors.append(
+                f"top_findings[{idx}].impact must be one of {', '.join(IMPACTS)}."
+            )
+        else:
+            finding_order.append(IMPACT_ORDER.index(impact))
+        if not isinstance(title, str) or not title.strip():
+            errors.append(f"top_findings[{idx}].title must be a non-empty string.")
+        if not isinstance(evidence, str) or not evidence.strip():
+            errors.append(f"top_findings[{idx}].evidence must be a non-empty string.")
+        if not isinstance(action, str) or not action.strip():
+            errors.append(f"top_findings[{idx}].action must be a non-empty string.")
+
+    if finding_order and finding_order != sorted(finding_order):
+        errors.append("top_findings must be ordered by impact priority (BLOCKER->QUESTION).")
+
+    has_low_confidence_critical = False
+    for idx, item in enumerate(acceptance_matrix):
+        if not isinstance(item, dict):
+            errors.append(f"acceptance_matrix[{idx}] must be an object.")
+            continue
+        required_fields = ("item", "status", "evidence", "critical", "confidence", "evidence_strength")
+        for field in required_fields:
+            if field not in item:
+                errors.append(f"acceptance_matrix[{idx}] missing '{field}'.")
+
+        item_name = item.get("item")
+        status = str(item.get("status", "")).strip().upper()
+        evidence = item.get("evidence")
+        critical = item.get("critical")
+        confidence = _coerce_confidence(item.get("confidence"))
+        evidence_strength = str(item.get("evidence_strength", "")).strip().upper()
+
+        if not isinstance(item_name, str) or not item_name.strip():
+            errors.append(f"acceptance_matrix[{idx}].item must be a non-empty string.")
+        if status not in LOOP_REPORT_ITEM_STATUS:
+            errors.append(
+                f"acceptance_matrix[{idx}].status must be one of {', '.join(LOOP_REPORT_ITEM_STATUS)}."
+            )
+        if not isinstance(evidence, str) or not evidence.strip():
+            errors.append(f"acceptance_matrix[{idx}].evidence must be a non-empty string.")
+        if not isinstance(critical, bool):
+            errors.append(f"acceptance_matrix[{idx}].critical must be true or false.")
+        if confidence is None:
+            errors.append(
+                f"acceptance_matrix[{idx}].confidence must be a number between 0.0 and 1.0."
+            )
+        if evidence_strength not in EVIDENCE_STRENGTH_VALUES:
+            errors.append(
+                f"acceptance_matrix[{idx}].evidence_strength must be one of {', '.join(EVIDENCE_STRENGTH_VALUES)}."
+            )
+
+        if (
+            isinstance(critical, bool)
+            and critical
+            and confidence is not None
+            and (
+                confidence < CONFIDENCE_MIN_REQUIRED
+                or evidence_strength == "LOW"
+            )
+        ):
+            has_low_confidence_critical = True
+
+    state_transition = report.get("state_transition")
+    if not isinstance(state_transition, dict):
+        errors.append("LOOP_RESULT report field 'state_transition' must be an object.")
+    else:
+        before = state_transition.get("before")
+        after = state_transition.get("after")
+        if not isinstance(before, dict):
+            errors.append("state_transition.before must be an object.")
+        if not isinstance(after, dict):
+            errors.append("state_transition.after must be an object.")
+        if isinstance(after, dict):
+            after_stage = _normalize_stage_for_compare(str(after.get("stage", "")).strip() or None)
+            after_checkpoint = _normalize_checkpoint_for_compare(str(after.get("checkpoint", "")).strip() or None)
+            after_status = str(after.get("status", "")).strip().upper()
+            payload_stage = _normalize_stage_for_compare(str(payload.get("stage", "")).strip() or None)
+            payload_checkpoint = _normalize_checkpoint_for_compare(str(payload.get("checkpoint", "")).strip() or None)
+            payload_status = str(payload.get("status", "")).strip().upper()
+            if after_stage != payload_stage:
+                errors.append("state_transition.after.stage must match LOOP_RESULT stage.")
+            if after_checkpoint != payload_checkpoint:
+                errors.append("state_transition.after.checkpoint must match LOOP_RESULT checkpoint.")
+            if after_status != payload_status:
+                errors.append("state_transition.after.status must match LOOP_RESULT status.")
+
+    report_loop_result = report.get("loop_result")
+    if not isinstance(report_loop_result, dict):
+        errors.append("LOOP_RESULT report field 'loop_result' must be an object.")
+    else:
+        for field in LOOP_RESULT_REQUIRED_FIELDS:
+            value = report_loop_result.get(field)
+            if not isinstance(value, str) or not value.strip():
+                errors.append(f"report.loop_result.{field} must be a non-empty string.")
+                continue
+            top_value = payload.get(field)
+            if field == "status":
+                if str(top_value).strip().upper() != str(value).strip().upper():
+                    errors.append(f"report.loop_result.{field} must mirror LOOP_RESULT {field}.")
+            else:
+                if str(top_value).strip() != str(value).strip():
+                    errors.append(f"report.loop_result.{field} must mirror LOOP_RESULT {field}.")
+
+    if loop_name in {"review", "issues_triage"} and has_low_confidence_critical:
+        next_hints = _next_role_hint_values(payload.get("next_role_hint"))
+        status = str(payload.get("status", "")).strip().upper()
+        if status not in {"IN_PROGRESS", "BLOCKED"}:
+            errors.append(
+                "Low-confidence critical acceptance items require LOOP_RESULT status IN_PROGRESS or BLOCKED."
+            )
+        if "issues_triage" not in next_hints:
+            errors.append(
+                "Low-confidence critical acceptance items require next_role_hint to include 'issues_triage'."
+            )
+
+    return tuple(errors)
+
+
 def _validate_loop_result_payload(payload: dict[str, Any], state: StateInfo) -> tuple[str, ...]:
     errors: list[str] = []
     for field in LOOP_RESULT_REQUIRED_FIELDS:
@@ -716,6 +902,8 @@ def _validate_loop_result_payload(payload: dict[str, Any], state: StateInfo) -> 
         errors.append(
             f"LOOP_RESULT status '{payload.get('status')}' does not match STATE status '{state.status}'."
         )
+
+    errors.extend(_validate_loop_report_schema(payload))
 
     return tuple(errors)
 
@@ -1825,6 +2013,7 @@ def cmd_loop_result(args: argparse.Namespace) -> int:
         "checkpoint": str(payload["checkpoint"]).strip(),
         "status": str(payload["status"]).strip().upper(),
         "next_role_hint": str(payload["next_role_hint"]).strip(),
+        "report": payload.get("report"),
     }
     normalized["protocol_version"] = LOOP_RESULT_PROTOCOL_VERSION
     normalized["recorded_at"] = datetime.now(timezone.utc).isoformat()

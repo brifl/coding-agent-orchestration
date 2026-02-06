@@ -18,10 +18,13 @@ Assumptions:
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
+import os
 import re
 import subprocess
 import sys
+from datetime import datetime, timezone
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Iterable, Literal
@@ -51,12 +54,43 @@ ALLOWED_STATUS = {
 # For prioritization (highest -> lowest)
 IMPACT_ORDER = ["BLOCKER", "MAJOR", "MINOR", "QUESTION"]
 IMPACTS = tuple(IMPACT_ORDER)
+ISSUE_STATUS_VALUES = ("OPEN", "IN_PROGRESS", "BLOCKED", "RESOLVED")
+LOOP_RESULT_PROTOCOL_VERSION = 1
+LOOP_RESULT_REQUIRED_FIELDS = (
+    "loop",
+    "result",
+    "stage",
+    "checkpoint",
+    "status",
+    "next_role_hint",
+)
+LOOP_RESULT_LOOPS = {
+    "design",
+    "implement",
+    "review",
+    "issues_triage",
+    "consolidation",
+    "context_capture",
+    "improvements",
+    "advance",
+}
+LOOP_REPORT_REQUIRED_FIELDS = (
+    "acceptance_matrix",
+    "top_findings",
+    "state_transition",
+    "loop_result",
+)
+LOOP_REPORT_ITEM_STATUS = ("PASS", "FAIL", "N/A")
+EVIDENCE_STRENGTH_VALUES = ("LOW", "MEDIUM", "HIGH")
+LOOP_REPORT_MAX_FINDINGS = 5
+CONFIDENCE_MIN_REQUIRED = 0.75
 
 Role = Literal[
     "issues_triage",
     "review",
     "implement",
     "design",
+    "context_capture",
     "consolidation",
     "improvements",
     "advance",
@@ -69,6 +103,13 @@ class Issue:
     impact: str
     title: str
     line: str
+    issue_id: str | None = None
+    owner: str | None = None
+    status: str | None = None
+    unblock_condition: str | None = None
+    evidence_needed: str | None = None
+    checked: bool = False
+    impact_specified: bool = False
 
 
 @dataclass(frozen=True)
@@ -257,6 +298,111 @@ def _next_checkpoint_after(plan_ids: list[str], current_id: str) -> str | None:
     return None
 
 
+def _resolve_prompt_catalog_path(repo_root: Path) -> Path | None:
+    local_path = repo_root / "prompts" / "template_prompts.md"
+    if local_path.exists():
+        return local_path
+
+    resolved = find_resource("prompt", "template_prompts.md")
+    if resolved and resolved.exists():
+        return resolved
+    return None
+
+
+def _load_prompt_catalog_index(
+    repo_root: Path,
+) -> tuple[dict[str, str], Path | None, str | None]:
+    catalog_path = _resolve_prompt_catalog_path(repo_root)
+    if catalog_path is None:
+        return ({}, None, "Prompt catalog not found (expected prompts/template_prompts.md).")
+    try:
+        from prompt_catalog import load_catalog  # type: ignore
+
+        entries = load_catalog(catalog_path)
+        index = {entry.key: entry.title for entry in entries}
+        return (index, catalog_path, None)
+    except Exception:
+        # Fallback for environments where prompt_catalog.py is not importable
+        # from the current script location (for example copied skill scripts).
+        try:
+            raw = _read_text(catalog_path)
+        except OSError as exc:
+            return ({}, catalog_path, f"Failed to read prompt catalog at {catalog_path}: {exc}")
+
+        index: dict[str, str] = {}
+        header_pat = re.compile(r"(?im)^##\s+(?P<id>[a-z0-9_.-]+)\s+[—–-]\s+(?P<title>.+?)\s*$")
+        for match in header_pat.finditer(raw):
+            prompt_id = match.group("id").strip()
+            if prompt_id and prompt_id not in index:
+                index[prompt_id] = match.group("title").strip()
+
+        if not index:
+            return ({}, catalog_path, f"Failed to parse prompt catalog at {catalog_path}: no prompt headers found.")
+
+    return (index, catalog_path, None)
+
+
+def _strip_scalar(value: str) -> str:
+    cleaned = value.split("#", 1)[0].strip()
+    if (
+        (cleaned.startswith('"') and cleaned.endswith('"'))
+        or (cleaned.startswith("'") and cleaned.endswith("'"))
+    ) and len(cleaned) >= 2:
+        return cleaned[1:-1].strip()
+    return cleaned
+
+
+def _collect_workflow_prompt_refs(repo_root: Path) -> tuple[list[tuple[str, str]], tuple[str, ...]]:
+    workflows_root = repo_root / "workflows"
+    if not workflows_root.exists():
+        return ([], ())
+
+    refs: list[tuple[str, str]] = []
+    warnings: list[str] = []
+    yaml_prompt_pat = re.compile(r"^\s*(?:-\s*)?prompt_id\s*:\s*(?P<value>.+?)\s*$")
+
+    for workflow_path in sorted(workflows_root.iterdir()):
+        if not workflow_path.is_file():
+            continue
+        suffix = workflow_path.suffix.lower()
+        if suffix not in {".yaml", ".yml", ".json"}:
+            continue
+
+        try:
+            raw = _read_text(workflow_path)
+        except OSError as exc:
+            warnings.append(f"{workflow_path}: unreadable workflow file ({exc}).")
+            continue
+
+        if suffix == ".json":
+            try:
+                payload = json.loads(raw)
+            except json.JSONDecodeError as exc:
+                warnings.append(f"{workflow_path}: invalid JSON workflow ({exc}).")
+                continue
+            steps = payload.get("steps", [])
+            if not isinstance(steps, list):
+                warnings.append(f"{workflow_path}: steps must be a list.")
+                continue
+            for step in steps:
+                if not isinstance(step, dict):
+                    continue
+                prompt_id = step.get("prompt_id")
+                if isinstance(prompt_id, str) and prompt_id.strip():
+                    refs.append((workflow_path.name, prompt_id.strip()))
+            continue
+
+        for line in raw.splitlines():
+            match = yaml_prompt_pat.match(line)
+            if not match:
+                continue
+            prompt_id = _strip_scalar(match.group("value"))
+            if prompt_id:
+                refs.append((workflow_path.name, prompt_id))
+
+    return (refs, tuple(warnings))
+
+
 def _slice_active_issues_section(text: str) -> list[str]:
     lines = text.splitlines()
     start = None
@@ -289,7 +435,7 @@ def _parse_issues_checkbox_format(text: str) -> tuple[Issue, ...]:
 
     issues: list[Issue] = []
     issue_head = re.compile(r"^\s*-\s*\[\s*([xX ]?)\s*\]\s*(.+?)\s*$")
-    impact_line = re.compile(r"(?im)^\s*-\s*Impact\s*:\s*(.+?)\s*$")
+    detail_line = re.compile(r"^\s*-\s*(?P<key>[A-Za-z][A-Za-z _-]*)\s*:\s*(?P<val>.+?)\s*$")
 
     i = 0
     while i < len(section_lines):
@@ -305,26 +451,123 @@ def _parse_issues_checkbox_format(text: str) -> tuple[Issue, ...]:
             i += 1
             continue
 
-        sev: str | None = None
+        checked = m.group(1).strip().lower() == "x"
+        issue_id: str | None = None
+        id_match = re.match(r"(?i)^(ISSUE-[A-Za-z0-9_.-]+)\s*:\s*(.+)$", title)
+        if id_match:
+            issue_id = id_match.group(1).upper()
+
+        fields: dict[str, str] = {}
         j = i + 1
         while j < len(section_lines):
             nxt = section_lines[j]
             if issue_head.match(nxt):
                 break
             if nxt.strip() == "":
-                break
-            sm = impact_line.match(nxt)
-            if sm and sev is None:
-                sev = sm.group(1).strip().split()[0].upper()
+                j += 1
+                continue
+            dm = detail_line.match(nxt)
+            if dm:
+                key = _normalize_issue_detail_key(dm.group("key"))
+                if key and key not in fields:
+                    fields[key] = dm.group("val").strip()
             j += 1
 
-        if sev not in IMPACTS:
-            sev = "QUESTION"
+        impact_raw = fields.get("impact")
+        impact = impact_raw.split()[0].upper() if impact_raw else None
+        if impact not in IMPACTS:
+            impact = "QUESTION"
 
-        issues.append(Issue(impact=sev, title=title, line=line))
+        status_raw = fields.get("status")
+        status = status_raw.split()[0].upper() if status_raw else None
+
+        issues.append(
+            Issue(
+                impact=impact,
+                title=title,
+                line=line,
+                issue_id=issue_id,
+                owner=fields.get("owner"),
+                status=status,
+                unblock_condition=fields.get("unblock_condition"),
+                evidence_needed=fields.get("evidence_needed"),
+                checked=checked,
+                impact_specified=impact_raw is not None,
+            )
+        )
         i = j
 
     return tuple(issues)
+
+
+def _normalize_issue_detail_key(raw_key: str) -> str | None:
+    normalized = re.sub(r"[^a-z0-9]+", "_", raw_key.strip().lower()).strip("_")
+    aliases = {
+        "impact": "impact",
+        "owner": "owner",
+        "status": "status",
+        "unblock_condition": "unblock_condition",
+        "unblock": "unblock_condition",
+        "evidence_needed": "evidence_needed",
+        "evidence": "evidence_needed",
+        "notes": "notes",
+    }
+    return aliases.get(normalized)
+
+
+def _is_placeholder_value(value: str | None) -> bool:
+    if value is None:
+        return True
+    trimmed = value.strip()
+    if not trimmed:
+        return True
+    lowered = trimmed.lower()
+    if lowered in {"none", "none.", "tbd", "todo", "unknown", "n/a"}:
+        return True
+    return "<" in trimmed and ">" in trimmed
+
+
+def _validate_issue_schema(issues: tuple[Issue, ...]) -> tuple[str, ...]:
+    messages: list[str] = []
+    for issue in issues:
+        if issue.issue_id is None:
+            messages.append(
+                f"Active issue '{issue.title}' should use 'ISSUE-<id>: <title>' in the issue header."
+            )
+            continue
+
+        missing: list[str] = []
+        if not issue.impact_specified:
+            missing.append("Impact")
+        if _is_placeholder_value(issue.owner):
+            missing.append("Owner")
+        if _is_placeholder_value(issue.status):
+            missing.append("Status")
+        elif issue.status not in ISSUE_STATUS_VALUES:
+            messages.append(
+                f"Active issue {issue.issue_id} has invalid Status '{issue.status}'. "
+                f"Allowed: {', '.join(ISSUE_STATUS_VALUES)}."
+            )
+        if _is_placeholder_value(issue.unblock_condition):
+            missing.append("Unblock Condition")
+        if _is_placeholder_value(issue.evidence_needed):
+            missing.append("Evidence Needed")
+
+        if missing:
+            messages.append(
+                f"Active issue {issue.issue_id} missing required field(s): {', '.join(missing)}."
+            )
+
+        if issue.checked and issue.status not in {"RESOLVED"}:
+            messages.append(
+                f"Active issue {issue.issue_id} is checked but Status is not RESOLVED."
+            )
+        if not issue.checked and issue.status == "RESOLVED":
+            messages.append(
+                f"Active issue {issue.issue_id} is unresolved checkbox but Status is RESOLVED."
+            )
+
+    return tuple(messages)
 
 
 def _resolve_path(repo_root: Path, raw_path: str) -> Path:
@@ -334,6 +577,335 @@ def _resolve_path(repo_root: Path, raw_path: str) -> Path:
 
 def _read_text(path: Path) -> str:
     return path.read_text(encoding="utf-8", errors="replace")
+
+
+def _state_path(repo_root: Path) -> Path:
+    return repo_root / ".vibe" / "STATE.md"
+
+
+def _loop_result_path(repo_root: Path) -> Path:
+    return repo_root / ".vibe" / "LOOP_RESULT.json"
+
+
+def _state_sha256(repo_root: Path) -> str:
+    path = _state_path(repo_root)
+    text = _read_text(path)
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+
+def _normalize_stage_for_compare(raw: str | None) -> str | None:
+    if raw is None:
+        return None
+    value = raw.strip()
+    if not value:
+        return None
+    if is_valid_stage_id(value):
+        return normalize_stage_id(value)
+    return value
+
+
+def _normalize_checkpoint_for_compare(raw: str | None) -> str | None:
+    if raw is None:
+        return None
+    value = raw.strip()
+    if not value:
+        return None
+    try:
+        return normalize_checkpoint_id(value)
+    except ValueError:
+        return value
+
+
+def _bootstrap_loop_result_record(repo_root: Path, state: StateInfo) -> None:
+    record_path = _loop_result_path(repo_root)
+    if record_path.exists():
+        return
+    record_path.parent.mkdir(parents=True, exist_ok=True)
+    payload = {
+        "protocol_version": LOOP_RESULT_PROTOCOL_VERSION,
+        "loop": "bootstrap",
+        "result": "initialized",
+        "stage": state.stage,
+        "checkpoint": state.checkpoint,
+        "status": state.status,
+        "next_role_hint": "implement",
+        "state_sha256": _state_sha256(repo_root),
+        "recorded_at": datetime.now(timezone.utc).isoformat(),
+    }
+    record_path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+
+
+def _load_loop_result_record(repo_root: Path) -> tuple[dict[str, Any] | None, str | None]:
+    path = _loop_result_path(repo_root)
+    if not path.exists():
+        return (None, None)
+    try:
+        payload = json.loads(_read_text(path))
+    except (json.JSONDecodeError, OSError) as exc:
+        return (None, f"Failed to read {path}: {exc}")
+    if not isinstance(payload, dict):
+        return (None, f"Invalid LOOP_RESULT payload in {path}: expected JSON object.")
+    return (payload, None)
+
+
+def _loop_result_ack_status(repo_root: Path) -> tuple[bool, str]:
+    path = _loop_result_path(repo_root)
+    if not path.exists():
+        return (True, "LOOP_RESULT protocol initialized for this state snapshot.")
+
+    payload, error = _load_loop_result_record(repo_root)
+    if error:
+        return (False, error)
+    if payload is None:
+        return (False, f"Missing LOOP_RESULT payload at {path}.")
+
+    recorded_hash = payload.get("state_sha256")
+    if not isinstance(recorded_hash, str) or not recorded_hash:
+        return (
+            False,
+            f"{path} is missing required field 'state_sha256'. "
+            "Run agentctl loop-result with the latest LOOP_RESULT line.",
+        )
+
+    current_hash = _state_sha256(repo_root)
+    if recorded_hash != current_hash:
+        return (
+            False,
+            "Unacknowledged STATE.md changes detected. "
+            "Run `python3 tools/agentctl.py --repo-root . --format json loop-result --line \"LOOP_RESULT: {...}\"` "
+            "after completing the current loop.",
+        )
+
+    return (True, "LOOP_RESULT acknowledged for current state.")
+
+
+def _parse_loop_result_payload(raw: str) -> dict[str, Any]:
+    text = raw.strip()
+    if text.startswith("LOOP_RESULT:"):
+        text = text.split(":", 1)[1].strip()
+    payload = json.loads(text)
+    if not isinstance(payload, dict):
+        raise ValueError("LOOP_RESULT payload must be a JSON object.")
+    return payload
+
+
+def _coerce_confidence(raw: Any) -> float | None:
+    if isinstance(raw, (int, float)):
+        value = float(raw)
+    elif isinstance(raw, str):
+        try:
+            value = float(raw.strip())
+        except ValueError:
+            return None
+    else:
+        return None
+    if value < 0.0 or value > 1.0:
+        return None
+    return value
+
+
+def _next_role_hint_values(raw: Any) -> set[str]:
+    if not isinstance(raw, str):
+        return set()
+    return {part.strip() for part in raw.split("|") if part.strip()}
+
+
+def _validate_loop_report_schema(payload: dict[str, Any]) -> tuple[str, ...]:
+    errors: list[str] = []
+    loop_name = str(payload.get("loop", "")).strip()
+    report = payload.get("report")
+    if not isinstance(report, dict):
+        return ("Missing or invalid LOOP_RESULT field 'report' (object required).",)
+
+    for field in LOOP_REPORT_REQUIRED_FIELDS:
+        if field not in report:
+            errors.append(f"LOOP_RESULT report missing required field '{field}'.")
+
+    acceptance_matrix = report.get("acceptance_matrix")
+    if not isinstance(acceptance_matrix, list):
+        errors.append("LOOP_RESULT report field 'acceptance_matrix' must be a list.")
+        acceptance_matrix = []
+    elif loop_name in {"implement", "review", "issues_triage"} and not acceptance_matrix:
+        errors.append(f"LOOP_RESULT report field 'acceptance_matrix' must not be empty for {loop_name} loops.")
+
+    top_findings = report.get("top_findings")
+    if not isinstance(top_findings, list):
+        errors.append("LOOP_RESULT report field 'top_findings' must be a list.")
+        top_findings = []
+    elif len(top_findings) > LOOP_REPORT_MAX_FINDINGS:
+        errors.append(
+            f"LOOP_RESULT report field 'top_findings' exceeds max length {LOOP_REPORT_MAX_FINDINGS}."
+        )
+
+    finding_order: list[int] = []
+    for idx, finding in enumerate(top_findings):
+        if not isinstance(finding, dict):
+            errors.append(f"top_findings[{idx}] must be an object.")
+            continue
+        impact = str(finding.get("impact", "")).strip().upper()
+        title = finding.get("title")
+        evidence = finding.get("evidence")
+        action = finding.get("action")
+        if impact not in IMPACTS:
+            errors.append(
+                f"top_findings[{idx}].impact must be one of {', '.join(IMPACTS)}."
+            )
+        else:
+            finding_order.append(IMPACT_ORDER.index(impact))
+        if not isinstance(title, str) or not title.strip():
+            errors.append(f"top_findings[{idx}].title must be a non-empty string.")
+        if not isinstance(evidence, str) or not evidence.strip():
+            errors.append(f"top_findings[{idx}].evidence must be a non-empty string.")
+        if not isinstance(action, str) or not action.strip():
+            errors.append(f"top_findings[{idx}].action must be a non-empty string.")
+
+    if finding_order and finding_order != sorted(finding_order):
+        errors.append("top_findings must be ordered by impact priority (BLOCKER->QUESTION).")
+
+    has_low_confidence_critical = False
+    for idx, item in enumerate(acceptance_matrix):
+        if not isinstance(item, dict):
+            errors.append(f"acceptance_matrix[{idx}] must be an object.")
+            continue
+        required_fields = ("item", "status", "evidence", "critical", "confidence", "evidence_strength")
+        for field in required_fields:
+            if field not in item:
+                errors.append(f"acceptance_matrix[{idx}] missing '{field}'.")
+
+        item_name = item.get("item")
+        status = str(item.get("status", "")).strip().upper()
+        evidence = item.get("evidence")
+        critical = item.get("critical")
+        confidence = _coerce_confidence(item.get("confidence"))
+        evidence_strength = str(item.get("evidence_strength", "")).strip().upper()
+
+        if not isinstance(item_name, str) or not item_name.strip():
+            errors.append(f"acceptance_matrix[{idx}].item must be a non-empty string.")
+        if status not in LOOP_REPORT_ITEM_STATUS:
+            errors.append(
+                f"acceptance_matrix[{idx}].status must be one of {', '.join(LOOP_REPORT_ITEM_STATUS)}."
+            )
+        if not isinstance(evidence, str) or not evidence.strip():
+            errors.append(f"acceptance_matrix[{idx}].evidence must be a non-empty string.")
+        if not isinstance(critical, bool):
+            errors.append(f"acceptance_matrix[{idx}].critical must be true or false.")
+        if confidence is None:
+            errors.append(
+                f"acceptance_matrix[{idx}].confidence must be a number between 0.0 and 1.0."
+            )
+        if evidence_strength not in EVIDENCE_STRENGTH_VALUES:
+            errors.append(
+                f"acceptance_matrix[{idx}].evidence_strength must be one of {', '.join(EVIDENCE_STRENGTH_VALUES)}."
+            )
+
+        if (
+            isinstance(critical, bool)
+            and critical
+            and confidence is not None
+            and (
+                confidence < CONFIDENCE_MIN_REQUIRED
+                or evidence_strength == "LOW"
+            )
+        ):
+            has_low_confidence_critical = True
+
+    state_transition = report.get("state_transition")
+    if not isinstance(state_transition, dict):
+        errors.append("LOOP_RESULT report field 'state_transition' must be an object.")
+    else:
+        before = state_transition.get("before")
+        after = state_transition.get("after")
+        if not isinstance(before, dict):
+            errors.append("state_transition.before must be an object.")
+        if not isinstance(after, dict):
+            errors.append("state_transition.after must be an object.")
+        if isinstance(after, dict):
+            after_stage = _normalize_stage_for_compare(str(after.get("stage", "")).strip() or None)
+            after_checkpoint = _normalize_checkpoint_for_compare(str(after.get("checkpoint", "")).strip() or None)
+            after_status = str(after.get("status", "")).strip().upper()
+            payload_stage = _normalize_stage_for_compare(str(payload.get("stage", "")).strip() or None)
+            payload_checkpoint = _normalize_checkpoint_for_compare(str(payload.get("checkpoint", "")).strip() or None)
+            payload_status = str(payload.get("status", "")).strip().upper()
+            if after_stage != payload_stage:
+                errors.append("state_transition.after.stage must match LOOP_RESULT stage.")
+            if after_checkpoint != payload_checkpoint:
+                errors.append("state_transition.after.checkpoint must match LOOP_RESULT checkpoint.")
+            if after_status != payload_status:
+                errors.append("state_transition.after.status must match LOOP_RESULT status.")
+
+    report_loop_result = report.get("loop_result")
+    if not isinstance(report_loop_result, dict):
+        errors.append("LOOP_RESULT report field 'loop_result' must be an object.")
+    else:
+        for field in LOOP_RESULT_REQUIRED_FIELDS:
+            value = report_loop_result.get(field)
+            if not isinstance(value, str) or not value.strip():
+                errors.append(f"report.loop_result.{field} must be a non-empty string.")
+                continue
+            top_value = payload.get(field)
+            if field == "status":
+                if str(top_value).strip().upper() != str(value).strip().upper():
+                    errors.append(f"report.loop_result.{field} must mirror LOOP_RESULT {field}.")
+            else:
+                if str(top_value).strip() != str(value).strip():
+                    errors.append(f"report.loop_result.{field} must mirror LOOP_RESULT {field}.")
+
+    if loop_name in {"review", "issues_triage"} and has_low_confidence_critical:
+        next_hints = _next_role_hint_values(payload.get("next_role_hint"))
+        status = str(payload.get("status", "")).strip().upper()
+        if status not in {"IN_PROGRESS", "BLOCKED"}:
+            errors.append(
+                "Low-confidence critical acceptance items require LOOP_RESULT status IN_PROGRESS or BLOCKED."
+            )
+        if "issues_triage" not in next_hints:
+            errors.append(
+                "Low-confidence critical acceptance items require next_role_hint to include 'issues_triage'."
+            )
+
+    return tuple(errors)
+
+
+def _validate_loop_result_payload(payload: dict[str, Any], state: StateInfo) -> tuple[str, ...]:
+    errors: list[str] = []
+    for field in LOOP_RESULT_REQUIRED_FIELDS:
+        value = payload.get(field)
+        if not isinstance(value, str) or not value.strip():
+            errors.append(f"Missing or invalid LOOP_RESULT field '{field}'.")
+
+    loop_name = str(payload.get("loop", "")).strip()
+    if loop_name and loop_name not in LOOP_RESULT_LOOPS:
+        errors.append(
+            f"Invalid LOOP_RESULT loop '{loop_name}'. Allowed: {', '.join(sorted(LOOP_RESULT_LOOPS))}."
+        )
+
+    status = str(payload.get("status", "")).strip().upper()
+    if status and status not in ALLOWED_STATUS:
+        errors.append(
+            f"Invalid LOOP_RESULT status '{status}'. Allowed: {', '.join(sorted(ALLOWED_STATUS))}."
+        )
+
+    payload_stage = _normalize_stage_for_compare(str(payload.get("stage", "")).strip() or None)
+    payload_checkpoint = _normalize_checkpoint_for_compare(str(payload.get("checkpoint", "")).strip() or None)
+    state_stage = _normalize_stage_for_compare(state.stage)
+    state_checkpoint = _normalize_checkpoint_for_compare(state.checkpoint)
+    state_status = (state.status or "").strip().upper() or None
+
+    if payload_stage != state_stage:
+        errors.append(
+            f"LOOP_RESULT stage '{payload.get('stage')}' does not match STATE stage '{state.stage}'."
+        )
+    if payload_checkpoint != state_checkpoint:
+        errors.append(
+            f"LOOP_RESULT checkpoint '{payload.get('checkpoint')}' does not match STATE checkpoint '{state.checkpoint}'."
+        )
+    if status and status != state_status:
+        errors.append(
+            f"LOOP_RESULT status '{payload.get('status')}' does not match STATE status '{state.status}'."
+        )
+
+    errors.extend(_validate_loop_report_schema(payload))
+
+    return tuple(errors)
 
 
 def _parse_context_sections(text: str) -> dict[str, list[str]]:
@@ -626,6 +1198,10 @@ def validate(repo_root: Path, strict: bool) -> ValidationResult:
         allowed = ", ".join(sorted(ALLOWED_STATUS))
         errors.append(f".vibe/STATE.md: invalid status '{state.status}'. Allowed: {allowed}")
 
+    issue_schema_messages = _validate_issue_schema(state.issues)
+    for message in issue_schema_messages:
+        (errors if strict else warnings).append(f".vibe/STATE.md: {message}")
+
     # Evidence path is optional; warn if missing
     if not state.evidence_path:
         warnings.append(".vibe/STATE.md: missing evidence '- path: ...' (optional).")
@@ -688,6 +1264,42 @@ def validate(repo_root: Path, strict: bool) -> ValidationResult:
         else:
             for w in plan_check.warnings:
                 (errors if strict else warnings).append(f".vibe/PLAN.md: {w}")
+
+    catalog_index, catalog_path, catalog_error = _load_prompt_catalog_index(repo_root)
+    if catalog_error:
+        warnings.append(catalog_error)
+    else:
+        catalog_ids = set(catalog_index.keys())
+
+        for role, metadata in PROMPT_MAP.items():
+            prompt_id = metadata["id"]
+            if prompt_id == "stop":
+                continue
+            if prompt_id not in catalog_ids:
+                (errors if strict else warnings).append(
+                    f"Prompt map for role '{role}' references missing prompt id '{prompt_id}'."
+                )
+
+        workflow_refs, workflow_warnings = _collect_workflow_prompt_refs(repo_root)
+        for message in workflow_warnings:
+            (errors if strict else warnings).append(message)
+
+        for workflow_name, prompt_id in workflow_refs:
+            if prompt_id != "stop" and prompt_id not in catalog_ids:
+                (errors if strict else warnings).append(
+                    f"{workflow_name}: unknown prompt id '{prompt_id}' (not present in template_prompts.md)."
+                )
+            mapped_role = _role_for_prompt_id(prompt_id)
+            if mapped_role is None:
+                (errors if strict else warnings).append(
+                    f"{workflow_name}: prompt id '{prompt_id}' has no role mapping in PROMPT_ROLE_MAP."
+                )
+
+        if catalog_path and not (repo_root / "prompts" / "template_prompts.md").exists():
+            warnings.append(
+                f"Using non-local prompt catalog at {catalog_path}; "
+                "repo-local prompts/template_prompts.md is recommended."
+            )
 
     ok = len(errors) == 0
     return ValidationResult(
@@ -819,7 +1431,116 @@ def _top_issue_impact(issues: tuple[Issue, ...]) -> str | None:
     return best.impact
 
 
+def _get_section_lines(sections: dict[str, list[str]], section_name: str) -> list[str]:
+    target = section_name.strip().lower()
+    for key, lines in sections.items():
+        if key.strip().lower() == target:
+            return lines
+    return []
+
+
+def _normalize_flag_name(raw: str) -> str:
+    return re.sub(r"[^A-Za-z0-9]+", "_", raw.strip()).strip("_").upper()
+
+
+def _parse_workflow_flags(state_text: str) -> dict[str, bool]:
+    sections = _parse_context_sections(state_text)
+    lines = _get_section_lines(sections, "Workflow state")
+    flags: dict[str, bool] = {}
+
+    checkbox_pat = re.compile(r"^\s*-\s*\[\s*([xX ])\s*\]\s*(.+?)\s*$")
+    bullet_pat = re.compile(r"^\s*-\s+(.+?)\s*$")
+
+    for raw in lines:
+        m = checkbox_pat.match(raw)
+        if m:
+            flag = _normalize_flag_name(m.group(2))
+            if flag:
+                flags[flag] = m.group(1).strip().lower() == "x"
+            continue
+        b = bullet_pat.match(raw)
+        if b:
+            value = b.group(1).strip()
+            if value.lower() in {"none", "none.", "(none)", "(none yet)"}:
+                continue
+            flag = _normalize_flag_name(value)
+            if flag:
+                flags[flag] = True
+
+    return flags
+
+
+def _load_workflow_flags(repo_root: Path) -> dict[str, bool]:
+    state_path = repo_root / ".vibe" / "STATE.md"
+    if not state_path.exists():
+        return {}
+    return _parse_workflow_flags(_read_text(state_path))
+
+
+def _context_capture_trigger_reason(repo_root: Path, workflow_flags: dict[str, bool]) -> str | None:
+    if workflow_flags.get("RUN_CONTEXT_CAPTURE"):
+        return "Workflow flag RUN_CONTEXT_CAPTURE is set."
+
+    context_path = repo_root / ".vibe" / "CONTEXT.md"
+    state_path = repo_root / ".vibe" / "STATE.md"
+    plan_path = repo_root / ".vibe" / "PLAN.md"
+    history_path = repo_root / ".vibe" / "HISTORY.md"
+
+    if not context_path.exists():
+        return "Context snapshot missing (.vibe/CONTEXT.md)."
+
+    context_mtime = context_path.stat().st_mtime
+    sources = [p for p in (state_path, plan_path, history_path) if p.exists()]
+    if not sources:
+        return None
+
+    latest_source_mtime = max(p.stat().st_mtime for p in sources)
+    if latest_source_mtime - context_mtime > 24 * 3600:
+        return "Context snapshot is stale (>24h older than workflow docs)."
+
+    return None
+
+
+def _count_nonempty_signal_lines(lines: list[str]) -> int:
+    count = 0
+    for raw in lines:
+        line = raw.strip()
+        if not line:
+            continue
+        if line.startswith("<!--"):
+            continue
+        if line.lower() in {"none", "none.", "(none)", "(none yet)", "(none yet)."}:
+            continue
+        count += 1
+    return count
+
+
+def _process_improvements_trigger_reason(repo_root: Path, workflow_flags: dict[str, bool]) -> str | None:
+    if workflow_flags.get("RUN_PROCESS_IMPROVEMENTS"):
+        return "Workflow flag RUN_PROCESS_IMPROVEMENTS is set."
+
+    state_path = repo_root / ".vibe" / "STATE.md"
+    if not state_path.exists():
+        return None
+
+    sections = _parse_context_sections(_read_text(state_path))
+    work_log_lines = _get_section_lines(sections, "Work log (current session)")
+    evidence_lines = _get_section_lines(sections, "Evidence")
+
+    work_log_entries = sum(1 for line in work_log_lines if re.match(r"^\s*-\s+", line))
+    if work_log_entries > 15:
+        return f"Work log has {work_log_entries} entries (>15)."
+
+    evidence_signal_lines = _count_nonempty_signal_lines(evidence_lines)
+    if evidence_signal_lines > 50:
+        return f"Evidence section has {evidence_signal_lines} non-empty lines (>50)."
+
+    return None
+
+
 def _recommend_next(state: StateInfo, repo_root: Path) -> tuple[Role, str]:
+    workflow_flags = _load_workflow_flags(repo_root)
+
     # 0) Hard stop / hard triage conditions
     if state.status == "BLOCKED":
         return ("issues_triage", "Checkpoint status is BLOCKED.")
@@ -879,6 +1600,17 @@ def _recommend_next(state: StateInfo, repo_root: Path) -> tuple[Role, str]:
         # If there are non-blocking issues, triage can be recommended (your choice)
         if top in {"MAJOR", "QUESTION"}:
             return ("issues_triage", f"Active issues present (top impact: {top}).")
+
+        # Context capture is a first-class maintenance loop.
+        if state.status == "NOT_STARTED":
+            context_reason = _context_capture_trigger_reason(repo_root, workflow_flags)
+            if context_reason:
+                return ("context_capture", context_reason)
+
+            process_reason = _process_improvements_trigger_reason(repo_root, workflow_flags)
+            if process_reason:
+                return ("improvements", process_reason)
+
         return ("implement", f"Checkpoint status is {state.status}.")
 
     # 4) Default
@@ -914,6 +1646,10 @@ PROMPT_MAP: dict[Role, dict[str, str]] = {
         "id": "prompt.stage_design",
         "title": "Stage Design Prompt",
     },
+    "context_capture": {
+        "id": "prompt.context_capture",
+        "title": "Context Capture Prompt",
+    },
     "consolidation": {
         "id": "prompt.consolidation",
         "title": "Consolidation Prompt (docs sync + archival)",
@@ -932,6 +1668,135 @@ PROMPT_MAP: dict[Role, dict[str, str]] = {
     },
 }
 
+# Non-dispatcher prompts can still be selected by configured workflows.
+# Map them onto an existing role to keep status transitions coherent.
+EXTRA_WORKFLOW_PROMPT_ROLES: dict[str, Role] = {
+    "prompt.ideation": "design",
+    "prompt.feature_breakdown": "design",
+    "prompt.architecture": "design",
+    "prompt.milestones": "design",
+    "prompt.stages_from_milestones": "design",
+    "prompt.checkpoints_from_stage": "design",
+    "prompt.refactor_scan": "implement",
+    "prompt.refactor_execute": "implement",
+    "prompt.refactor_verify": "review",
+    "prompt.test_gap_analysis": "design",
+    "prompt.test_generation": "implement",
+    "prompt.test_review": "review",
+    "prompt.demo_script": "design",
+    "prompt.feedback_intake": "issues_triage",
+    "prompt.feedback_triage": "issues_triage",
+}
+
+PROMPT_ROLE_MAP: dict[str, Role] = {meta["id"]: role for role, meta in PROMPT_MAP.items()}
+PROMPT_ROLE_MAP.update(EXTRA_WORKFLOW_PROMPT_ROLES)
+
+
+def _role_for_prompt_id(prompt_id: str) -> Role | None:
+    return PROMPT_ROLE_MAP.get(prompt_id)
+
+
+def _resolve_next_prompt_selection(
+    state: StateInfo,
+    repo_root: Path,
+    workflow: str | None,
+) -> tuple[Role, str, str, str]:
+    base_role, base_reason = _recommend_next(state, repo_root)
+    base_prompt_id = PROMPT_MAP[base_role]["id"]
+    base_prompt_title = PROMPT_MAP[base_role]["title"]
+
+    if not workflow or base_role == "stop":
+        return (base_role, base_prompt_id, base_prompt_title, base_reason)
+
+    catalog_index, _, catalog_error = _load_prompt_catalog_index(repo_root)
+    if catalog_error:
+        raise RuntimeError(catalog_error)
+
+    try:
+        from workflow_engine import select_next_prompt
+    except Exception as exc:
+        raise RuntimeError(f"Failed to load workflow engine: {exc}") from exc
+
+    allowed_prompt_ids = {
+        prompt_id
+        for prompt_id, mapped_role in PROMPT_ROLE_MAP.items()
+        if mapped_role == base_role
+    }
+
+    def _select_workflow_prompt(allowed: set[str] | None) -> str | None:
+        try:
+            return select_next_prompt(workflow, allowed_prompt_ids=allowed)
+        except TypeError:
+            # Backward-compatible fallback for older workflow_engine versions.
+            candidate = select_next_prompt(workflow)
+            if allowed is None or candidate is None:
+                return candidate
+            return candidate if candidate in allowed else None
+
+    current_cwd = Path.cwd()
+    try:
+        os.chdir(repo_root)
+        workflow_prompt_id = _select_workflow_prompt(allowed_prompt_ids)
+        raw_workflow_prompt_id = _select_workflow_prompt(None)
+    finally:
+        os.chdir(current_cwd)
+    if not workflow_prompt_id:
+        if raw_workflow_prompt_id:
+            raw_role = _role_for_prompt_id(raw_workflow_prompt_id)
+            if raw_role is None:
+                raise RuntimeError(
+                    f"Workflow {workflow} selected unmapped prompt id '{raw_workflow_prompt_id}'. "
+                    "Add it to PROMPT_ROLE_MAP."
+                )
+            if raw_workflow_prompt_id != "stop" and raw_workflow_prompt_id not in catalog_index:
+                raise RuntimeError(
+                    f"Workflow {workflow} selected unknown prompt id '{raw_workflow_prompt_id}' "
+                    "(not found in template_prompts.md)."
+                )
+            return (
+                base_role,
+                base_prompt_id,
+                base_prompt_title,
+                f"{base_reason} Workflow {workflow} suggested {raw_workflow_prompt_id} "
+                f"({raw_role}); using dispatcher role {base_role}.",
+            )
+        return (
+            base_role,
+            base_prompt_id,
+            base_prompt_title,
+            f"{base_reason} Workflow {workflow} had no matching step; using dispatcher role {base_role}.",
+        )
+
+    workflow_role = _role_for_prompt_id(workflow_prompt_id)
+    if workflow_role is None:
+        raise RuntimeError(
+            f"Workflow {workflow} selected unmapped prompt id '{workflow_prompt_id}'. "
+            "Add it to PROMPT_ROLE_MAP."
+        )
+
+    if workflow_prompt_id != "stop" and workflow_prompt_id not in catalog_index:
+        raise RuntimeError(
+            f"Workflow {workflow} selected unknown prompt id '{workflow_prompt_id}' "
+            "(not found in template_prompts.md)."
+        )
+
+    if workflow_role != base_role:
+        return (
+            base_role,
+            base_prompt_id,
+            base_prompt_title,
+            f"{base_reason} Workflow {workflow} produced mismatched role {workflow_role}; "
+            f"using dispatcher role {base_role}.",
+        )
+
+    workflow_title = catalog_index.get(workflow_prompt_id, base_prompt_title)
+    return (
+        workflow_role,
+        workflow_prompt_id,
+        workflow_title,
+        f"{base_reason} Workflow {workflow} selected {workflow_prompt_id}.",
+    )
+
 
 def cmd_validate(args: argparse.Namespace) -> int:
     res = validate(Path(args.repo_root), strict=args.strict)
@@ -947,7 +1812,16 @@ def cmd_validate(args: argparse.Namespace) -> int:
             "checkpoint": res.state.checkpoint,
             "status": res.state.status,
             "evidence_path": res.state.evidence_path,
-            "issues": [{"impact": i.impact, "title": i.title} for i in res.state.issues],
+            "issues": [
+                {
+                    "id": i.issue_id,
+                    "impact": i.impact,
+                    "status": i.status,
+                    "owner": i.owner,
+                    "title": i.title,
+                }
+                for i in res.state.issues
+            ],
         }
     if res.plan_check:
         payload["plan_check"] = {
@@ -969,7 +1843,7 @@ def cmd_status(args: argparse.Namespace) -> int:
 
     role, reason = _recommend_next(state, repo_root)
     summary, sections = _context_summary(repo_root)
-    prompt_catalog_path = find_resource("prompt", "template_prompts.md")
+    prompt_catalog_path = _resolve_prompt_catalog_path(repo_root)
 
     payload: dict[str, Any] = {
         "stage": state.stage,
@@ -997,52 +1871,22 @@ def cmd_status(args: argparse.Namespace) -> int:
 def cmd_next(args: argparse.Namespace) -> int:
     repo_root = Path(args.repo_root)
     state = load_state(repo_root)
-    prompt_catalog_path = find_resource("prompt", "template_prompts.md")
+    prompt_catalog_path = _resolve_prompt_catalog_path(repo_root)
 
-    if args.workflow:
-        try:
-            from workflow_engine import select_next_prompt
-        except Exception as exc:
-            payload = {
-                "recommended_role": "stop",
-                "recommended_prompt_id": "stop",
-                "recommended_prompt_title": "Stop (workflow unavailable)",
-                "reason": f"Failed to load workflow engine: {exc}",
-                "workflow": args.workflow,
-                "stage": state.stage,
-                "checkpoint": state.checkpoint,
-                "status": state.status,
-                "prompt_catalog_path": str(prompt_catalog_path) if prompt_catalog_path else None,
-            }
-            print(_render_output(payload, args.format))
-            return 2
-
-        prompt_id = select_next_prompt(args.workflow)
-        if not prompt_id:
-            payload = {
-                "recommended_role": "stop",
-                "recommended_prompt_id": "stop",
-                "recommended_prompt_title": "Stop (no workflow match)",
-                "reason": f"No workflow step matched for {args.workflow}.",
-                "workflow": args.workflow,
-                "stage": state.stage,
-                "checkpoint": state.checkpoint,
-                "status": state.status,
-                "prompt_catalog_path": str(prompt_catalog_path) if prompt_catalog_path else None,
-            }
-            print(_render_output(payload, args.format))
-            return 1
-
+    _bootstrap_loop_result_record(repo_root, state)
+    loop_ok, loop_reason = _loop_result_ack_status(repo_root)
+    if not loop_ok:
         payload = {
-            "recommended_role": "implement",
-            "recommended_prompt_id": prompt_id,
-            "recommended_prompt_title": f"Workflow-selected prompt ({prompt_id})",
-            "reason": f"Workflow {args.workflow} selected {prompt_id}.",
-            "workflow": args.workflow,
+            "recommended_role": "stop",
+            "recommended_prompt_id": "stop",
+            "recommended_prompt_title": "Stop (pending LOOP_RESULT acknowledgement)",
+            "reason": loop_reason,
             "stage": state.stage,
             "checkpoint": state.checkpoint,
             "status": state.status,
             "prompt_catalog_path": str(prompt_catalog_path) if prompt_catalog_path else None,
+            "workflow": args.workflow,
+            "requires_loop_result": True,
         }
         print(_render_output(payload, args.format))
         return 0
@@ -1075,18 +1919,39 @@ def cmd_next(args: argparse.Namespace) -> int:
             print(_render_output(payload, args.format))
             return 1
 
-    role, reason = _recommend_next(state, repo_root)
+    try:
+        role, prompt_id, prompt_title, reason = _resolve_next_prompt_selection(
+            state,
+            repo_root,
+            args.workflow,
+        )
+    except RuntimeError as exc:
+        payload = {
+            "recommended_role": "stop",
+            "recommended_prompt_id": "stop",
+            "recommended_prompt_title": "Stop (workflow unavailable)",
+            "reason": str(exc),
+            "workflow": args.workflow,
+            "stage": state.stage,
+            "checkpoint": state.checkpoint,
+            "status": state.status,
+            "prompt_catalog_path": str(prompt_catalog_path) if prompt_catalog_path else None,
+        }
+        print(_render_output(payload, args.format))
+        return 2
 
     payload: dict[str, Any] = {
         "recommended_role": role,
-        "recommended_prompt_id": PROMPT_MAP[role]["id"],
-        "recommended_prompt_title": PROMPT_MAP[role]["title"],
+        "recommended_prompt_id": prompt_id,
+        "recommended_prompt_title": prompt_title,
         "reason": reason,
         "stage": state.stage,
         "checkpoint": state.checkpoint,
         "status": state.status,
         "prompt_catalog_path": str(prompt_catalog_path) if prompt_catalog_path else None,
     }
+    if args.workflow:
+        payload["workflow"] = args.workflow
     
     if args.run_gates and state.status in {"NOT_STARTED", "IN_PROGRESS"}:
         gate_results = run_gates(repo_root, state.checkpoint)
@@ -1103,6 +1968,63 @@ def cmd_next(args: argparse.Namespace) -> int:
 
 
     print(_render_output(payload, args.format))
+    return 0
+
+
+def cmd_loop_result(args: argparse.Namespace) -> int:
+    repo_root = Path(args.repo_root)
+    state = load_state(repo_root)
+    raw_payload = ""
+    sources = 0
+
+    if args.line:
+        raw_payload = args.line
+        sources += 1
+    if args.json_payload:
+        raw_payload = args.json_payload
+        sources += 1
+    if args.stdin:
+        raw_payload = sys.stdin.read()
+        sources += 1
+
+    if sources != 1:
+        print(
+            "Provide exactly one LOOP_RESULT source via --line, --json-payload, or --stdin.",
+            file=sys.stderr,
+        )
+        return 2
+
+    try:
+        payload = _parse_loop_result_payload(raw_payload)
+    except (json.JSONDecodeError, ValueError) as exc:
+        print(f"Invalid LOOP_RESULT payload: {exc}", file=sys.stderr)
+        return 2
+
+    validation_errors = _validate_loop_result_payload(payload, state)
+    if validation_errors:
+        report = {"ok": False, "errors": list(validation_errors)}
+        print(_render_output(report, args.format))
+        return 2
+
+    normalized = {
+        "loop": str(payload["loop"]).strip(),
+        "result": str(payload["result"]).strip(),
+        "stage": str(payload["stage"]).strip(),
+        "checkpoint": str(payload["checkpoint"]).strip(),
+        "status": str(payload["status"]).strip().upper(),
+        "next_role_hint": str(payload["next_role_hint"]).strip(),
+        "report": payload.get("report"),
+    }
+    normalized["protocol_version"] = LOOP_RESULT_PROTOCOL_VERSION
+    normalized["recorded_at"] = datetime.now(timezone.utc).isoformat()
+    normalized["state_sha256"] = _state_sha256(repo_root)
+
+    path = _loop_result_path(repo_root)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(normalized, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+
+    output = {"ok": True, "loop_result_path": str(path), "recorded": normalized}
+    print(_render_output(output, args.format))
     return 0
 
 
@@ -1238,6 +2160,13 @@ def build_parser() -> argparse.ArgumentParser:
         help="Use configured workflow to select the next prompt.",
     )
     pn.set_defaults(fn=cmd_next)
+
+    plr = sub.add_parser("loop-result", help="Record and validate LOOP_RESULT output against current STATE.md.")
+    src = plr.add_mutually_exclusive_group(required=True)
+    src.add_argument("--line", help='Raw LOOP_RESULT line (for example: LOOP_RESULT: {"loop":"implement",...}).')
+    src.add_argument("--json-payload", help="Raw LOOP_RESULT JSON object string.")
+    src.add_argument("--stdin", action="store_true", help="Read LOOP_RESULT payload from stdin.")
+    plr.set_defaults(fn=cmd_loop_result)
 
     pc = sub.add_parser("add-checkpoint", help="Insert a checkpoint from a template into PLAN.md.")
     pc.add_argument("--template", required=True, help="Template name (file stem).")
