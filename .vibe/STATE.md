@@ -13,7 +13,7 @@
 
 - Stage: 20
 - Checkpoint: 20.1
-- Status: NOT_STARTED  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
+- Status: IN_REVIEW  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
 
 ## Objective (current checkpoint)
 
@@ -37,6 +37,7 @@ Build a deterministic chunking library that splits files into indexed units suit
 
 ## Work log (current session)
 
+- 2026-02-05: Implemented 20.1 — chunker.py with Python/Markdown/Generic/Fallback strategies; import grouping; all 5 acceptance criteria pass; status set to IN_REVIEW.
 - 2026-02-05: Resolved ISSUE-011 — added installable `vibe-one-loop` and `vibe-run` skills; wired bootstrap + skillset + docs to include them.
 - 2026-02-05: Resolved ISSUE-010 — added manifest front matter to `vibe-loop`, forced manifest refresh in global installs, and verified cross-repo/global discovery (including UNC-style `CODEX_HOME` normalization).
 - 2026-02-05: Mitigated ISSUE-009 in local tooling by normalizing `CODEX_HOME`/`AGENT_HOME` paths across resolver/install scripts; external Codex recommended-skills clone behavior still requires product-side verification.
@@ -72,11 +73,14 @@ Build a deterministic chunking library that splits files into indexed units suit
 
 ## Evidence
 
-- `python3 tools/skillctl.py validate .codex/skills/vibe-loop` → `OK`
-- `python3 tools/skillctl.py resolve-set vibe-base --agent codex --format json` includes `vibe-prompts`, `vibe-loop`, `vibe-one-loop`, `vibe-run`
-- `python3 /mnt/c/src/coding-agent-orchestration/tools/skillctl.py list --agent codex` from `/tmp/vibe-skill-check` shows global skills outside this repo
-- `CODEX_HOME='\\\\wsl.localhost\\Ubuntu\\home\\brifl\\.codex' python3 .../skillctl.py list --agent codex --format json` resolves to `/home/brifl/.codex/skills/*`
-- `python3 -m pytest --capture=sys tests/workflow/test_skill_tooling.py tests/workflow/test_bootstrap.py tests/workflow/test_agentctl.py tests/workflow/test_state_parsing.py -q` → `43 passed`
+- Determinism: chunking scanner.py twice → identical JSON output (PASS)
+- Python 3+ function chunks: scanner.py → 9 function/class chunks (PASS)
+- Markdown 4-heading file → 4 chunks (PASS)
+- Max size cap: largest chunk 2490 chars < 2500 limit (PASS)
+- Contiguous coverage: lines 1-383, no gaps or overlaps (PASS)
+- Import grouping: 8 imports → 1 chunk (lines 7-18)
+- scanner.py: 15 total chunks (docstring, imports, dict, 8 functions, class, 2 force-split pieces, main, guard)
+- README.md: 19 heading-level chunks
 
 ## Active issues
 
