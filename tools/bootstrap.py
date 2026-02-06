@@ -11,6 +11,8 @@ Commands:
     - Adds ".vibe/" to <path>/.gitignore (idempotent).
     - Installs a baseline <path>/AGENTS.md (only if missing unless --overwrite).
     - Optionally installs <path>/VIBE.md (only if missing unless --overwrite) if a template exists.
+    - Installs repo-local skills from the selected skillset into <path>/.codex/skills
+      (defaults to "vibe-base", which includes continuous workflow runners).
 
   install-skills --global --agent <agent_name>
     - Installs/updates skills for the specified agent into ~/.codex/skills (Codex) or ~/.<agent>/skills
@@ -48,6 +50,7 @@ ALL_AGENTS = ["codex", "claude", "gemini", "copilot", "kilo"]
 # Canonical doc templates for init-repo
 CANONICAL_AGENTS_TEMPLATE = Path("templates/repo_root/AGENTS.md")
 CANONICAL_VIBE_TEMPLATE = Path("templates/repo_root/VIBE.md")
+DEFAULT_INIT_SKILLSET = "vibe-base"
 
 
 def _repo_root_from_this_file() -> Path:
@@ -122,6 +125,9 @@ def init_repo(target_repo: Path, skillset: str | None = None, overwrite: bool = 
     created = []
     overwritten = []
     skipped = []
+    effective_skillset = (skillset or DEFAULT_INIT_SKILLSET).strip()
+    if not effective_skillset:
+        raise ValueError("Skillset name cannot be empty.")
 
     for name in ("STATE.md", "PLAN.md", "HISTORY.md"):
         src = _template_path(repo_root, f"templates/vibe_folder/{name}")
@@ -166,36 +172,37 @@ def init_repo(target_repo: Path, skillset: str | None = None, overwrite: bool = 
             skipped.append(str(config_path))
         else:
             config_payload = {
-                "skillset": {"name": skillset},
+                "skillset": {"name": effective_skillset},
                 "skill_folders": [],
                 "prompt_catalogs": [],
             }
             _write_text(config_path, json.dumps(config_payload, indent=2) + "\n")
             created.append(str(config_path))
 
-        # Auto-install skills from the set into .codex/skills
-        skill_defs = _resolve_skillset(repo_root, skillset)
-        dst_root = target_repo / ".codex" / "skills"
-        dst_root.mkdir(parents=True, exist_ok=True)
-        for skill in skill_defs:
-            name = skill["name"]
-            src_dir = repo_root / ".codex" / "skills" / name
-            if not src_dir.exists():
-                src_dir = repo_root / "skills" / name
-            if not src_dir.exists():
-                raise FileNotFoundError(f"Skill folder not found for '{name}'.")
-            dst_dir = dst_root / name
-            u = _sync_dir(src_dir, dst_dir, force=False)
-            if u:
-                created.extend(u)
-            else:
-                skipped.append(str(dst_dir))
+    # Auto-install skills from the selected set into .codex/skills.
+    skill_defs = _resolve_skillset(repo_root, effective_skillset)
+    dst_root = target_repo / ".codex" / "skills"
+    dst_root.mkdir(parents=True, exist_ok=True)
+    for skill in skill_defs:
+        name = skill["name"]
+        src_dir = repo_root / ".codex" / "skills" / name
+        if not src_dir.exists():
+            src_dir = repo_root / "skills" / name
+        if not src_dir.exists():
+            raise FileNotFoundError(f"Skill folder not found for '{name}'.")
+        dst_dir = dst_root / name
+        u = _sync_dir(src_dir, dst_dir, force=False)
+        if u:
+            created.extend(u)
+        else:
+            skipped.append(str(dst_dir))
 
     # Summary
     print("init-repo summary")
     print(f"- Repo: {target_repo}")
     print(f"- .vibe dir: {vibe_dir}")
     print(f"- .gitignore updated: {'yes' if gi_modified else 'no'}")
+    print(f"- Skillset installed: {effective_skillset}")
     if created:
         print("- Created:")
         for p in created:
@@ -512,7 +519,15 @@ def _build_parser() -> argparse.ArgumentParser:
 
     initp = sub.add_parser("init-repo", help="Bootstrap a target repo with AGENTS.md and .vibe templates")
     initp.add_argument("path", type=str, help="Path to the target repo root")
-    initp.add_argument("--skillset", type=str, help="Optional skillset name to seed .vibe/config.json")
+    initp.add_argument(
+        "--skillset",
+        type=str,
+        default=None,
+        help=(
+            "Skillset name to install into .codex/skills (default: vibe-base). "
+            "When explicitly provided, also seeds .vibe/config.json if missing."
+        ),
+    )
     initp.add_argument(
         "--overwrite",
         action="store_true",

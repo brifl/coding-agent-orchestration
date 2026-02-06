@@ -150,7 +150,15 @@ include sensible default acceptance criteria.
 python3 tools/bootstrap.py init-repo /path/to/your/repo
 ```
 
-This creates `.vibe/`, adds `.vibe/` to `.gitignore`, and installs a baseline `AGENTS.md`.
+This creates `.vibe/`, adds `.vibe/` to `.gitignore`, installs a baseline `AGENTS.md`,
+and installs repo-local skills into `.codex/skills` from the default `vibe-base` set
+(`vibe-run`, `continuous-refactor`, and `continuous-test-generation` included).
+
+Use a different set if needed:
+
+```bash
+python3 tools/bootstrap.py init-repo /path/to/your/repo --skillset vibe-core
+```
 
 ### Install global skills
 

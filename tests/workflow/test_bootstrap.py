@@ -32,3 +32,18 @@ def test_init_repo_overwrite_replaces_canonical_docs(tmp_path: Path) -> None:
     out = buffer.getvalue()
     assert "Overwritten:" in out
     assert str(tmp_path / "AGENTS.md") in out
+
+
+def test_init_repo_installs_vibe_base_skills_by_default(tmp_path: Path) -> None:
+    buffer = io.StringIO()
+    with redirect_stdout(buffer):
+        exit_code = init_repo(tmp_path)
+    assert exit_code == 0
+
+    skills_root = tmp_path / ".codex" / "skills"
+    assert (skills_root / "vibe-run" / "SKILL.md").exists()
+    assert (skills_root / "continuous-refactor" / "SKILL.md").exists()
+    assert (skills_root / "continuous-test-generation" / "SKILL.md").exists()
+
+    out = buffer.getvalue()
+    assert "- Skillset installed: vibe-base" in out
