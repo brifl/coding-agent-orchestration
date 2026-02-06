@@ -178,6 +178,8 @@ manual bootstraps found in `prompts/init/`.
 
 Codex's `$vibe-run` skill implements continuous mode. It must keep looping until
 the dispatcher says stop--never just one cycle.
+For non-interactive dry-runs (no executor), use
+`--simulate-loop-result` to auto-acknowledge loop protocol and continue.
 
 ### Run a named workflow with a skill
 

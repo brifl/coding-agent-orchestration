@@ -75,6 +75,77 @@ def _extract_loop_result_line(output: str) -> str | None:
     return found
 
 
+def _simulated_loop_result_line(decision: dict) -> str:
+    role = str(decision.get("recommended_role") or "").strip()
+    stage = str(decision.get("stage") or "").strip()
+    checkpoint = str(decision.get("checkpoint") or "").strip()
+    status = str(decision.get("status") or "").strip()
+
+    role_map = {
+        "design": ("design", "updated", "implement|issues_triage|stop"),
+        "implement": ("implement", "ready_for_review", "review|issues_triage"),
+        "review": ("review", "pass", "implement|consolidation|issues_triage|stop"),
+        "issues_triage": ("issues_triage", "resolved", "implement|review|issues_triage|stop"),
+        "advance": ("advance", "advanced", "implement|stop"),
+        "consolidation": ("consolidation", "aligned", "context_capture|implement|issues_triage"),
+        "context_capture": ("context_capture", "updated", "implement|review|issues_triage|stop"),
+        "improvements": ("improvements", "completed", "implement|review|issues_triage|stop"),
+    }
+    loop_name, result, next_role_hint = role_map.get(
+        role,
+        ("implement", "blocked", "issues_triage"),
+    )
+
+    report = {
+        "acceptance_matrix": [
+            {
+                "item": "Simulated non-interactive loop acknowledgement",
+                "status": "N/A",
+                "evidence": (
+                    "vibe-run used --simulate-loop-result without an executor; "
+                    "prompt was emitted but not executed."
+                ),
+                "critical": False,
+                "confidence": 1.0,
+                "evidence_strength": "LOW",
+            }
+        ],
+        "top_findings": [
+            {
+                "impact": "QUESTION",
+                "title": "Loop result was simulated",
+                "evidence": (
+                    "No executor command was provided, so this run only acknowledged "
+                    "the loop protocol for non-interactive continuity."
+                ),
+                "action": "Use --executor or interactive mode for real loop execution.",
+            }
+        ],
+        "state_transition": {
+            "before": {"stage": stage, "checkpoint": checkpoint, "status": status},
+            "after": {"stage": stage, "checkpoint": checkpoint, "status": status},
+        },
+        "loop_result": {
+            "loop": loop_name,
+            "result": result,
+            "stage": stage,
+            "checkpoint": checkpoint,
+            "status": status,
+            "next_role_hint": next_role_hint,
+        },
+    }
+    payload = {
+        "loop": loop_name,
+        "result": result,
+        "stage": stage,
+        "checkpoint": checkpoint,
+        "status": status,
+        "next_role_hint": next_role_hint,
+        "report": report,
+    }
+    return "LOOP_RESULT: " + json.dumps(payload, separators=(",", ":"))
+
+
 def _run_executor(
     executor_cmd: str,
     repo_root: Path,
@@ -191,6 +262,14 @@ def main() -> int:
         action="store_true",
         help="Do not pause between loops. Use only when another process updates state.",
     )
+    ap.add_argument(
+        "--simulate-loop-result",
+        action="store_true",
+        help=(
+            "Auto-record a synthetic LOOP_RESULT after each emitted prompt. "
+            "Use for non-interactive dry-runs without an executor."
+        ),
+    )
     args = ap.parse_args()
 
     repo_root = Path(args.repo_root).expanduser().resolve()
@@ -251,8 +330,26 @@ def main() -> int:
                 return 2
             continue
 
-        if args.non_interactive:
+        if args.simulate_loop_result:
+            try:
+                simulated_line = _simulated_loop_result_line(decision)
+                _record_loop_result(agentctl_path, repo_root, simulated_line)
+            except RuntimeError as exc:
+                print(f"ERROR: {exc}", file=sys.stderr)
+                return 2
+            print(
+                "NOTE: recorded simulated LOOP_RESULT (--simulate-loop-result).",
+                file=sys.stderr,
+            )
             continue
+
+        if args.non_interactive:
+            print(
+                "ERROR: --non-interactive requires --executor or --simulate-loop-result "
+                "to acknowledge LOOP_RESULT.",
+                file=sys.stderr,
+            )
+            return 2
         if not sys.stdin.isatty():
             print("NOTE: stdin is not interactive; stopping after one loop.", file=sys.stderr)
             return 0

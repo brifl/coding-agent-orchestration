@@ -23,6 +23,8 @@ dispatcher returns `recommended_role == "stop"`.
   - `python3 scripts/vibe_run.py --repo-root . --show-decision`
 - Non-interactive mode (advanced):
   - `python3 scripts/vibe_run.py --repo-root . --non-interactive --max-loops 10 --show-decision`
+- Non-interactive simulation mode (no executor, protocol-only):
+  - `python3 scripts/vibe_run.py --repo-root . --non-interactive --simulate-loop-result --max-loops 10 --show-decision`
 - Headless executor mode (CI/agent automation):
   - `python3 scripts/vibe_run.py --repo-root . --max-loops 10 --executor "python3 ./scripts/run_one_loop.py" --show-decision`
 - Run a specific workflow continuously (for example `continuous-refactor`):
@@ -39,3 +41,5 @@ dispatcher returns `recommended_role == "stop"`.
 - In executor mode, the command is run after each prompt and must print a
   `LOOP_RESULT: {...}` line; the runner records it automatically.
 - The runner stops automatically when `agentctl` returns `recommended_role: stop`.
+- In non-interactive environments without an executor, use `--simulate-loop-result`
+  to auto-acknowledge LOOP_RESULT and keep cycling (dry-run semantics).
