@@ -27,7 +27,9 @@ Agents do **not** invent workflows. They run the prompt loop recommended by `age
 1) `agentctl.py next` chooses the next loop (implement, review, triage, consolidation, etc.).
 2) The loop prompt is fetched from `prompts/template_prompts.md` and executed.
 3) The agent updates `.vibe/STATE.md` with evidence and status changes.
-4) Repeat until the plan is exhausted or blocked.
+4) Record the emitted `LOOP_RESULT: {...}` line:
+   `python3 tools/agentctl.py --repo-root . --format json loop-result --line 'LOOP_RESULT: {...}'`
+5) Repeat until the plan is exhausted or blocked.
 
 Stages are expected to be consolidated before moving to the next stage.
 

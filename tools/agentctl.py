@@ -18,11 +18,13 @@ Assumptions:
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 import re
 import subprocess
 import sys
+from datetime import datetime, timezone
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Iterable, Literal
@@ -53,6 +55,25 @@ ALLOWED_STATUS = {
 SEVERITY_ORDER = ["BLOCKER", "MAJOR", "MINOR", "QUESTION"]
 SEVERITIES = tuple(SEVERITY_ORDER)
 ISSUE_STATUS_VALUES = ("OPEN", "IN_PROGRESS", "BLOCKED", "RESOLVED")
+LOOP_RESULT_PROTOCOL_VERSION = 1
+LOOP_RESULT_REQUIRED_FIELDS = (
+    "loop",
+    "result",
+    "stage",
+    "checkpoint",
+    "status",
+    "next_role_hint",
+)
+LOOP_RESULT_LOOPS = {
+    "design",
+    "implement",
+    "review",
+    "issues_triage",
+    "consolidation",
+    "context_capture",
+    "improvements",
+    "advance",
+}
 
 Role = Literal[
     "issues_triage",
@@ -546,6 +567,157 @@ def _resolve_path(repo_root: Path, raw_path: str) -> Path:
 
 def _read_text(path: Path) -> str:
     return path.read_text(encoding="utf-8", errors="replace")
+
+
+def _state_path(repo_root: Path) -> Path:
+    return repo_root / ".vibe" / "STATE.md"
+
+
+def _loop_result_path(repo_root: Path) -> Path:
+    return repo_root / ".vibe" / "LOOP_RESULT.json"
+
+
+def _state_sha256(repo_root: Path) -> str:
+    path = _state_path(repo_root)
+    text = _read_text(path)
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+
+def _normalize_stage_for_compare(raw: str | None) -> str | None:
+    if raw is None:
+        return None
+    value = raw.strip()
+    if not value:
+        return None
+    if is_valid_stage_id(value):
+        return normalize_stage_id(value)
+    return value
+
+
+def _normalize_checkpoint_for_compare(raw: str | None) -> str | None:
+    if raw is None:
+        return None
+    value = raw.strip()
+    if not value:
+        return None
+    try:
+        return normalize_checkpoint_id(value)
+    except ValueError:
+        return value
+
+
+def _bootstrap_loop_result_record(repo_root: Path, state: StateInfo) -> None:
+    record_path = _loop_result_path(repo_root)
+    if record_path.exists():
+        return
+    record_path.parent.mkdir(parents=True, exist_ok=True)
+    payload = {
+        "protocol_version": LOOP_RESULT_PROTOCOL_VERSION,
+        "loop": "bootstrap",
+        "result": "initialized",
+        "stage": state.stage,
+        "checkpoint": state.checkpoint,
+        "status": state.status,
+        "next_role_hint": "implement",
+        "state_sha256": _state_sha256(repo_root),
+        "recorded_at": datetime.now(timezone.utc).isoformat(),
+    }
+    record_path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+
+
+def _load_loop_result_record(repo_root: Path) -> tuple[dict[str, Any] | None, str | None]:
+    path = _loop_result_path(repo_root)
+    if not path.exists():
+        return (None, None)
+    try:
+        payload = json.loads(_read_text(path))
+    except (json.JSONDecodeError, OSError) as exc:
+        return (None, f"Failed to read {path}: {exc}")
+    if not isinstance(payload, dict):
+        return (None, f"Invalid LOOP_RESULT payload in {path}: expected JSON object.")
+    return (payload, None)
+
+
+def _loop_result_ack_status(repo_root: Path) -> tuple[bool, str]:
+    path = _loop_result_path(repo_root)
+    if not path.exists():
+        return (True, "LOOP_RESULT protocol initialized for this state snapshot.")
+
+    payload, error = _load_loop_result_record(repo_root)
+    if error:
+        return (False, error)
+    if payload is None:
+        return (False, f"Missing LOOP_RESULT payload at {path}.")
+
+    recorded_hash = payload.get("state_sha256")
+    if not isinstance(recorded_hash, str) or not recorded_hash:
+        return (
+            False,
+            f"{path} is missing required field 'state_sha256'. "
+            "Run agentctl loop-result with the latest LOOP_RESULT line.",
+        )
+
+    current_hash = _state_sha256(repo_root)
+    if recorded_hash != current_hash:
+        return (
+            False,
+            "Unacknowledged STATE.md changes detected. "
+            "Run `python3 tools/agentctl.py --repo-root . --format json loop-result --line \"LOOP_RESULT: {...}\"` "
+            "after completing the current loop.",
+        )
+
+    return (True, "LOOP_RESULT acknowledged for current state.")
+
+
+def _parse_loop_result_payload(raw: str) -> dict[str, Any]:
+    text = raw.strip()
+    if text.startswith("LOOP_RESULT:"):
+        text = text.split(":", 1)[1].strip()
+    payload = json.loads(text)
+    if not isinstance(payload, dict):
+        raise ValueError("LOOP_RESULT payload must be a JSON object.")
+    return payload
+
+
+def _validate_loop_result_payload(payload: dict[str, Any], state: StateInfo) -> tuple[str, ...]:
+    errors: list[str] = []
+    for field in LOOP_RESULT_REQUIRED_FIELDS:
+        value = payload.get(field)
+        if not isinstance(value, str) or not value.strip():
+            errors.append(f"Missing or invalid LOOP_RESULT field '{field}'.")
+
+    loop_name = str(payload.get("loop", "")).strip()
+    if loop_name and loop_name not in LOOP_RESULT_LOOPS:
+        errors.append(
+            f"Invalid LOOP_RESULT loop '{loop_name}'. Allowed: {', '.join(sorted(LOOP_RESULT_LOOPS))}."
+        )
+
+    status = str(payload.get("status", "")).strip().upper()
+    if status and status not in ALLOWED_STATUS:
+        errors.append(
+            f"Invalid LOOP_RESULT status '{status}'. Allowed: {', '.join(sorted(ALLOWED_STATUS))}."
+        )
+
+    payload_stage = _normalize_stage_for_compare(str(payload.get("stage", "")).strip() or None)
+    payload_checkpoint = _normalize_checkpoint_for_compare(str(payload.get("checkpoint", "")).strip() or None)
+    state_stage = _normalize_stage_for_compare(state.stage)
+    state_checkpoint = _normalize_checkpoint_for_compare(state.checkpoint)
+    state_status = (state.status or "").strip().upper() or None
+
+    if payload_stage != state_stage:
+        errors.append(
+            f"LOOP_RESULT stage '{payload.get('stage')}' does not match STATE stage '{state.stage}'."
+        )
+    if payload_checkpoint != state_checkpoint:
+        errors.append(
+            f"LOOP_RESULT checkpoint '{payload.get('checkpoint')}' does not match STATE checkpoint '{state.checkpoint}'."
+        )
+    if status and status != state_status:
+        errors.append(
+            f"LOOP_RESULT status '{payload.get('status')}' does not match STATE status '{state.status}'."
+        )
+
+    return tuple(errors)
 
 
 def _parse_context_sections(text: str) -> dict[str, list[str]]:
@@ -1357,13 +1529,49 @@ def _resolve_next_prompt_selection(
     except Exception as exc:
         raise RuntimeError(f"Failed to load workflow engine: {exc}") from exc
 
+    allowed_prompt_ids = {
+        prompt_id
+        for prompt_id, mapped_role in PROMPT_ROLE_MAP.items()
+        if mapped_role == base_role
+    }
+
+    def _select_workflow_prompt(allowed: set[str] | None) -> str | None:
+        try:
+            return select_next_prompt(workflow, allowed_prompt_ids=allowed)
+        except TypeError:
+            # Backward-compatible fallback for older workflow_engine versions.
+            candidate = select_next_prompt(workflow)
+            if allowed is None or candidate is None:
+                return candidate
+            return candidate if candidate in allowed else None
+
     current_cwd = Path.cwd()
     try:
         os.chdir(repo_root)
-        workflow_prompt_id = select_next_prompt(workflow)
+        workflow_prompt_id = _select_workflow_prompt(allowed_prompt_ids)
+        raw_workflow_prompt_id = _select_workflow_prompt(None)
     finally:
         os.chdir(current_cwd)
     if not workflow_prompt_id:
+        if raw_workflow_prompt_id:
+            raw_role = _role_for_prompt_id(raw_workflow_prompt_id)
+            if raw_role is None:
+                raise RuntimeError(
+                    f"Workflow {workflow} selected unmapped prompt id '{raw_workflow_prompt_id}'. "
+                    "Add it to PROMPT_ROLE_MAP."
+                )
+            if raw_workflow_prompt_id != "stop" and raw_workflow_prompt_id not in catalog_index:
+                raise RuntimeError(
+                    f"Workflow {workflow} selected unknown prompt id '{raw_workflow_prompt_id}' "
+                    "(not found in template_prompts.md)."
+                )
+            return (
+                base_role,
+                base_prompt_id,
+                base_prompt_title,
+                f"{base_reason} Workflow {workflow} suggested {raw_workflow_prompt_id} "
+                f"({raw_role}); using dispatcher role {base_role}.",
+            )
         return (
             base_role,
             base_prompt_id,
@@ -1389,8 +1597,8 @@ def _resolve_next_prompt_selection(
             base_role,
             base_prompt_id,
             base_prompt_title,
-            f"{base_reason} Workflow {workflow} suggested {workflow_prompt_id} "
-            f"({workflow_role}); using dispatcher role {base_role}.",
+            f"{base_reason} Workflow {workflow} produced mismatched role {workflow_role}; "
+            f"using dispatcher role {base_role}.",
         )
 
     workflow_title = catalog_index.get(workflow_prompt_id, base_prompt_title)
@@ -1477,6 +1685,24 @@ def cmd_next(args: argparse.Namespace) -> int:
     state = load_state(repo_root)
     prompt_catalog_path = _resolve_prompt_catalog_path(repo_root)
 
+    _bootstrap_loop_result_record(repo_root, state)
+    loop_ok, loop_reason = _loop_result_ack_status(repo_root)
+    if not loop_ok:
+        payload = {
+            "recommended_role": "stop",
+            "recommended_prompt_id": "stop",
+            "recommended_prompt_title": "Stop (pending LOOP_RESULT acknowledgement)",
+            "reason": loop_reason,
+            "stage": state.stage,
+            "checkpoint": state.checkpoint,
+            "status": state.status,
+            "prompt_catalog_path": str(prompt_catalog_path) if prompt_catalog_path else None,
+            "workflow": args.workflow,
+            "requires_loop_result": True,
+        }
+        print(_render_output(payload, args.format))
+        return 0
+
     if args.run_gates and state.status in {"NOT_STARTED", "IN_PROGRESS"}:
         gate_results = run_gates(repo_root, state.checkpoint)
         failed_required_gates = [r for r in gate_results if not r.passed and r.gate.required]
@@ -1554,6 +1780,62 @@ def cmd_next(args: argparse.Namespace) -> int:
 
 
     print(_render_output(payload, args.format))
+    return 0
+
+
+def cmd_loop_result(args: argparse.Namespace) -> int:
+    repo_root = Path(args.repo_root)
+    state = load_state(repo_root)
+    raw_payload = ""
+    sources = 0
+
+    if args.line:
+        raw_payload = args.line
+        sources += 1
+    if args.json_payload:
+        raw_payload = args.json_payload
+        sources += 1
+    if args.stdin:
+        raw_payload = sys.stdin.read()
+        sources += 1
+
+    if sources != 1:
+        print(
+            "Provide exactly one LOOP_RESULT source via --line, --json-payload, or --stdin.",
+            file=sys.stderr,
+        )
+        return 2
+
+    try:
+        payload = _parse_loop_result_payload(raw_payload)
+    except (json.JSONDecodeError, ValueError) as exc:
+        print(f"Invalid LOOP_RESULT payload: {exc}", file=sys.stderr)
+        return 2
+
+    validation_errors = _validate_loop_result_payload(payload, state)
+    if validation_errors:
+        report = {"ok": False, "errors": list(validation_errors)}
+        print(_render_output(report, args.format))
+        return 2
+
+    normalized = {
+        "loop": str(payload["loop"]).strip(),
+        "result": str(payload["result"]).strip(),
+        "stage": str(payload["stage"]).strip(),
+        "checkpoint": str(payload["checkpoint"]).strip(),
+        "status": str(payload["status"]).strip().upper(),
+        "next_role_hint": str(payload["next_role_hint"]).strip(),
+    }
+    normalized["protocol_version"] = LOOP_RESULT_PROTOCOL_VERSION
+    normalized["recorded_at"] = datetime.now(timezone.utc).isoformat()
+    normalized["state_sha256"] = _state_sha256(repo_root)
+
+    path = _loop_result_path(repo_root)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(normalized, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+
+    output = {"ok": True, "loop_result_path": str(path), "recorded": normalized}
+    print(_render_output(output, args.format))
     return 0
 
 
@@ -1689,6 +1971,13 @@ def build_parser() -> argparse.ArgumentParser:
         help="Use configured workflow to select the next prompt.",
     )
     pn.set_defaults(fn=cmd_next)
+
+    plr = sub.add_parser("loop-result", help="Record and validate LOOP_RESULT output against current STATE.md.")
+    src = plr.add_mutually_exclusive_group(required=True)
+    src.add_argument("--line", help='Raw LOOP_RESULT line (for example: LOOP_RESULT: {"loop":"implement",...}).')
+    src.add_argument("--json-payload", help="Raw LOOP_RESULT JSON object string.")
+    src.add_argument("--stdin", action="store_true", help="Read LOOP_RESULT payload from stdin.")
+    plr.set_defaults(fn=cmd_loop_result)
 
     pc = sub.add_parser("add-checkpoint", help="Insert a checkpoint from a template into PLAN.md.")
     pc.add_argument("--template", required=True, help="Template name (file stem).")

@@ -203,7 +203,10 @@ def _every_matches(every: int | None, checkpoint: str | None) -> bool:
     return minor % every == 0
 
 
-def select_next_prompt(workflow_name: str) -> str | None:
+def select_next_prompt(
+    workflow_name: str,
+    allowed_prompt_ids: set[str] | None = None,
+) -> str | None:
     workflow = _load_workflow(workflow_name)
     state = _parse_state()
     if workflow.triggers and not any(_trigger_matches(t, state) for t in workflow.triggers):
@@ -214,6 +217,8 @@ def select_next_prompt(workflow_name: str) -> str | None:
         if not _condition_matches(step.condition, state):
             continue
         if not _every_matches(step.every, state.get("checkpoint")):
+            continue
+        if allowed_prompt_ids is not None and step.prompt_id not in allowed_prompt_ids:
             continue
         return step.prompt_id
     return None

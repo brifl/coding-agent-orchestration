@@ -8,7 +8,7 @@ Run exactly ONE workflow loop for this repository, then stop.
 
 PROCEDURE (follow exactly)
 1) Determine the next loop to run by executing:
-   python ~/.codex/skills/vibe-loop/scripts/vibe_next_and_print.py --repo-root .
+   python3 ~/.codex/skills/vibe-loop/scripts/vibe_next_and_print.py --repo-root .
    (If you set `CODEX_HOME`, use `$CODEX_HOME/skills/...` instead.)
 
 2) The script will:
@@ -22,6 +22,8 @@ PROCEDURE (follow exactly)
 
 4) When the loop completes:
    - Ensure `.vibe/STATE.md` is updated appropriately.
+   - Record loop completion:
+     `python3 tools/agentctl.py --repo-root . --format json loop-result --line 'LOOP_RESULT: {...}'`
    - Do NOT start another loop.
    - Stop and wait.
 

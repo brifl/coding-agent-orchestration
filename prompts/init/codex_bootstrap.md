@@ -31,4 +31,6 @@ OUTPUT
 A) Current focus (stage / checkpoint / status / issues count)
 B) Next loop (design / implement / review / issues_triage / advance / consolidation / context_capture / improvements / stop)
 C) If running a loop, do it now and stop afterward.
-D) If blocked, add up to 2 questions as issues in `.vibe/STATE.md`, then stop.
+D) Record loop completion:
+   `python3 tools/agentctl.py --repo-root . --format json loop-result --line 'LOOP_RESULT: {...}'`
+E) If blocked, add up to 2 questions as issues in `.vibe/STATE.md`, then stop.

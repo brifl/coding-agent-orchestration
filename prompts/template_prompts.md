@@ -23,7 +23,7 @@ REQUIRED STATE MUTATIONS
 - Do not set status to `IN_REVIEW` or `DONE` in this loop.
 
 REQUIRED COMMANDS
-- Run `python tools/agentctl.py --repo-root . validate --format json` after edits.
+- Run `python3 tools/agentctl.py --repo-root . validate --format json` after edits.
 
 EXECUTION
 1) Keep detailed planning to the next 1-3 stages only.
@@ -45,9 +45,11 @@ REQUIRED OUTPUT
 LOOP_RESULT (required final line)
 Emit exactly one line:
 LOOP_RESULT: {"loop":"design","result":"updated|blocked","stage":"<id>","checkpoint":"<id>","status":"<status>","next_role_hint":"implement|issues_triage|stop"}
+Then record it with:
+`python3 tools/agentctl.py --repo-root . --format json loop-result --line 'LOOP_RESULT: {...}'`
 
 STOP CONDITION
-Stop after updating `.vibe/PLAN.md` (and `.vibe/STATE.md` only if needed), emitting LOOP_RESULT, and returning control to dispatcher.
+Stop after updating `.vibe/PLAN.md` (and `.vibe/STATE.md` only if needed), emitting and recording LOOP_RESULT, and returning control to dispatcher.
 ```
 
 ---
@@ -108,9 +110,11 @@ REQUIRED OUTPUT
 LOOP_RESULT (required final line)
 Emit exactly one line:
 LOOP_RESULT: {"loop":"implement","result":"ready_for_review|blocked","stage":"<id>","checkpoint":"<id>","status":"IN_REVIEW|BLOCKED","next_role_hint":"review|issues_triage"}
+Then record it with:
+`python3 tools/agentctl.py --repo-root . --format json loop-result --line 'LOOP_RESULT: {...}'`
 
 STOP CONDITION
-Stop after commit(s), state updates, LOOP_RESULT output, and return control to dispatcher.
+Stop after commit(s), state updates, LOOP_RESULT output + record, and return control to dispatcher.
 
 ```
 
@@ -173,9 +177,11 @@ D) State transition applied (including whether auto-advanced)
 LOOP_RESULT (required final line)
 Emit exactly one line:
 LOOP_RESULT: {"loop":"review","result":"pass|fail","stage":"<id>","checkpoint":"<id>","status":"NOT_STARTED|DONE|IN_PROGRESS|BLOCKED","next_role_hint":"implement|consolidation|issues_triage|stop"}
+Then record it with:
+`python3 tools/agentctl.py --repo-root . --format json loop-result --line 'LOOP_RESULT: {...}'`
 
 STOP CONDITION
-Stop after state updates, LOOP_RESULT output, and return control to dispatcher.
+Stop after state updates, LOOP_RESULT output + record, and return control to dispatcher.
 ```
 
 ---
@@ -231,9 +237,11 @@ REQUIRED OUTPUT
 LOOP_RESULT (required final line)
 Emit exactly one line:
 LOOP_RESULT: {"loop":"issues_triage","result":"resolved|partial|blocked","stage":"<id>","checkpoint":"<id>","status":"<status>","next_role_hint":"implement|review|issues_triage|stop"}
+Then record it with:
+`python3 tools/agentctl.py --repo-root . --format json loop-result --line 'LOOP_RESULT: {...}'`
 
 STOP CONDITION
-Stop after top issues are resolved/clarified and LOOP_RESULT is emitted.
+Stop after top issues are resolved/clarified and LOOP_RESULT is emitted + recorded.
 ```
 
 ---
@@ -249,7 +257,7 @@ to the next stage.
 
 PREFLIGHT
 1) Read `AGENTS.md` (optional if already read), `.vibe/STATE.md`, `.vibe/PLAN.md`, `.vibe/HISTORY.md` (optional), `README.md` (optional).
-2) Run `python tools/agentctl.py --repo-root . validate`.
+2) Run `python3 tools/agentctl.py --repo-root . validate`.
 3) Determine whether this consolidation is tied to a stage transition.
 
 ALLOWED FILES
@@ -268,7 +276,7 @@ REQUIRED STATE MUTATIONS
   - Ensure `## Workflow state` contains `- [x] RUN_CONTEXT_CAPTURE`.
 
 REQUIRED COMMANDS
-- `python tools/agentctl.py --repo-root . validate --format json` before and after edits.
+- `python3 tools/agentctl.py --repo-root . validate --format json` before and after edits.
 
 EXECUTION
 1) Archive completed stages into `.vibe/HISTORY.md` with concise stage summaries.
@@ -291,9 +299,11 @@ REQUIRED OUTPUT
 LOOP_RESULT (required final line)
 Emit exactly one line:
 LOOP_RESULT: {"loop":"consolidation","result":"aligned|blocked","stage":"<id>","checkpoint":"<id>","status":"<status>","next_role_hint":"context_capture|implement|issues_triage"}
+Then record it with:
+`python3 tools/agentctl.py --repo-root . --format json loop-result --line 'LOOP_RESULT: {...}'`
 
 STOP CONDITION
-Stop after docs are aligned, validation passes, LOOP_RESULT is emitted, and control returns to dispatcher.
+Stop after docs are aligned, validation passes, LOOP_RESULT is emitted + recorded, and control returns to dispatcher.
 ```
 
 ---
@@ -338,9 +348,11 @@ REQUIRED OUTPUT
 LOOP_RESULT (required final line)
 Emit exactly one line:
 LOOP_RESULT: {"loop":"context_capture","result":"updated|blocked","stage":"<id>","checkpoint":"<id>","status":"<status>","next_role_hint":"implement|review|issues_triage|stop"}
+Then record it with:
+`python3 tools/agentctl.py --repo-root . --format json loop-result --line 'LOOP_RESULT: {...}'`
 
 STOP CONDITION
-Stop after context update, optional flag clear, and LOOP_RESULT emission.
+Stop after context update, optional flag clear, and LOOP_RESULT emission + record.
 ```
 
 ---
@@ -357,7 +369,7 @@ Implement one bounded improvement to the workflow system with objective validati
 
 PREFLIGHT
 1) Read `AGENTS.md` (optional if already read), `.vibe/STATE.md`, `.vibe/PLAN.md`, `.vibe/HISTORY.md` (optional), `prompts/template_prompts.md`, `tools/agentctl.py` (if relevant), `README.md` (optional).
-2) Run `python tools/agentctl.py --repo-root . validate --strict`.
+2) Run `python3 tools/agentctl.py --repo-root . validate --strict`.
 3) Diagnose at least one concrete process problem before choosing work.
 
 ALLOWED FILES
@@ -374,7 +386,7 @@ REQUIRED STATE MUTATIONS
 - Add a work-log note summarizing what was improved and how it was validated.
 
 REQUIRED COMMANDS
-- `python tools/agentctl.py --repo-root . validate --strict`
+- `python3 tools/agentctl.py --repo-root . validate --strict`
 - Additional test/validation commands required by the chosen improvement.
 
 EXECUTION
@@ -394,9 +406,11 @@ F) Remaining workflow issues
 LOOP_RESULT (required final line)
 Emit exactly one line:
 LOOP_RESULT: {"loop":"improvements","result":"completed|blocked","stage":"<id>","checkpoint":"<id>","status":"<status>","next_role_hint":"implement|review|issues_triage|stop"}
+Then record it with:
+`python3 tools/agentctl.py --repo-root . --format json loop-result --line 'LOOP_RESULT: {...}'`
 
 STOP CONDITION
-Stop after one validated improvement and LOOP_RESULT emission.
+Stop after one validated improvement and LOOP_RESULT emission + record.
 ```
 
 ---
@@ -425,7 +439,7 @@ REQUIRED STATE MUTATIONS
 - If no next checkpoint exists, keep checkpoint unchanged and add a "plan exhausted" evidence note.
 
 REQUIRED COMMANDS
-- `python tools/agentctl.py --repo-root . validate --format json`
+- `python3 tools/agentctl.py --repo-root . validate --format json`
 
 EXECUTION
 1) Move forward by one checkpoint at most.
@@ -440,9 +454,11 @@ REQUIRED OUTPUT
 LOOP_RESULT (required final line)
 Emit exactly one line:
 LOOP_RESULT: {"loop":"advance","result":"advanced|exhausted|blocked","stage":"<id>","checkpoint":"<id>","status":"NOT_STARTED|DONE","next_role_hint":"implement|stop"}
+Then record it with:
+`python3 tools/agentctl.py --repo-root . --format json loop-result --line 'LOOP_RESULT: {...}'`
 
 STOP CONDITION
-Stop after updating `.vibe/STATE.md`, emitting LOOP_RESULT, and returning to dispatcher.
+Stop after updating `.vibe/STATE.md`, emitting + recording LOOP_RESULT, and returning to dispatcher.
 ```
 
 ---
@@ -475,7 +491,9 @@ OUTPUT
 A) Current focus (stage / checkpoint / status / issues count)
 B) Next loop (`design` / `implement` / `review` / `issues_triage` / `advance` / `consolidation` / `context_capture` / `improvements` / `stop`)
 C) If running a loop, do it now and stop afterward.
-D) If blocked, add up to 2 questions as issues in `.vibe/STATE.md`, then stop.
+D) Record loop completion:
+   `python3 tools/agentctl.py --repo-root . --format json loop-result --line 'LOOP_RESULT: {...}'`
+E) If blocked, add up to 2 questions as issues in `.vibe/STATE.md`, then stop.
 ```
 
 ---
@@ -503,9 +521,11 @@ READ ORDER
 4) `.vibe/HISTORY.md` (optional)
 
 STANDARD COMMANDS
-1) `python tools/agentctl.py --repo-root . --format json next`
-2) `python tools/prompt_catalog.py prompts/template_prompts.md get <prompt_id>`
+1) `python3 tools/agentctl.py --repo-root . --format json next`
+2) `python3 tools/prompt_catalog.py prompts/template_prompts.md get <prompt_id>`
 3) Execute prompt loop, update `.vibe/STATE.md`, commit changes when tracked files changed.
+4) Record loop completion:
+   `python3 tools/agentctl.py --repo-root . --format json loop-result --line 'LOOP_RESULT: {...}'`
 
 OUTPUT
 A) Current focus (stage / checkpoint / status)
@@ -541,9 +561,11 @@ READ ORDER
 4) `.vibe/HISTORY.md` (optional)
 
 STANDARD COMMANDS
-1) `python tools/agentctl.py --repo-root . --format json next`
-2) `python tools/prompt_catalog.py prompts/template_prompts.md get <prompt_id>`
+1) `python3 tools/agentctl.py --repo-root . --format json next`
+2) `python3 tools/prompt_catalog.py prompts/template_prompts.md get <prompt_id>`
 3) Execute prompt loop, update `.vibe/STATE.md`, commit changes when tracked files changed.
+4) Record loop completion:
+   `python3 tools/agentctl.py --repo-root . --format json loop-result --line 'LOOP_RESULT: {...}'`
 
 REQUIRED OUTPUT
 1) Current focus (stage / checkpoint / status).
@@ -580,9 +602,11 @@ READ ORDER
 4) `.vibe/HISTORY.md` (optional)
 
 STANDARD COMMANDS
-1) `python tools/agentctl.py --repo-root . --format json next`
-2) `python tools/prompt_catalog.py prompts/template_prompts.md get <prompt_id>`
+1) `python3 tools/agentctl.py --repo-root . --format json next`
+2) `python3 tools/prompt_catalog.py prompts/template_prompts.md get <prompt_id>`
 3) Execute prompt loop, update `.vibe/STATE.md`, commit changes when tracked files changed.
+4) Record loop completion:
+   `python3 tools/agentctl.py --repo-root . --format json loop-result --line 'LOOP_RESULT: {...}'`
 
 REQUIRED OUTPUT
 1) Current focus (stage / checkpoint / status).

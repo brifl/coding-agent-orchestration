@@ -46,6 +46,43 @@ def _print_prompt(prompt_catalog_path: Path, catalog_path: Path, prompt_id: str)
     sys.stdout.write(p.stdout)
 
 
+def _record_loop_result(agentctl_path: Path, repo_root: Path, loop_result_line: str) -> None:
+    cmd = [
+        sys.executable,
+        str(agentctl_path),
+        "--repo-root",
+        str(repo_root),
+        "--format",
+        "json",
+        "loop-result",
+        "--line",
+        loop_result_line,
+    ]
+    p = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+    if p.returncode != 0:
+        raise RuntimeError(p.stderr.strip() or p.stdout.strip() or "loop-result command failed.")
+
+
+def _prompt_for_loop_result(agentctl_path: Path, repo_root: Path) -> int:
+    while True:
+        try:
+            line = input("Paste LOOP_RESULT line for this loop (or type 'abort' to stop): ").strip()
+        except KeyboardInterrupt:
+            print("", file=sys.stderr)
+            return 130
+
+        if not line:
+            print("ERROR: LOOP_RESULT line is required before continuing.", file=sys.stderr)
+            continue
+        if line.lower() in {"abort", "quit", "exit"}:
+            return 130
+        try:
+            _record_loop_result(agentctl_path, repo_root, line)
+            return 0
+        except RuntimeError as exc:
+            print(f"ERROR: {exc}", file=sys.stderr)
+
+
 def _resolve_tool_paths(repo_root: Path) -> tuple[Path, Path]:
     skills_root = _skills_root_from_this_script()
     candidates_agentctl = [
@@ -115,6 +152,11 @@ def main() -> int:
         if args.show_decision:
             print(json.dumps(decision, indent=2, sort_keys=True), file=sys.stderr)
 
+        if decision.get("requires_loop_result"):
+            print(f"NOTICE: {decision.get('reason', 'LOOP_RESULT acknowledgement required.')}", file=sys.stderr)
+            if decision.get("recommended_role") == "stop":
+                return 2
+
         prompt_id = decision.get("recommended_prompt_id")
         if decision.get("recommended_role") == "stop" or prompt_id == "stop":
             return 0
@@ -144,6 +186,10 @@ def main() -> int:
         except KeyboardInterrupt:
             print("", file=sys.stderr)
             return 130
+
+        result = _prompt_for_loop_result(agentctl_path, repo_root)
+        if result != 0:
+            return result
 
 
 if __name__ == "__main__":

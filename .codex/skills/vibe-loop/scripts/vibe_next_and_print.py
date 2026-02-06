@@ -221,6 +221,11 @@ def main() -> int:
     if args.show_decision:
         print(json.dumps(decision, indent=2, sort_keys=True), file=sys.stderr)
 
+    if decision.get("requires_loop_result"):
+        print(f"NOTICE: {decision.get('reason', 'LOOP_RESULT acknowledgement required.')}", file=sys.stderr)
+        if decision.get("recommended_role") == "stop":
+            return 2
+
     catalog_path_str = decision.get("prompt_catalog_path")
     if catalog_path_str:
         catalog_path = Path(catalog_path_str)

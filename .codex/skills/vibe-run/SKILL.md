@@ -28,4 +28,6 @@ dispatcher returns `recommended_role == "stop"`.
 
 - Interactive mode prints one prompt body per loop, then waits for Enter so you
   can execute that loop in your agent session before continuing.
+- After each interactive loop, the runner asks for the emitted `LOOP_RESULT: {...}`
+  line and records it through `agentctl loop-result` before selecting the next loop.
 - The runner stops automatically when `agentctl` returns `recommended_role: stop`.

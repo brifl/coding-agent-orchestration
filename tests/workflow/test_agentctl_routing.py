@@ -205,6 +205,58 @@ steps:
     assert "using dispatcher role review" in reason
 
 
+def test_workflow_overlay_chooses_first_step_matching_dispatcher_role(temp_repo: Path) -> None:
+    _write_state(
+        temp_repo,
+        """# STATE
+
+## Current focus
+- Stage: 1
+- Checkpoint: 1.0
+- Status: IN_PROGRESS
+""",
+    )
+    _write_plan(
+        temp_repo,
+        """# PLAN
+
+## Stage 1 — Demo
+### 1.0 — First
+""",
+    )
+    _write_prompt_catalog(
+        temp_repo,
+        """## prompt.stage_design - Stage Design
+```md
+design
+```
+
+## prompt.checkpoint_implementation - Checkpoint Implementation
+```md
+implement
+```
+""",
+    )
+    _write_workflow(
+        temp_repo,
+        "standard",
+        """name: standard
+description: test
+triggers:
+  - type: manual
+steps:
+  - prompt_id: prompt.stage_design
+  - prompt_id: prompt.checkpoint_implementation
+""",
+    )
+
+    state = StateInfo(stage="1", checkpoint="1.0", status="IN_PROGRESS", evidence_path=None, issues=())
+    role, prompt_id, _title, reason = _resolve_next_prompt_selection(state, temp_repo, "standard")
+    assert role == "implement"
+    assert prompt_id == "prompt.checkpoint_implementation"
+    assert "selected prompt.checkpoint_implementation" in reason
+
+
 def test_workflow_overlay_rejects_unknown_prompt_ids(temp_repo: Path) -> None:
     _write_state(
         temp_repo,

@@ -14,7 +14,7 @@ Before starting, verify your environment has:
 
 MODE
 - Single-loop: execute one loop, update STATE.md, then stop.
-- Continuous: invoke `python tools/agentctl.py next` to get the next prompt, execute it, repeat until stop.
+- Continuous: invoke `python3 tools/agentctl.py next` to get the next prompt, execute it, repeat until stop.
 
 READ ORDER
 1) `AGENTS.md` (optional if already read this session)
@@ -26,14 +26,14 @@ READ ORDER
 EXECUTION
 1. Get next action:
    ```bash
-   python tools/agentctl.py --repo-root . --format json next
+   python3 tools/agentctl.py --repo-root . --format json next
    ```
 
 2. If `recommended_role` is "stop", stop execution.
 
 3. Get the prompt body:
    ```bash
-   python tools/prompt_catalog.py prompts/template_prompts.md get <recommended_prompt_id>
+   python3 tools/prompt_catalog.py prompts/template_prompts.md get <recommended_prompt_id>
    ```
 
 4. Execute the prompt:
@@ -41,6 +41,8 @@ EXECUTION
    - Implement the deliverables
    - Run demo commands
    - Update `.vibe/STATE.md` with status, work log, evidence
+   - Record loop completion:
+     `python3 tools/agentctl.py --repo-root . --format json loop-result --line 'LOOP_RESULT: {...}'`
 
 5. For continuous mode: return to step 1.
    For single-loop mode: stop after step 4.

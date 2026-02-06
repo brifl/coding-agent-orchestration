@@ -8,7 +8,7 @@ CONTRACT
 
 MODE
 - Single-loop: execute one loop, update STATE.md, then stop.
-- Continuous: invoke `python tools/agentctl.py next` to get the next prompt, execute it, repeat.
+- Continuous: invoke `python3 tools/agentctl.py next` to get the next prompt, execute it, repeat.
 - You have file editing, command execution, and tool use capabilities in VS Code.
 
 READ ORDER
@@ -19,9 +19,10 @@ READ ORDER
 5) `.vibe/HISTORY.md` (optional)
 
 EXECUTION
-- Run `python tools/agentctl.py --repo-root . next --format json` to get recommended prompt
-- Fetch prompt body: `python tools/prompt_catalog.py prompts/template_prompts.md get <prompt_id>`
+- Run `python3 tools/agentctl.py --repo-root . next --format json` to get recommended prompt
+- Fetch prompt body: `python3 tools/prompt_catalog.py prompts/template_prompts.md get <prompt_id>`
 - Execute the prompt, update STATE.md, commit changes
+- Record loop completion: `python3 tools/agentctl.py --repo-root . --format json loop-result --line 'LOOP_RESULT: {...}'`
 - For continuous mode: loop until agentctl returns `recommended_role: "stop"` or manual stop
 
 VCS RULES (hard)
