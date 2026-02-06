@@ -13,7 +13,7 @@
 
 - Stage: 21A
 - Checkpoint: 21A.5
-- Status: NOT_STARTED  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
+- Status: IN_REVIEW  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
 
 ## Objective (current checkpoint)
 
@@ -34,6 +34,7 @@ Package the documentation loop as a first-class continuous skill aligned with ex
 
 ## Work log (current session)
 
+- 2026-02-06: Implemented 21A.5 — packaged `continuous-documentation` workflow and skill (`workflows/continuous-documentation.yaml`, `.codex/skills/continuous-documentation/SKILL.md`, `.codex/skills/continuous-documentation/scripts/continuous_documentation.py`), updated skill docs (`docs/base_skills.md`, `docs/agent_skill_packs.md`, `docs/skill_lifecycle.md`) and base skillset (`skillsets/vibe-base.yaml`), then verified workflow description and skill manifest validation succeeded; moved status to IN_REVIEW.
 - 2026-02-06: Review PASS — 21A.4 acceptance met with rerun remediation + re-analysis showing `MAJOR|MODERATE` reduced from `1|2` to `0|0`, deterministic `docs/wiki-export/map.json` validation, and adversarial checks confirming only `MINOR` residual findings; fixed idempotence bug in merge remediation (`skill_reference` self-link) and revalidated zero-change rerun; checkpoint auto-advanced to 21A.5 with status NOT_STARTED.
 - 2026-02-06: Implemented 21A.4 — added `prompt.docs_refactor_fix`, created `tools/docs/apply_refactor_fixes.py`, and updated refactor analyzer severity logic to respect completed merge/wiki remediation artifacts; remediation run applied 3 findings with no link/heading validation errors, produced deterministic migration manifest `docs/wiki-export/map.json`, and re-analysis reduced unresolved `MAJOR|MODERATE` counts from `1|2` to `0|0`; moved status to IN_REVIEW.
 - 2026-02-06: Review PASS — 21A.3 acceptance met by rerunning `doc_refactor_report` and adversarial probes confirming category coverage (`accuracy|bloat|structure`), deterministic sort/id stability, and strict recommendation-action boundaries; no blocking findings, so checkpoint auto-advanced to 21A.4 and status set to NOT_STARTED.
@@ -42,7 +43,6 @@ Package the documentation loop as a first-class continuous skill aligned with ex
 - 2026-02-06: Implemented 21A.2 — added `prompt.docs_gap_fix` and remediation tool `tools/docs/apply_gap_fixes.py`; executed before/apply/after demo flow, generated `.vibe/docs/gap_fix_log.jsonl` linking `finding_id -> changed_files`, and created/updated docs (`docs/index.md`, `docs/embedded_guides.md`, `docs/wiki-export/config_schema.md`, `README.md`) reducing `MAJOR|MODERATE` gap counts from `1|2` to `0|0`; moved status to IN_REVIEW.
 - 2026-02-06: Review PASS — 21A.1 acceptance met by rerunning `doc_gap_report` and adversarial probes for deterministic ordering, unique IDs, and action-schema bounds; no blocking findings, so checkpoint auto-advanced to 21A.2 and status set to NOT_STARTED.
 - 2026-02-06: Implemented 21A.1 — added `prompt.docs_gap_analysis` to `prompts/template_prompts.md` and created deterministic scanner `tools/docs/doc_gap_report.py`; demo run produced `.vibe/docs/gap_report.json` with actionable `edit_section|create_doc|create_wiki_page` recommendations and rerun stability check confirmed identical `(finding_id, severity)` ordering; moved status to IN_REVIEW.
-- 2026-02-06: Review PASS — 21A.0 acceptance met by rerunning demo (`cat docs/documentation_severity_rubric.md`) plus adversarial probes validating required schema fields and full severity-example coverage; no blocking findings, so checkpoint auto-advanced to 21A.1 and status set to NOT_STARTED.
 - 2026-02-06: Consolidation — transitioned pointer from completed Stage 21 (`21.11/DONE`) to Stage 21A (`21A.0/NOT_STARTED`), refreshed objective/deliverables/acceptance to 21A.0, and pruned work log to latest 10 entries.
 
 ## Workflow state
@@ -51,7 +51,9 @@ Package the documentation loop as a first-class continuous skill aligned with ex
 
 ## Evidence
 
-- (Pending for checkpoint 21A.5; 21A.4 review evidence captured in work-log entry.)
+- `python3 tools/workflow_engine.py describe continuous-documentation` lists the new workflow with ordered steps: `prompt.docs_gap_analysis`, `prompt.docs_gap_fix`, `prompt.docs_refactor_analysis`, `prompt.docs_refactor_fix`.
+- `python3 tools/skillctl.py validate .codex/skills/continuous-documentation` returns `OK`, confirming skill manifest validity.
+- Runner script `.codex/skills/continuous-documentation/scripts/continuous_documentation.py` exposes the same interactive/non-interactive flags pattern as existing continuous wrappers.
 
 ## Active issues
 

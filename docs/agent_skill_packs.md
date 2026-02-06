@@ -21,6 +21,8 @@ All agents use the same prompt catalog and bootstraps:
      (workflow pinned to `continuous-refactor`).
   4) Run `$continuous-test-generation` for continuous test-only execution
      (workflow pinned to `continuous-test-generation`).
+  5) Run `$continuous-documentation` for continuous documentation execution
+     (workflow pinned to `continuous-documentation`).
 
 ## Claude Code
 
@@ -60,6 +62,7 @@ All agents use the same prompt catalog and bootstraps:
 
 ## Differences (explicit)
 
-- Codex supports continuous mode with `$vibe-run`, `$continuous-refactor`, and `$continuous-test-generation`.
+- Codex supports continuous mode with `$vibe-run`, `$continuous-refactor`,
+  `$continuous-test-generation`, and `$continuous-documentation`.
 - Other agents can use installed skill scripts in a tool-enabled environment,
   or fall back to manual prompt execution.

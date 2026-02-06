@@ -1,0 +1,9 @@
+name: continuous-documentation
+description: Continuous documentation cycle (gap analysis/fix + refactor analysis/fix) until no MAJOR/MODERATE findings remain.
+triggers:
+  - type: manual
+steps:
+  - prompt_id: prompt.docs_gap_analysis
+  - prompt_id: prompt.docs_gap_fix
+  - prompt_id: prompt.docs_refactor_analysis
+  - prompt_id: prompt.docs_refactor_fix
