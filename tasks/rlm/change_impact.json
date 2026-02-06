@@ -1,0 +1,50 @@
+{
+  "task_id": "change_impact",
+  "query": "Estimate impact of changing provider selection and cache behavior in RLM executor.",
+  "context_sources": [
+    {
+      "type": "file",
+      "path": "skills/rlm-tools/executor.py"
+    },
+    {
+      "type": "dir",
+      "path": "tools/rlm",
+      "include": [
+        "tools/rlm/*.py"
+      ]
+    }
+  ],
+  "bundle": {
+    "chunking_strategy": "by_chars",
+    "max_chars": 700
+  },
+  "mode": "subcalls",
+  "provider_policy": {
+    "primary": "mock",
+    "allowed": [
+      "mock"
+    ],
+    "fallback": [],
+    "kilo_requires_human": true
+  },
+  "limits": {
+    "max_root_iters": 5,
+    "max_depth": 1,
+    "max_subcalls_total": 3,
+    "max_subcalls_per_iter": 2,
+    "timeout_s": 120,
+    "max_stdout_chars": 1000
+  },
+  "outputs": {
+    "final_path": ".vibe/rlm/runs/change_impact/final.md",
+    "artifact_paths": []
+  },
+  "trace": {
+    "trace_path": ".vibe/rlm/runs/change_impact/trace.jsonl",
+    "redaction_mode": "metadata_only"
+  },
+  "baseline_program": [
+    "cache_hits = grep('cache', source='skills/rlm-tools/executor.py', limit=10)\nmemory['cache_refs'] = len(cache_hits)\nresp = llm_query('impact cache refs=' + str(memory['cache_refs']))\nmemory['cache_analysis'] = resp['text']\nprint(resp['text'])",
+    "policy_hits = grep('provider_policy', source='skills/rlm-tools/executor.py', limit=10)\nmemory['policy_refs'] = len(policy_hits)\nFINAL({'cache_refs': memory['cache_refs'], 'policy_refs': memory['policy_refs'], 'analysis': memory['cache_analysis']})"
+  ]
+}

@@ -1,0 +1,52 @@
+{
+  "task_id": "repo_comprehension",
+  "query": "Summarize the RLM toolchain responsibilities across runtime, executor, and provider modules.",
+  "context_sources": [
+    {
+      "type": "dir",
+      "path": "tools/rlm",
+      "include": [
+        "tools/rlm/*.py",
+        "tools/rlm/providers/*.py"
+      ]
+    },
+    {
+      "type": "file",
+      "path": "skills/rlm-tools/executor.py"
+    }
+  ],
+  "bundle": {
+    "chunking_strategy": "by_chars",
+    "max_chars": 600
+  },
+  "mode": "subcalls",
+  "provider_policy": {
+    "primary": "mock",
+    "allowed": [
+      "mock"
+    ],
+    "fallback": [],
+    "kilo_requires_human": true
+  },
+  "limits": {
+    "max_root_iters": 5,
+    "max_depth": 1,
+    "max_subcalls_total": 4,
+    "max_subcalls_per_iter": 2,
+    "timeout_s": 120,
+    "max_stdout_chars": 1000
+  },
+  "outputs": {
+    "final_path": ".vibe/rlm/runs/repo_comprehension/final.md",
+    "artifact_paths": []
+  },
+  "trace": {
+    "trace_path": ".vibe/rlm/runs/repo_comprehension/trace.jsonl",
+    "redaction_mode": "metadata_only"
+  },
+  "baseline_program": [
+    "seed = list_chunks(limit=2)\nmemory['seed_chunk'] = seed[0]['chunk_id']\nresp = llm_query('summarize architecture from chunk ' + memory['seed_chunk'])\nmemory['summary'] = resp['text']\nprint(resp['text'])",
+    "hits = grep('provider', limit=8)\nmemory['provider_hits'] = len(hits)\nresp = llm_query('analyze provider integration count=' + str(memory['provider_hits']))\nmemory['analysis'] = resp['text']\nprint(resp['text'])",
+    "FINAL({'summary': memory['summary'], 'analysis': memory['analysis'], 'provider_hits': memory['provider_hits']})"
+  ]
+}

@@ -1,0 +1,51 @@
+{
+  "task_id": "doc_synthesis",
+  "query": "Synthesize concise documentation guidance for the RLM skill entrypoints.",
+  "context_sources": [
+    {
+      "type": "file",
+      "path": "docs/rlm_agents.md"
+    },
+    {
+      "type": "file",
+      "path": "skills/rlm-tools/rlm.py"
+    },
+    {
+      "type": "file",
+      "path": "skills/rlm-tools/SKILL.yaml"
+    }
+  ],
+  "bundle": {
+    "chunking_strategy": "by_chars",
+    "max_chars": 500
+  },
+  "mode": "subcalls",
+  "provider_policy": {
+    "primary": "mock",
+    "allowed": [
+      "mock"
+    ],
+    "fallback": [],
+    "kilo_requires_human": true
+  },
+  "limits": {
+    "max_root_iters": 4,
+    "max_depth": 1,
+    "max_subcalls_total": 3,
+    "max_subcalls_per_iter": 2,
+    "timeout_s": 120,
+    "max_stdout_chars": 1000
+  },
+  "outputs": {
+    "final_path": ".vibe/rlm/runs/doc_synthesis/final.md",
+    "artifact_paths": []
+  },
+  "trace": {
+    "trace_path": ".vibe/rlm/runs/doc_synthesis/trace.jsonl",
+    "redaction_mode": "metadata_only"
+  },
+  "baseline_program": [
+    "chunks = list_chunks(limit=3)\nmemory['chunk_count'] = len(chunks)\nresp = llm_query('synthesize docs from chunk_count=' + str(memory['chunk_count']))\nmemory['draft'] = resp['text']\nprint(resp['text'])",
+    "FINAL({'draft': memory['draft'], 'chunk_count': memory['chunk_count']})"
+  ]
+}
