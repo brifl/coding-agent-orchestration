@@ -190,6 +190,10 @@ python3 scripts/agentctl.py --repo-root /path/to/repo --format json next --workf
 
 Then run the returned `recommended_prompt_id` and record `LOOP_RESULT` as usual.
 
+`continuous-refactor` is intended for bounded continuous runs: it exits once the
+latest refactor findings contain only `[MINOR]` ideas (no `[MAJOR]`/`[MODERATE]`).
+Use `refactor-cycle` if you want to continue through minor-only refinements.
+
 ### `$vibe-run` decision flow (happy path + alternate paths)
 
 ```mermaid

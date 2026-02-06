@@ -1,5 +1,5 @@
 name: continuous-refactor
-description: Periodic refactor workflow alongside implementation.
+description: Periodic refactor workflow alongside implementation; exits when only [MINOR] ideas remain.
 triggers:
   - type: manual
 steps:

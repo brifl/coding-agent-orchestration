@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import os
+import json
 import sys
 import time
 from pathlib import Path
@@ -32,6 +33,45 @@ def _write_workflow(repo_root: Path, name: str, body: str) -> None:
     workflows_dir = repo_root / "workflows"
     workflows_dir.mkdir(parents=True, exist_ok=True)
     (workflows_dir / f"{name}.yaml").write_text(body, encoding="utf-8")
+
+
+def _write_loop_result(repo_root: Path, findings: list[dict[str, str]]) -> None:
+    payload = {
+        "loop": "implement",
+        "result": "ready_for_review",
+        "stage": "1",
+        "checkpoint": "1.0",
+        "status": "IN_PROGRESS",
+        "next_role_hint": "review|issues_triage",
+        "report": {
+            "acceptance_matrix": [
+                {
+                    "item": "scan completed",
+                    "status": "PASS",
+                    "evidence": "scan output",
+                    "critical": True,
+                    "confidence": 0.95,
+                    "evidence_strength": "HIGH",
+                }
+            ],
+            "top_findings": findings,
+            "state_transition": {
+                "before": {"stage": "1", "checkpoint": "1.0", "status": "IN_PROGRESS"},
+                "after": {"stage": "1", "checkpoint": "1.0", "status": "IN_PROGRESS"},
+            },
+            "loop_result": {
+                "loop": "implement",
+                "result": "ready_for_review",
+                "stage": "1",
+                "checkpoint": "1.0",
+                "status": "IN_PROGRESS",
+                "next_role_hint": "review|issues_triage",
+            },
+        },
+    }
+    path = repo_root / ".vibe" / "LOOP_RESULT.json"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8")
 
 
 def test_context_capture_flag_routes_to_context_capture(temp_repo: Path) -> None:
@@ -303,3 +343,196 @@ steps:
         assert "unmapped prompt id 'prompt.refactor_checkpoint'" in str(exc)
     else:
         raise AssertionError("Expected RuntimeError for unknown workflow prompt id")
+
+
+def test_continuous_refactor_stops_when_only_minor_ideas(temp_repo: Path) -> None:
+    _write_state(
+        temp_repo,
+        """# STATE
+
+## Current focus
+- Stage: 1
+- Checkpoint: 1.0
+- Status: IN_PROGRESS
+""",
+    )
+    _write_plan(
+        temp_repo,
+        """# PLAN
+
+## Stage 1 — Demo
+### 1.0 — First
+""",
+    )
+    _write_prompt_catalog(
+        temp_repo,
+        """## prompt.refactor_scan - Refactor Scan
+```md
+scan
+```
+
+## prompt.checkpoint_implementation - Checkpoint Implementation
+```md
+impl
+```
+""",
+    )
+    _write_workflow(
+        temp_repo,
+        "continuous-refactor",
+        """name: continuous-refactor
+description: test
+triggers:
+  - type: manual
+steps:
+  - prompt_id: prompt.refactor_scan
+    every: 3
+  - prompt_id: prompt.checkpoint_implementation
+""",
+    )
+    _write_loop_result(
+        temp_repo,
+        [
+            {
+                "impact": "MINOR",
+                "title": "[MINOR] Rename helper for readability",
+                "evidence": "Low-risk cleanup",
+                "action": "Schedule later",
+            }
+        ],
+    )
+
+    state = StateInfo(stage="1", checkpoint="1.0", status="IN_PROGRESS", evidence_path=None, issues=())
+    role, prompt_id, title, reason = _resolve_next_prompt_selection(state, temp_repo, "continuous-refactor")
+    assert role == "stop"
+    assert prompt_id == "stop"
+    assert "threshold reached" in title
+    assert "only [MINOR]" in reason
+
+
+def test_continuous_refactor_continues_with_moderate_idea(temp_repo: Path) -> None:
+    _write_state(
+        temp_repo,
+        """# STATE
+
+## Current focus
+- Stage: 1
+- Checkpoint: 1.0
+- Status: IN_PROGRESS
+""",
+    )
+    _write_plan(
+        temp_repo,
+        """# PLAN
+
+## Stage 1 — Demo
+### 1.0 — First
+""",
+    )
+    _write_prompt_catalog(
+        temp_repo,
+        """## prompt.refactor_scan - Refactor Scan
+```md
+scan
+```
+
+## prompt.checkpoint_implementation - Checkpoint Implementation
+```md
+impl
+```
+""",
+    )
+    _write_workflow(
+        temp_repo,
+        "continuous-refactor",
+        """name: continuous-refactor
+description: test
+triggers:
+  - type: manual
+steps:
+  - prompt_id: prompt.refactor_scan
+    every: 3
+  - prompt_id: prompt.checkpoint_implementation
+""",
+    )
+    _write_loop_result(
+        temp_repo,
+        [
+            {
+                "impact": "MINOR",
+                "title": "[MODERATE] Extract module boundary",
+                "evidence": "Improves maintainability across callsites",
+                "action": "Execute next",
+            }
+        ],
+    )
+
+    state = StateInfo(stage="1", checkpoint="1.0", status="IN_PROGRESS", evidence_path=None, issues=())
+    role, prompt_id, _title, reason = _resolve_next_prompt_selection(state, temp_repo, "continuous-refactor")
+    assert role == "implement"
+    assert prompt_id == "prompt.refactor_scan"
+    assert "selected prompt.refactor_scan" in reason
+
+
+def test_refactor_cycle_keeps_running_with_minor_only_ideas(temp_repo: Path) -> None:
+    _write_state(
+        temp_repo,
+        """# STATE
+
+## Current focus
+- Stage: 1
+- Checkpoint: 1.0
+- Status: IN_PROGRESS
+""",
+    )
+    _write_plan(
+        temp_repo,
+        """# PLAN
+
+## Stage 1 — Demo
+### 1.0 — First
+""",
+    )
+    _write_prompt_catalog(
+        temp_repo,
+        """## prompt.refactor_scan - Refactor Scan
+```md
+scan
+```
+
+## prompt.checkpoint_implementation - Checkpoint Implementation
+```md
+impl
+```
+""",
+    )
+    _write_workflow(
+        temp_repo,
+        "refactor-cycle",
+        """name: refactor-cycle
+description: test
+triggers:
+  - type: manual
+steps:
+  - prompt_id: prompt.refactor_scan
+    every: 3
+  - prompt_id: prompt.checkpoint_implementation
+""",
+    )
+    _write_loop_result(
+        temp_repo,
+        [
+            {
+                "impact": "MINOR",
+                "title": "[MINOR] Rename helper for readability",
+                "evidence": "Low-risk cleanup",
+                "action": "Do later",
+            }
+        ],
+    )
+
+    state = StateInfo(stage="1", checkpoint="1.0", status="IN_PROGRESS", evidence_path=None, issues=())
+    role, prompt_id, _title, reason = _resolve_next_prompt_selection(state, temp_repo, "refactor-cycle")
+    assert role == "implement"
+    assert prompt_id == "prompt.refactor_scan"
+    assert "selected prompt.refactor_scan" in reason

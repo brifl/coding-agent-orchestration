@@ -84,6 +84,7 @@ LOOP_REPORT_ITEM_STATUS = ("PASS", "FAIL", "N/A")
 EVIDENCE_STRENGTH_VALUES = ("LOW", "MEDIUM", "HIGH")
 LOOP_REPORT_MAX_FINDINGS = 5
 CONFIDENCE_MIN_REQUIRED = 0.75
+REFACTOR_IDEA_TAG_RE = re.compile(r"\[(MAJOR|MODERATE|MINOR)\]", re.IGNORECASE)
 
 Role = Literal[
     "issues_triage",
@@ -1696,6 +1697,47 @@ def _role_for_prompt_id(prompt_id: str) -> Role | None:
     return PROMPT_ROLE_MAP.get(prompt_id)
 
 
+def _extract_refactor_idea_tags(value: Any) -> set[str]:
+    if not isinstance(value, str) or not value:
+        return set()
+    return {match.group(1).upper() for match in REFACTOR_IDEA_TAG_RE.finditer(value)}
+
+
+def _continuous_refactor_should_stop(repo_root: Path) -> tuple[bool, str | None]:
+    payload, error = _load_loop_result_record(repo_root)
+    if error or payload is None:
+        return (False, None)
+
+    report = payload.get("report")
+    if not isinstance(report, dict):
+        return (False, None)
+
+    top_findings = report.get("top_findings")
+    if not isinstance(top_findings, list) or not top_findings:
+        return (False, None)
+
+    observed_tags: set[str] = set()
+    for finding in top_findings:
+        if not isinstance(finding, dict):
+            continue
+        for key in ("title", "evidence", "action"):
+            observed_tags.update(_extract_refactor_idea_tags(finding.get(key)))
+
+    if not observed_tags:
+        return (False, None)
+
+    if observed_tags.intersection({"MAJOR", "MODERATE"}):
+        return (False, None)
+
+    if not observed_tags.issubset({"MINOR"}):
+        return (False, None)
+
+    return (
+        True,
+        "Workflow continuous-refactor found only [MINOR] refactor ideas in the latest LOOP_RESULT report; stopping.",
+    )
+
+
 def _load_workflow_selector(repo_root: Path):
     try:
         from workflow_engine import select_next_prompt
@@ -1722,6 +1764,16 @@ def _resolve_next_prompt_selection(
 
     if not workflow or base_role == "stop":
         return (base_role, base_prompt_id, base_prompt_title, base_reason)
+
+    if workflow == "continuous-refactor" and base_role == "implement":
+        should_stop, stop_reason = _continuous_refactor_should_stop(repo_root)
+        if should_stop:
+            return (
+                "stop",
+                "stop",
+                "Stop (continuous-refactor threshold reached)",
+                stop_reason or "Workflow continuous-refactor threshold reached.",
+            )
 
     catalog_index, _, catalog_error = _load_prompt_catalog_index(repo_root)
     if catalog_error:
