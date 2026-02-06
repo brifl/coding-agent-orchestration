@@ -1,0 +1,43 @@
+{
+  "task_id": "baseline_example",
+  "query": "Demonstrate bounded baseline execution with explicit FINAL stop.",
+  "context_sources": [
+    {
+      "type": "file",
+      "path": "tasks/rlm/fixtures/baseline_notes.txt"
+    }
+  ],
+  "bundle": {
+    "chunking_strategy": "by_chars",
+    "max_chars": 400
+  },
+  "mode": "baseline",
+  "provider_policy": {
+    "primary": "openai",
+    "allowed": [
+      "openai"
+    ],
+    "fallback": [],
+    "kilo_requires_human": true
+  },
+  "limits": {
+    "max_root_iters": 5,
+    "max_depth": 1,
+    "max_subcalls_total": 0,
+    "max_subcalls_per_iter": 0,
+    "timeout_s": 120,
+    "max_stdout_chars": 400
+  },
+  "outputs": {
+    "final_path": ".vibe/rlm/runs/baseline_example/final.md",
+    "artifact_paths": []
+  },
+  "trace": {
+    "trace_path": ".vibe/rlm/runs/baseline_example/trace.jsonl",
+    "redaction_mode": "metadata_only"
+  },
+  "baseline_program": [
+    "print('iteration 1')\nmemory['seed_chunk'] = list_chunks(limit=1)[0]['chunk_id']",
+    "print('iteration 2')\nsummary = peek(memory['seed_chunk'], max_chars=32).strip()\nFINAL('baseline complete: ' + summary)"
+  ]
+}

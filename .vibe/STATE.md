@@ -13,7 +13,7 @@
 
 - Stage: 21
 - Checkpoint: 21.4
-- Status: NOT_STARTED  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
+- Status: IN_REVIEW  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
 
 ## Objective (current checkpoint)
 
@@ -33,6 +33,7 @@ Implement bounded iteration with constant-size metadata and explicit stop semant
 
 ## Work log (current session)
 
+- 2026-02-06: Implemented 21.4 — added `skills/rlm-tools/executor.py` (`run/step/resume`) with bounded baseline iteration, run-state persistence, trace logging, and final artifact writeout; added `tasks/rlm/baseline_example.json` + fixture context; demo run completed multi-iteration execution and stopped on `FINAL`; moved status to IN_REVIEW.
 - 2026-02-06: Review PASS — 21.3 acceptance met with selftest + adversarial resume probes (max-stdout mismatch, bundle-fingerprint mismatch); auto-advanced to 21.4 and set status to NOT_STARTED.
 - 2026-02-06: Implemented 21.3 — added `tools/rlm/runtime.py` with helper injection (`context`, `list_chunks`, `get_chunk`, `grep`, `peek`, `FINAL`), deterministic stdout truncation, and persisted `state.json`; added `tools/rlm/runtime_selftest.py` proving resume semantics and finalized-step rejection; moved status to IN_REVIEW.
 - 2026-02-06: Review PASS — 21.2 acceptance met (demo build + malformed-task fail-fast + determinism/locality adversarial probe); auto-advanced to 21.3 and set status to NOT_STARTED.
@@ -42,7 +43,6 @@ Implement bounded iteration with constant-size metadata and explicit stop semant
 - 2026-02-06: Review PASS — 21.0 acceptance met (`rlm_overview` + `rlm_glossary` + decision table) with adversarial probes for required sections/terms; auto-advanced to 21.1 and set status to NOT_STARTED.
 - 2026-02-06: Implemented 21.0 — added `docs/rlm_overview.md` and `docs/rlm_glossary.md`, including decision table (`RLM vs RAG vs standard loops`) and baseline/subcall + human-assisted provider explanations; moved status to IN_REVIEW.
 - 2026-02-06: Consolidation — archived Stage 19A and Stage 20, pruned PLAN to Stage 21+, transitioned state pointer to 21.0/NOT_STARTED, set RUN_CONTEXT_CAPTURE.
-- 2026-02-06: Implemented 20.5 — added TF-IDF vectorizer + index `--vectors` build path; implemented semantic and hybrid retrieval modes with lex/sem/hybrid comparison evidence; moved to IN_REVIEW.
 
 ## Workflow state
 
@@ -50,7 +50,12 @@ Implement bounded iteration with constant-size metadata and explicit stop semant
 
 ## Evidence
 
-(Checkpoint 21.4 — not yet started)
+- path: skills/rlm-tools/executor.py
+  - cmd: `python3 skills/rlm-tools/executor.py run --task tasks/rlm/baseline_example.json --fresh`
+  - result: PASS — run completed with `iteration: 2`, `status: COMPLETED`, `stop_reason: FINAL`, and wrote final artifact.
+- path: .vibe/rlm/runs/baseline_example/trace.jsonl
+  - cmd: `cat .vibe/rlm/runs/baseline_example/trace.jsonl`
+  - result: PASS — trace contains multi-iteration records and explicit stop event (`stop_reason: FINAL`).
 
 ## Active issues
 
