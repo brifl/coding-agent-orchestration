@@ -13,7 +13,7 @@
 
 - Stage: 20
 - Checkpoint: 20.5
-- Status: IN_REVIEW  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
+- Status: DONE  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
 
 ## Objective (current checkpoint)
 
@@ -34,6 +34,7 @@ Add a stdlib-only semantic search mode using TF-IDF vectors, enabling hybrid ret
 
 ## Work log (current session)
 
+- 2026-02-06: Review PASS — 20.5 acceptance met (sem/hybrid behavior + adversarial probes); no next checkpoint in PLAN, marked current checkpoint DONE.
 - 2026-02-06: Implemented 20.5 — added TF-IDF vectorizer + index `--vectors` build path; implemented semantic and hybrid retrieval modes with lex/sem/hybrid comparison evidence; moved to IN_REVIEW.
 - 2026-02-06: Review PASS — 20.4 acceptance met (docs/policy, install, tartu pipeline); auto-advanced to 20.5; status set to NOT_STARTED.
 - 2026-02-06: Implemented 20.4 — expanded rag-index SKILL.md usage docs + RAG usage policy; validated `skillctl install` and pipeline query against `/mnt/c/src/tartu`; moved to IN_REVIEW.
@@ -42,7 +43,6 @@ Add a stdlib-only semantic search mode using TF-IDF vectors, enabling hybrid ret
 - 2026-02-06: Review PASS — 20.2 acceptance met with adversarial probes; auto-advanced to 20.3; status set to NOT_STARTED.
 - 2026-02-06: Implemented 20.2 follow-up — fixed chunk-level incremental diffing and malformed FTS query handling; acceptance probes now pass; moved to IN_REVIEW.
 - 2026-02-06: Review FAIL — 20.2 unmet: one-line edit re-indexed all chunks for a changed file; opened ISSUE-012 and returned status to IN_PROGRESS.
-- 2026-02-06: Consolidation — pruned work log from 32 to 10 entries; archived older entries to HISTORY.md.
 - 2026-02-06: Process improvement — work log bloat now routes to consolidation (not improvements); split _consolidation_trigger_reason; all 40 tests pass.
 
 ## Workflow state
@@ -51,12 +51,13 @@ Add a stdlib-only semantic search mode using TF-IDF vectors, enabling hybrid ret
 
 ## Evidence
 
-- 2026-02-06 implementation evidence (checkpoint 20.5):
+- 2026-02-06 implementation + review evidence (checkpoint 20.5):
   - Vector build: `python3 .codex/skills/rag-index/indexer.py build --manifest /tmp/vibe-20-5/manifest.json --output /tmp/vibe-20-5/index.db --vectors` -> `4 vectors indexed, vocab 7`.
   - Lex-favoring query (exact symbol): `retrieve.py "parse_gitignore_file" --mode lex` returns results, while `--mode sem` returns `No results found.` (symbol token pruned by TF-IDF min_df).
   - Sem-favoring query (related/partial concept): `retrieve.py "session unicorn" --mode lex` returns `No results found.`, while `--mode sem` returns session-related results.
   - Hybrid differs from lex: for query `session token`, lex headers were `[a.py, b.py]` while hybrid returned `[a.py, b.py, c.py]` (different ranking/output set).
-  - Implementation artifacts: added `.codex/skills/rag-index/vectorizer.py`; updated `indexer.py` (`--vectors`, vectors table, stale-vector invalidation) and `retrieve.py` (`sem` + `hybrid` search modes).
+  - Adversarial probes: sem on non-vector index exits 2 with clean `ERROR:`; hybrid with `--max-per-file 0` exits 2 with clean `ERROR:` (no traceback).
+  - Plan exhausted note: checkpoint `20.5` is the last PLAN entry; status set to `DONE`.
 
 ## Active issues
 
