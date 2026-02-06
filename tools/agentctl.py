@@ -1884,15 +1884,9 @@ def _resolve_next_prompt_selection(
     if not workflow or base_role == "stop":
         return (base_role, base_prompt_id, base_prompt_title, base_reason)
 
-    if workflow == "continuous-refactor" and base_role == "implement":
-        should_stop, stop_reason = _continuous_refactor_should_stop(repo_root)
-        if should_stop:
-            return (
-                "stop",
-                "stop",
-                "Stop (continuous-refactor threshold reached)",
-                stop_reason or "Workflow continuous-refactor threshold reached.",
-            )
+    strict_cycle_workflow = workflow in {"continuous-refactor", "refactor-cycle"}
+    strict_cycle_allowed = base_role in {"implement", "review"}
+
     if workflow == "continuous-test-generation" and base_role == "implement":
         should_stop, stop_reason = _continuous_test_generation_should_stop(repo_root)
         if should_stop:
@@ -1928,10 +1922,28 @@ def _resolve_next_prompt_selection(
     current_cwd = Path.cwd()
     try:
         os.chdir(repo_root)
-        workflow_prompt_id = _select_workflow_prompt(allowed_prompt_ids)
-        raw_workflow_prompt_id = _select_workflow_prompt(None)
+        if strict_cycle_workflow:
+            workflow_prompt_id = _select_workflow_prompt(None)
+            raw_workflow_prompt_id = workflow_prompt_id
+        else:
+            workflow_prompt_id = _select_workflow_prompt(allowed_prompt_ids)
+            raw_workflow_prompt_id = _select_workflow_prompt(None)
     finally:
         os.chdir(current_cwd)
+
+    if workflow == "continuous-refactor":
+        should_stop, stop_reason = _continuous_refactor_should_stop(repo_root)
+        if should_stop and (
+            base_role == "implement"
+            or workflow_prompt_id == "prompt.refactor_execute"
+        ):
+            return (
+                "stop",
+                "stop",
+                "Stop (continuous-refactor threshold reached)",
+                stop_reason or "Workflow continuous-refactor threshold reached.",
+            )
+
     if not workflow_prompt_id:
         if raw_workflow_prompt_id:
             raw_role = _role_for_prompt_id(raw_workflow_prompt_id)
@@ -1955,8 +1967,8 @@ def _resolve_next_prompt_selection(
         return (
             base_role,
             base_prompt_id,
-            base_prompt_title,
-            f"{base_reason} Workflow {workflow} had no matching step; using dispatcher role {base_role}.",
+                base_prompt_title,
+                f"{base_reason} Workflow {workflow} had no matching step; using dispatcher role {base_role}.",
         )
 
     workflow_role = _role_for_prompt_id(workflow_prompt_id)
@@ -1972,6 +1984,24 @@ def _resolve_next_prompt_selection(
             "(not found in template_prompts.md)."
         )
 
+    workflow_title = catalog_index.get(workflow_prompt_id, base_prompt_title)
+
+    if strict_cycle_workflow:
+        if not strict_cycle_allowed:
+            return (
+                base_role,
+                base_prompt_id,
+                base_prompt_title,
+                f"{base_reason} Workflow {workflow} selected {workflow_prompt_id}, "
+                f"but dispatcher priority role is {base_role}; using dispatcher role {base_role}.",
+            )
+        return (
+            workflow_role,
+            workflow_prompt_id,
+            workflow_title,
+            f"{base_reason} Workflow {workflow} selected {workflow_prompt_id} (strict cycle).",
+        )
+
     if workflow_role != base_role:
         return (
             base_role,
@@ -1981,7 +2011,6 @@ def _resolve_next_prompt_selection(
             f"using dispatcher role {base_role}.",
         )
 
-    workflow_title = catalog_index.get(workflow_prompt_id, base_prompt_title)
     return (
         workflow_role,
         workflow_prompt_id,

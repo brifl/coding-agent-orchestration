@@ -11,8 +11,12 @@ import argparse
 import json
 import re
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
+
+WORKFLOW_RUNTIME_STATE = Path(".vibe/workflow_runtime.json")
+ROTATING_WORKFLOWS = {"continuous-refactor", "refactor-cycle"}
 
 
 @dataclass(frozen=True)
@@ -37,6 +41,10 @@ def _repo_root() -> Path:
 
 def _workflows_root() -> Path:
     return _repo_root() / "workflows"
+
+
+def _utc_now() -> str:
+    return datetime.now(timezone.utc).isoformat()
 
 
 def _parse_yaml_workflow(text: str, path: Path) -> Workflow:
@@ -169,6 +177,32 @@ def _parse_state() -> dict[str, Any]:
     return {"stage": kv.get("stage"), "checkpoint": kv.get("checkpoint"), "status": kv.get("status"), "issues": issues}
 
 
+def _workflow_runtime_path() -> Path:
+    return _repo_root() / WORKFLOW_RUNTIME_STATE
+
+
+def _load_workflow_runtime() -> dict[str, Any]:
+    path = _workflow_runtime_path()
+    if not path.exists():
+        return {"workflows": {}}
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {"workflows": {}}
+    if not isinstance(payload, dict):
+        return {"workflows": {}}
+    workflows = payload.get("workflows")
+    if not isinstance(workflows, dict):
+        payload["workflows"] = {}
+    return payload
+
+
+def _save_workflow_runtime(payload: dict[str, Any]) -> None:
+    path = _workflow_runtime_path()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+
+
 def _trigger_matches(trigger: dict[str, str], state: dict[str, Any]) -> bool:
     ttype = trigger.get("type")
     value = trigger.get("value")
@@ -203,14 +237,12 @@ def _every_matches(every: int | None, checkpoint: str | None) -> bool:
     return minor % every == 0
 
 
-def select_next_prompt(
-    workflow_name: str,
-    allowed_prompt_ids: set[str] | None = None,
-) -> str | None:
-    workflow = _load_workflow(workflow_name)
-    state = _parse_state()
-    if workflow.triggers and not any(_trigger_matches(t, state) for t in workflow.triggers):
-        return None
+def _eligible_prompt_ids(
+    workflow: Workflow,
+    state: dict[str, Any],
+    allowed_prompt_ids: set[str] | None,
+) -> list[str]:
+    prompt_ids: list[str] = []
     for step in workflow.steps:
         if not step.prompt_id:
             continue
@@ -220,8 +252,70 @@ def select_next_prompt(
             continue
         if allowed_prompt_ids is not None and step.prompt_id not in allowed_prompt_ids:
             continue
-        return step.prompt_id
-    return None
+        prompt_ids.append(step.prompt_id)
+    return prompt_ids
+
+
+def _select_rotating_prompt(
+    workflow: Workflow,
+    state: dict[str, Any],
+    allowed_prompt_ids: set[str] | None,
+) -> str | None:
+    prompt_ids = _eligible_prompt_ids(workflow, state, allowed_prompt_ids)
+    if not prompt_ids:
+        return None
+
+    runtime = _load_workflow_runtime()
+    workflows_raw = runtime.get("workflows")
+    workflows = workflows_raw if isinstance(workflows_raw, dict) else {}
+    entry_raw = workflows.get(workflow.name)
+    entry = entry_raw if isinstance(entry_raw, dict) else {}
+
+    order_sig = "|".join(prompt_ids)
+    stage = state.get("stage")
+    checkpoint = state.get("checkpoint")
+
+    raw_cursor = entry.get("next_index", 0)
+    try:
+        cursor = int(raw_cursor)
+    except (TypeError, ValueError):
+        cursor = 0
+    if cursor < 0:
+        cursor = 0
+
+    if (
+        entry.get("order_sig") != order_sig
+        or entry.get("stage") != stage
+        or entry.get("checkpoint") != checkpoint
+    ):
+        cursor = 0
+
+    index = cursor % len(prompt_ids)
+    selected = prompt_ids[index]
+    workflows[workflow.name] = {
+        "checkpoint": checkpoint,
+        "next_index": (index + 1) % len(prompt_ids),
+        "order_sig": order_sig,
+        "stage": stage,
+        "updated_at": _utc_now(),
+    }
+    runtime["workflows"] = workflows
+    _save_workflow_runtime(runtime)
+    return selected
+
+
+def select_next_prompt(
+    workflow_name: str,
+    allowed_prompt_ids: set[str] | None = None,
+) -> str | None:
+    workflow = _load_workflow(workflow_name)
+    state = _parse_state()
+    if workflow.triggers and not any(_trigger_matches(t, state) for t in workflow.triggers):
+        return None
+    if workflow.name in ROTATING_WORKFLOWS:
+        return _select_rotating_prompt(workflow, state, allowed_prompt_ids)
+    prompt_ids = _eligible_prompt_ids(workflow, state, allowed_prompt_ids)
+    return prompt_ids[0] if prompt_ids else None
 
 
 def _write_workflow_state(workflow: Workflow, executed: list[str]) -> None:

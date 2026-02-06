@@ -1,8 +1,8 @@
 name: continuous-refactor
-description: Periodic refactor workflow alongside implementation; exits when only [MINOR] ideas remain.
+description: Continuous refactor cycle (scan -> execute -> verify) until only [MINOR] ideas remain.
 triggers:
   - type: manual
 steps:
   - prompt_id: prompt.refactor_scan
-    every: 3
-  - prompt_id: prompt.checkpoint_implementation
+  - prompt_id: prompt.refactor_execute
+  - prompt_id: prompt.refactor_verify

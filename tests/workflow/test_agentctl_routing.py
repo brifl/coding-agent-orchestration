@@ -371,9 +371,14 @@ def test_continuous_refactor_stops_when_only_minor_ideas(temp_repo: Path) -> Non
 scan
 ```
 
-## prompt.checkpoint_implementation - Checkpoint Implementation
+## prompt.refactor_execute - Refactor Execute
 ```md
-impl
+execute
+```
+
+## prompt.refactor_verify - Refactor Verify
+```md
+verify
 ```
 """,
     )
@@ -386,10 +391,16 @@ triggers:
   - type: manual
 steps:
   - prompt_id: prompt.refactor_scan
-    every: 3
-  - prompt_id: prompt.checkpoint_implementation
+  - prompt_id: prompt.refactor_execute
+  - prompt_id: prompt.refactor_verify
 """,
     )
+    # Prime strict cycle to "execute" step so stop-gate is evaluated after scan output.
+    state = StateInfo(stage="1", checkpoint="1.0", status="IN_PROGRESS", evidence_path=None, issues=())
+    role, prompt_id, _title, _reason = _resolve_next_prompt_selection(state, temp_repo, "continuous-refactor")
+    assert role == "implement"
+    assert prompt_id == "prompt.refactor_scan"
+
     _write_loop_result(
         temp_repo,
         [
@@ -402,7 +413,6 @@ steps:
         ],
     )
 
-    state = StateInfo(stage="1", checkpoint="1.0", status="IN_PROGRESS", evidence_path=None, issues=())
     role, prompt_id, title, reason = _resolve_next_prompt_selection(state, temp_repo, "continuous-refactor")
     assert role == "stop"
     assert prompt_id == "stop"
@@ -436,9 +446,14 @@ def test_continuous_refactor_continues_with_moderate_idea(temp_repo: Path) -> No
 scan
 ```
 
-## prompt.checkpoint_implementation - Checkpoint Implementation
+## prompt.refactor_execute - Refactor Execute
 ```md
-impl
+execute
+```
+
+## prompt.refactor_verify - Refactor Verify
+```md
+verify
 ```
 """,
     )
@@ -451,10 +466,16 @@ triggers:
   - type: manual
 steps:
   - prompt_id: prompt.refactor_scan
-    every: 3
-  - prompt_id: prompt.checkpoint_implementation
+  - prompt_id: prompt.refactor_execute
+  - prompt_id: prompt.refactor_verify
 """,
     )
+    # First step in strict cycle is scan.
+    state = StateInfo(stage="1", checkpoint="1.0", status="IN_PROGRESS", evidence_path=None, issues=())
+    role, prompt_id, _title, _reason = _resolve_next_prompt_selection(state, temp_repo, "continuous-refactor")
+    assert role == "implement"
+    assert prompt_id == "prompt.refactor_scan"
+
     _write_loop_result(
         temp_repo,
         [
@@ -467,11 +488,72 @@ steps:
         ],
     )
 
-    state = StateInfo(stage="1", checkpoint="1.0", status="IN_PROGRESS", evidence_path=None, issues=())
     role, prompt_id, _title, reason = _resolve_next_prompt_selection(state, temp_repo, "continuous-refactor")
     assert role == "implement"
-    assert prompt_id == "prompt.refactor_scan"
-    assert "selected prompt.refactor_scan" in reason
+    assert prompt_id == "prompt.refactor_execute"
+    assert "selected prompt.refactor_execute" in reason
+
+
+def test_continuous_refactor_strict_cycle_sequences_prompts(temp_repo: Path) -> None:
+    _write_state(
+        temp_repo,
+        """# STATE
+
+## Current focus
+- Stage: 1
+- Checkpoint: 1.0
+- Status: IN_PROGRESS
+""",
+    )
+    _write_plan(
+        temp_repo,
+        """# PLAN
+
+## Stage 1 — Demo
+### 1.0 — First
+""",
+    )
+    _write_prompt_catalog(
+        temp_repo,
+        """## prompt.refactor_scan - Refactor Scan
+```md
+scan
+```
+
+## prompt.refactor_execute - Refactor Execute
+```md
+execute
+```
+
+## prompt.refactor_verify - Refactor Verify
+```md
+verify
+```
+""",
+    )
+    _write_workflow(
+        temp_repo,
+        "continuous-refactor",
+        """name: continuous-refactor
+description: test
+triggers:
+  - type: manual
+steps:
+  - prompt_id: prompt.refactor_scan
+  - prompt_id: prompt.refactor_execute
+  - prompt_id: prompt.refactor_verify
+""",
+    )
+
+    state = StateInfo(stage="1", checkpoint="1.0", status="IN_PROGRESS", evidence_path=None, issues=())
+
+    role_1, prompt_1, _title_1, _reason_1 = _resolve_next_prompt_selection(state, temp_repo, "continuous-refactor")
+    role_2, prompt_2, _title_2, _reason_2 = _resolve_next_prompt_selection(state, temp_repo, "continuous-refactor")
+    role_3, prompt_3, _title_3, _reason_3 = _resolve_next_prompt_selection(state, temp_repo, "continuous-refactor")
+
+    assert (role_1, prompt_1) == ("implement", "prompt.refactor_scan")
+    assert (role_2, prompt_2) == ("implement", "prompt.refactor_execute")
+    assert (role_3, prompt_3) == ("review", "prompt.refactor_verify")
 
 
 def test_refactor_cycle_keeps_running_with_minor_only_ideas(temp_repo: Path) -> None:

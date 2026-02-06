@@ -55,4 +55,6 @@ python3 .codex/skills/vibe-loop/scripts/agentctl.py --repo-root . --format json 
 ```
 
 This selects prompts from `workflows/continuous-refactor.yaml` while still
-enforcing dispatcher role compatibility.
+enforcing dispatcher guardrails. For strict cycle workflows (for example
+`continuous-refactor`), `agentctl` may follow the workflow's explicit step role
+sequence (`implement`/`review`) instead of the base checkpoint role.

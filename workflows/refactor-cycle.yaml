@@ -1,8 +1,8 @@
 name: refactor-cycle
-description: Run refactor work periodically alongside implementation.
+description: Run continuous refactor cycle without the minor-only stop threshold.
 triggers:
   - type: manual
 steps:
   - prompt_id: prompt.refactor_scan
-    every: 3
-  - prompt_id: prompt.checkpoint_implementation
+  - prompt_id: prompt.refactor_execute
+  - prompt_id: prompt.refactor_verify
