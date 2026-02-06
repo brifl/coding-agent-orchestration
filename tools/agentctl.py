@@ -57,6 +57,7 @@ Role = Literal[
     "review",
     "implement",
     "design",
+    "context_capture",
     "consolidation",
     "improvements",
     "advance",
@@ -819,7 +820,116 @@ def _top_issue_severity(issues: tuple[Issue, ...]) -> str | None:
     return best.severity
 
 
+def _get_section_lines(sections: dict[str, list[str]], section_name: str) -> list[str]:
+    target = section_name.strip().lower()
+    for key, lines in sections.items():
+        if key.strip().lower() == target:
+            return lines
+    return []
+
+
+def _normalize_flag_name(raw: str) -> str:
+    return re.sub(r"[^A-Za-z0-9]+", "_", raw.strip()).strip("_").upper()
+
+
+def _parse_workflow_flags(state_text: str) -> dict[str, bool]:
+    sections = _parse_context_sections(state_text)
+    lines = _get_section_lines(sections, "Workflow state")
+    flags: dict[str, bool] = {}
+
+    checkbox_pat = re.compile(r"^\s*-\s*\[\s*([xX ])\s*\]\s*(.+?)\s*$")
+    bullet_pat = re.compile(r"^\s*-\s+(.+?)\s*$")
+
+    for raw in lines:
+        m = checkbox_pat.match(raw)
+        if m:
+            flag = _normalize_flag_name(m.group(2))
+            if flag:
+                flags[flag] = m.group(1).strip().lower() == "x"
+            continue
+        b = bullet_pat.match(raw)
+        if b:
+            value = b.group(1).strip()
+            if value.lower() in {"none", "none.", "(none)", "(none yet)"}:
+                continue
+            flag = _normalize_flag_name(value)
+            if flag:
+                flags[flag] = True
+
+    return flags
+
+
+def _load_workflow_flags(repo_root: Path) -> dict[str, bool]:
+    state_path = repo_root / ".vibe" / "STATE.md"
+    if not state_path.exists():
+        return {}
+    return _parse_workflow_flags(_read_text(state_path))
+
+
+def _context_capture_trigger_reason(repo_root: Path, workflow_flags: dict[str, bool]) -> str | None:
+    if workflow_flags.get("RUN_CONTEXT_CAPTURE"):
+        return "Workflow flag RUN_CONTEXT_CAPTURE is set."
+
+    context_path = repo_root / ".vibe" / "CONTEXT.md"
+    state_path = repo_root / ".vibe" / "STATE.md"
+    plan_path = repo_root / ".vibe" / "PLAN.md"
+    history_path = repo_root / ".vibe" / "HISTORY.md"
+
+    if not context_path.exists():
+        return "Context snapshot missing (.vibe/CONTEXT.md)."
+
+    context_mtime = context_path.stat().st_mtime
+    sources = [p for p in (state_path, plan_path, history_path) if p.exists()]
+    if not sources:
+        return None
+
+    latest_source_mtime = max(p.stat().st_mtime for p in sources)
+    if latest_source_mtime - context_mtime > 24 * 3600:
+        return "Context snapshot is stale (>24h older than workflow docs)."
+
+    return None
+
+
+def _count_nonempty_signal_lines(lines: list[str]) -> int:
+    count = 0
+    for raw in lines:
+        line = raw.strip()
+        if not line:
+            continue
+        if line.startswith("<!--"):
+            continue
+        if line.lower() in {"none", "none.", "(none)", "(none yet)", "(none yet)."}:
+            continue
+        count += 1
+    return count
+
+
+def _process_improvements_trigger_reason(repo_root: Path, workflow_flags: dict[str, bool]) -> str | None:
+    if workflow_flags.get("RUN_PROCESS_IMPROVEMENTS"):
+        return "Workflow flag RUN_PROCESS_IMPROVEMENTS is set."
+
+    state_path = repo_root / ".vibe" / "STATE.md"
+    if not state_path.exists():
+        return None
+
+    sections = _parse_context_sections(_read_text(state_path))
+    work_log_lines = _get_section_lines(sections, "Work log (current session)")
+    evidence_lines = _get_section_lines(sections, "Evidence")
+
+    work_log_entries = sum(1 for line in work_log_lines if re.match(r"^\s*-\s+", line))
+    if work_log_entries > 15:
+        return f"Work log has {work_log_entries} entries (>15)."
+
+    evidence_signal_lines = _count_nonempty_signal_lines(evidence_lines)
+    if evidence_signal_lines > 50:
+        return f"Evidence section has {evidence_signal_lines} non-empty lines (>50)."
+
+    return None
+
+
 def _recommend_next(state: StateInfo, repo_root: Path) -> tuple[Role, str]:
+    workflow_flags = _load_workflow_flags(repo_root)
+
     # 0) Hard stop / hard triage conditions
     if state.status == "BLOCKED":
         return ("issues_triage", "Checkpoint status is BLOCKED.")
@@ -879,6 +989,17 @@ def _recommend_next(state: StateInfo, repo_root: Path) -> tuple[Role, str]:
         # If there are non-blocking issues, triage can be recommended (your choice)
         if top in {"MAJOR", "QUESTION"}:
             return ("issues_triage", f"Active issues present (top severity: {top}).")
+
+        # Context capture is a first-class maintenance loop.
+        if state.status == "NOT_STARTED":
+            context_reason = _context_capture_trigger_reason(repo_root, workflow_flags)
+            if context_reason:
+                return ("context_capture", context_reason)
+
+            process_reason = _process_improvements_trigger_reason(repo_root, workflow_flags)
+            if process_reason:
+                return ("improvements", process_reason)
+
         return ("implement", f"Checkpoint status is {state.status}.")
 
     # 4) Default
@@ -913,6 +1034,10 @@ PROMPT_MAP: dict[Role, dict[str, str]] = {
     "design": {
         "id": "prompt.stage_design",
         "title": "Stage Design Prompt",
+    },
+    "context_capture": {
+        "id": "prompt.context_capture",
+        "title": "Context Capture Prompt",
     },
     "consolidation": {
         "id": "prompt.consolidation",

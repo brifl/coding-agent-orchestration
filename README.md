@@ -75,15 +75,17 @@ Loops are defined in `prompts/template_prompts.md` and chosen by `agentctl.py`:
 | --- | --- | --- |
 | `design` | `prompt.stage_design` | Tighten or repair near-term checkpoints in `.vibe/PLAN.md` so execution is unambiguous. |
 | `implement` | `prompt.checkpoint_implementation` | Implement exactly one active checkpoint, run demo commands, commit, and set status to `IN_REVIEW`. |
-| `review` | `prompt.checkpoint_review` | Verify deliverables and acceptance criteria, then mark `DONE` or open issues. |
+| `review` | `prompt.checkpoint_review` | Verify deliverables/acceptance and auto-advance to next same-stage checkpoint on PASS. |
 | `issues_triage` | `prompt.issues_triage` | Resolve or clarify blocking/non-blocking issues with minimal scope changes. |
 | `advance` | `prompt.advance_checkpoint` | Move `.vibe/STATE.md` from a `DONE` checkpoint to the next checkpoint and reset status to `NOT_STARTED`. |
 | `consolidation` | `prompt.consolidation` | Archive completed stages and realign `.vibe/STATE.md` / `.vibe/PLAN.md` before crossing stage boundaries. |
+| `context_capture` | `prompt.context_capture` | Refresh `.vibe/CONTEXT.md` and clear context-capture workflow flags after transitions/maintenance. |
 | `improvements` | `prompt.process_improvements` | Improve the orchestration system itself (prompts, tooling, validation, docs). |
 | `stop` | `stop` | End the loop when the backlog is exhausted. |
 
 With a defined backlog in `.vibe/PLAN.md` and no active issues, the common cadence is:
-`implement -> review -> advance` (repeat), with `consolidation` inserted at stage transitions.
+`implement -> review (auto-advance)` (repeat), with `consolidation -> context_capture`
+inserted at stage transitions.
 
 ## Context snapshots
 
@@ -161,10 +163,12 @@ flowchart TD
 
     C -->|review| F[Run prompt.checkpoint_review]
     F --> G{Review result}
-    G -->|PASS| H[Set checkpoint DONE]
+    G -->|PASS same stage| H[Auto-advance checkpoint<br/>set NOT_STARTED]
     H --> B
-    G -->|FAIL| I[Set IN_PROGRESS or BLOCKED<br/>add issues]
+    G -->|PASS stage transition| I[Set DONE for current checkpoint]
     I --> B
+    G -->|FAIL| V[Set IN_PROGRESS or BLOCKED<br/>add issues]
+    V --> B
 
     C -->|advance| J[Run prompt.advance_checkpoint]
     J --> K[Move to next checkpoint<br/>set NOT_STARTED]
@@ -175,8 +179,12 @@ flowchart TD
     M --> B
 
     C -->|consolidation| N[Run prompt.consolidation]
-    N --> O[Archive completed stage<br/>sync docs/state]
+    N --> O[Archive completed stage<br/>sync docs/state<br/>set RUN_CONTEXT_CAPTURE]
     O --> B
+
+    C -->|context_capture| T[Run prompt.context_capture]
+    T --> U[Refresh CONTEXT.md<br/>clear RUN_CONTEXT_CAPTURE]
+    U --> B
 
     C -->|design| P[Run prompt.stage_design]
     P --> Q[Refine PLAN/STATE]
@@ -192,11 +200,13 @@ flowchart TD
     classDef other fill:#fff8e1,stroke:#f9a825,color:#6d4c41,stroke-width:1px;
     classDef terminal fill:#ffebee,stroke:#c62828,color:#7f1d1d,stroke-width:1px;
     class D,E,F,G,H,J,K happy;
-    class L,M,N,O,P,Q,R,S,I other;
+    class L,M,N,O,P,Q,R,S,I,T,U,V other;
     class Z terminal;
 ```
 
-Happy path is `implement -> review (PASS) -> advance` with `consolidation` at stage boundaries.
+Happy path is `implement -> review (PASS same stage auto-advance)` repeating with no
+extra advance loop. Stage transitions route through `consolidation`, then
+`context_capture`, then back to `implement`.
 Other branches are selected when state/issue/planning conditions require them.
 
 ## How to start a session
