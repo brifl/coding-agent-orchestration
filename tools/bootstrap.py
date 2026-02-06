@@ -379,7 +379,14 @@ def install_skills_agent_global(agent: str, force: bool) -> int:
     dst_root.mkdir(parents=True, exist_ok=True)
 
     # Expected skill folders (we install only these by name)
-    skill_names = ["vibe-prompts", "vibe-loop", "vibe-one-loop", "vibe-run", "continuous-refactor"]
+    skill_names = [
+        "vibe-prompts",
+        "vibe-loop",
+        "vibe-one-loop",
+        "vibe-run",
+        "continuous-refactor",
+        "continuous-test-generation",
+    ]
 
     updated: list[str] = []
     skipped: list[str] = []

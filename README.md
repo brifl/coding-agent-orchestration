@@ -166,7 +166,7 @@ manual bootstraps found in `prompts/init/`.
 ## Single-loop vs continuous
 
 - **Single loop**: run one loop and stop (use `$vibe-one-loop` or manual prompts).
-- **Continuous**: loop until `agentctl` returns `recommended_role == "stop"` (use `$vibe-run` or `$continuous-refactor`).
+- **Continuous**: loop until `agentctl` returns `recommended_role == "stop"` (use `$vibe-run`, `$continuous-refactor`, or `$continuous-test-generation`).
 
 Codex's `$vibe-run` skill implements continuous mode. It must keep looping until
 the dispatcher says stop--never just one cycle.
@@ -193,6 +193,10 @@ Then run the returned `recommended_prompt_id` and record `LOOP_RESULT` as usual.
 `continuous-refactor` is intended for bounded continuous runs: it exits once the
 latest refactor findings contain only `[MINOR]` ideas (no `[MAJOR]`/`[MODERATE]`).
 Use `refactor-cycle` if you want to continue through minor-only refinements.
+
+`continuous-test-generation` is the parallel test workflow: it runs
+`prompt.test_gap_analysis`, `prompt.test_generation`, and `prompt.test_review`,
+and exits once gap analysis reports only `[MINOR]` additions (no `[MAJOR]`/`[MODERATE]`).
 
 ### `$vibe-run` decision flow (happy path + alternate paths)
 

@@ -84,7 +84,7 @@ LOOP_REPORT_ITEM_STATUS = ("PASS", "FAIL", "N/A")
 EVIDENCE_STRENGTH_VALUES = ("LOW", "MEDIUM", "HIGH")
 LOOP_REPORT_MAX_FINDINGS = 5
 CONFIDENCE_MIN_REQUIRED = 0.75
-REFACTOR_IDEA_TAG_RE = re.compile(r"\[(MAJOR|MODERATE|MINOR)\]", re.IGNORECASE)
+IDEA_IMPACT_TAG_RE = re.compile(r"\[(MAJOR|MODERATE|MINOR)\]", re.IGNORECASE)
 
 Role = Literal[
     "issues_triage",
@@ -1681,7 +1681,7 @@ EXTRA_WORKFLOW_PROMPT_ROLES: dict[str, Role] = {
     "prompt.refactor_scan": "implement",
     "prompt.refactor_execute": "implement",
     "prompt.refactor_verify": "review",
-    "prompt.test_gap_analysis": "design",
+    "prompt.test_gap_analysis": "implement",
     "prompt.test_generation": "implement",
     "prompt.test_review": "review",
     "prompt.demo_script": "design",
@@ -1697,10 +1697,26 @@ def _role_for_prompt_id(prompt_id: str) -> Role | None:
     return PROMPT_ROLE_MAP.get(prompt_id)
 
 
-def _extract_refactor_idea_tags(value: Any) -> set[str]:
+def _extract_idea_impact_tags(value: Any) -> set[str]:
     if not isinstance(value, str) or not value:
         return set()
-    return {match.group(1).upper() for match in REFACTOR_IDEA_TAG_RE.finditer(value)}
+    return {match.group(1).upper() for match in IDEA_IMPACT_TAG_RE.finditer(value)}
+
+
+def _idea_impact_tags_from_loop_result(payload: dict[str, Any]) -> set[str]:
+    report = payload.get("report")
+    if not isinstance(report, dict):
+        return set()
+    top_findings = report.get("top_findings")
+    if not isinstance(top_findings, list):
+        return set()
+    observed_tags: set[str] = set()
+    for finding in top_findings:
+        if not isinstance(finding, dict):
+            continue
+        for key in ("title", "evidence", "action"):
+            observed_tags.update(_extract_idea_impact_tags(finding.get(key)))
+    return observed_tags
 
 
 def _continuous_refactor_should_stop(repo_root: Path) -> tuple[bool, str | None]:
@@ -1708,21 +1724,7 @@ def _continuous_refactor_should_stop(repo_root: Path) -> tuple[bool, str | None]
     if error or payload is None:
         return (False, None)
 
-    report = payload.get("report")
-    if not isinstance(report, dict):
-        return (False, None)
-
-    top_findings = report.get("top_findings")
-    if not isinstance(top_findings, list) or not top_findings:
-        return (False, None)
-
-    observed_tags: set[str] = set()
-    for finding in top_findings:
-        if not isinstance(finding, dict):
-            continue
-        for key in ("title", "evidence", "action"):
-            observed_tags.update(_extract_refactor_idea_tags(finding.get(key)))
-
+    observed_tags = _idea_impact_tags_from_loop_result(payload)
     if not observed_tags:
         return (False, None)
 
@@ -1735,6 +1737,32 @@ def _continuous_refactor_should_stop(repo_root: Path) -> tuple[bool, str | None]
     return (
         True,
         "Workflow continuous-refactor found only [MINOR] refactor ideas in the latest LOOP_RESULT report; stopping.",
+    )
+
+
+def _continuous_test_generation_should_stop(repo_root: Path) -> tuple[bool, str | None]:
+    payload, error = _load_loop_result_record(repo_root)
+    if error or payload is None:
+        return (False, None)
+
+    loop_name = str(payload.get("loop", "")).strip().lower()
+    # Stop decision for this workflow is based on test gap analysis output.
+    if loop_name != "design":
+        return (False, None)
+
+    observed_tags = _idea_impact_tags_from_loop_result(payload)
+    if not observed_tags:
+        return (False, None)
+
+    if observed_tags.intersection({"MAJOR", "MODERATE"}):
+        return (False, None)
+
+    if not observed_tags.issubset({"MINOR"}):
+        return (False, None)
+
+    return (
+        True,
+        "Workflow continuous-test-generation found only [MINOR] test gaps in the latest gap analysis report; stopping.",
     )
 
 
@@ -1773,6 +1801,15 @@ def _resolve_next_prompt_selection(
                 "stop",
                 "Stop (continuous-refactor threshold reached)",
                 stop_reason or "Workflow continuous-refactor threshold reached.",
+            )
+    if workflow == "continuous-test-generation" and base_role == "implement":
+        should_stop, stop_reason = _continuous_test_generation_should_stop(repo_root)
+        if should_stop:
+            return (
+                "stop",
+                "stop",
+                "Stop (continuous-test-generation threshold reached)",
+                stop_reason or "Workflow continuous-test-generation threshold reached.",
             )
 
     catalog_index, _, catalog_error = _load_prompt_catalog_index(repo_root)

@@ -35,9 +35,9 @@ def _write_workflow(repo_root: Path, name: str, body: str) -> None:
     (workflows_dir / f"{name}.yaml").write_text(body, encoding="utf-8")
 
 
-def _write_loop_result(repo_root: Path, findings: list[dict[str, str]]) -> None:
+def _write_loop_result(repo_root: Path, findings: list[dict[str, str]], *, loop: str = "implement") -> None:
     payload = {
-        "loop": "implement",
+        "loop": loop,
         "result": "ready_for_review",
         "stage": "1",
         "checkpoint": "1.0",
@@ -60,7 +60,7 @@ def _write_loop_result(repo_root: Path, findings: list[dict[str, str]]) -> None:
                 "after": {"stage": "1", "checkpoint": "1.0", "status": "IN_PROGRESS"},
             },
             "loop_result": {
-                "loop": "implement",
+                "loop": loop,
                 "result": "ready_for_review",
                 "stage": "1",
                 "checkpoint": "1.0",
@@ -536,3 +536,147 @@ steps:
     assert role == "implement"
     assert prompt_id == "prompt.refactor_scan"
     assert "selected prompt.refactor_scan" in reason
+
+
+def test_continuous_test_generation_stops_when_only_minor_gaps(temp_repo: Path) -> None:
+    _write_state(
+        temp_repo,
+        """# STATE
+
+## Current focus
+- Stage: 1
+- Checkpoint: 1.0
+- Status: IN_PROGRESS
+""",
+    )
+    _write_plan(
+        temp_repo,
+        """# PLAN
+
+## Stage 1 — Demo
+### 1.0 — First
+""",
+    )
+    _write_prompt_catalog(
+        temp_repo,
+        """## prompt.test_gap_analysis - Test Gap Analysis
+```md
+gap
+```
+
+## prompt.test_generation - Test Generation
+```md
+gen
+```
+
+## prompt.test_review - Test Review
+```md
+review
+```
+""",
+    )
+    _write_workflow(
+        temp_repo,
+        "continuous-test-generation",
+        """name: continuous-test-generation
+description: test
+triggers:
+  - type: manual
+steps:
+  - prompt_id: prompt.test_gap_analysis
+    every: 3
+  - prompt_id: prompt.test_generation
+  - prompt_id: prompt.test_review
+""",
+    )
+    _write_loop_result(
+        temp_repo,
+        [
+            {
+                "impact": "MINOR",
+                "title": "[MINOR] Add edge-path assertion",
+                "evidence": "Low-risk gap",
+                "action": "Schedule later",
+            }
+        ],
+        loop="design",
+    )
+
+    state = StateInfo(stage="1", checkpoint="1.0", status="IN_PROGRESS", evidence_path=None, issues=())
+    role, prompt_id, title, reason = _resolve_next_prompt_selection(state, temp_repo, "continuous-test-generation")
+    assert role == "stop"
+    assert prompt_id == "stop"
+    assert "threshold reached" in title
+    assert "only [MINOR]" in reason
+
+
+def test_continuous_test_generation_continues_with_moderate_gap(temp_repo: Path) -> None:
+    _write_state(
+        temp_repo,
+        """# STATE
+
+## Current focus
+- Stage: 1
+- Checkpoint: 1.1
+- Status: IN_PROGRESS
+""",
+    )
+    _write_plan(
+        temp_repo,
+        """# PLAN
+
+## Stage 1 — Demo
+### 1.0 — First
+### 1.1 — Second
+""",
+    )
+    _write_prompt_catalog(
+        temp_repo,
+        """## prompt.test_gap_analysis - Test Gap Analysis
+```md
+gap
+```
+
+## prompt.test_generation - Test Generation
+```md
+gen
+```
+
+## prompt.test_review - Test Review
+```md
+review
+```
+""",
+    )
+    _write_workflow(
+        temp_repo,
+        "continuous-test-generation",
+        """name: continuous-test-generation
+description: test
+triggers:
+  - type: manual
+steps:
+  - prompt_id: prompt.test_gap_analysis
+    every: 3
+  - prompt_id: prompt.test_generation
+  - prompt_id: prompt.test_review
+""",
+    )
+    _write_loop_result(
+        temp_repo,
+        [
+            {
+                "impact": "MINOR",
+                "title": "[MODERATE] Add failing-path integration test",
+                "evidence": "Covers real regression risk",
+                "action": "Implement now",
+            }
+        ],
+        loop="design",
+    )
+
+    state = StateInfo(stage="1", checkpoint="1.1", status="IN_PROGRESS", evidence_path=None, issues=())
+    role, prompt_id, _title, reason = _resolve_next_prompt_selection(state, temp_repo, "continuous-test-generation")
+    assert role == "implement"
+    assert prompt_id == "prompt.test_generation"
+    assert "selected prompt.test_generation" in reason

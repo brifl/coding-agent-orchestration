@@ -1,0 +1,9 @@
+name: continuous-test-generation
+description: Periodic test generation workflow with review; exits when only [MINOR] gaps remain.
+triggers:
+  - type: manual
+steps:
+  - prompt_id: prompt.test_gap_analysis
+    every: 3
+  - prompt_id: prompt.test_generation
+  - prompt_id: prompt.test_review

@@ -33,6 +33,8 @@ skills:
     version: ">=1.0.0"
   - name: continuous-refactor
     version: ">=1.0.0"
+  - name: continuous-test-generation
+    version: ">=1.0.0"
 ```
 
 ```yaml

@@ -17,7 +17,14 @@ from skillctl import cmd_validate, resolve_skillset  # type: ignore
 def test_core_vibe_skill_manifests_validate() -> None:
     repo_root = Path(__file__).resolve().parents[2]
     skills_root = repo_root / ".codex" / "skills"
-    for name in ("vibe-prompts", "vibe-loop", "vibe-one-loop", "vibe-run", "continuous-refactor"):
+    for name in (
+        "vibe-prompts",
+        "vibe-loop",
+        "vibe-one-loop",
+        "vibe-run",
+        "continuous-refactor",
+        "continuous-test-generation",
+    ):
         assert cmd_validate(skills_root / name) == 0
 
 
@@ -29,12 +36,14 @@ def test_vibe_base_skillset_includes_loop_run_aliases() -> None:
     assert "vibe-one-loop" in names
     assert "vibe-run" in names
     assert "continuous-refactor" in names
+    assert "continuous-test-generation" in names
 
 
 def test_bootstrap_global_skill_list_includes_continuous_refactor() -> None:
     repo_root = Path(__file__).resolve().parents[2]
     bootstrap_text = (repo_root / "tools" / "bootstrap.py").read_text(encoding="utf-8")
     assert "continuous-refactor" in bootstrap_text
+    assert "continuous-test-generation" in bootstrap_text
 
 
 @pytest.mark.skipif(os.name == "nt", reason="WSL/Windows path normalization is POSIX-specific")
