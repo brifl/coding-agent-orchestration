@@ -71,11 +71,19 @@ Lists, previews, and instantiates checkpoint templates from `templates/checkpoin
 
 Loops are defined in `prompts/template_prompts.md` and chosen by `agentctl.py`:
 
-- **Implementation** -- build the current checkpoint.
-- **Review** -- verify acceptance; mark DONE or add issues.
-- **Triage** -- resolve or clarify issues with minimal scope.
-- **Consolidation** -- archive completed stages, prune logs/evidence, sync stage pointer.
-- **Process improvements** -- improve the orchestration system itself (bounded scope).
+| Loop role | Prompt ID | Intended job |
+| --- | --- | --- |
+| `design` | `prompt.stage_design` | Tighten or repair near-term checkpoints in `.vibe/PLAN.md` so execution is unambiguous. |
+| `implement` | `prompt.checkpoint_implementation` | Implement exactly one active checkpoint, run demo commands, commit, and set status to `IN_REVIEW`. |
+| `review` | `prompt.checkpoint_review` | Verify deliverables and acceptance criteria, then mark `DONE` or open issues. |
+| `issues_triage` | `prompt.issues_triage` | Resolve or clarify blocking/non-blocking issues with minimal scope changes. |
+| `advance` | `prompt.advance_checkpoint` | Move `.vibe/STATE.md` from a `DONE` checkpoint to the next checkpoint and reset status to `NOT_STARTED`. |
+| `consolidation` | `prompt.consolidation` | Archive completed stages and realign `.vibe/STATE.md` / `.vibe/PLAN.md` before crossing stage boundaries. |
+| `improvements` | `prompt.process_improvements` | Improve the orchestration system itself (prompts, tooling, validation, docs). |
+| `stop` | `stop` | End the loop when the backlog is exhausted. |
+
+With a defined backlog in `.vibe/PLAN.md` and no active issues, the common cadence is:
+`implement -> review -> advance` (repeat), with `consolidation` inserted at stage transitions.
 
 ## Context snapshots
 
@@ -139,6 +147,29 @@ manual bootstraps found in `prompts/init/`.
 
 Codex's `$vibe-run` skill implements continuous mode. It must keep looping until
 the dispatcher says stop--never just one cycle.
+
+### `$vibe-run` happy-path flow (no issues, defined backlog)
+
+```mermaid
+flowchart TD
+    A[Start $vibe-run] --> B[Run agentctl.py next]
+    B --> C{recommended_role}
+    C -->|implement| D[Run prompt.checkpoint_implementation]
+    D --> E[STATE status becomes IN_REVIEW]
+    E --> B
+    C -->|review| F[Run prompt.checkpoint_review]
+    F --> G[STATE status becomes DONE]
+    G --> B
+    C -->|advance| H[Run prompt.advance_checkpoint]
+    H --> I[STATE moves to next checkpoint with NOT_STARTED]
+    I --> B
+    C -->|consolidation| J[Run prompt.consolidation at stage boundary]
+    J --> B
+    C -->|stop| Z[Exit loop]
+```
+
+`issues_triage`, `design`, and `improvements` are outside this no-issues path and
+are only selected when state or planning conditions call for them.
 
 ## How to start a session
 
