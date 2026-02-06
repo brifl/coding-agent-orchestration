@@ -13,7 +13,7 @@
 
 - Stage: 21
 - Checkpoint: 21.11
-- Status: IN_REVIEW  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
+- Status: DONE  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
 
 ## Objective (current checkpoint)
 
@@ -33,6 +33,7 @@ Prove RLM usefulness on real “big context” problems.
 
 ## Work log (current session)
 
+- 2026-02-06: Review PASS — 21.11 acceptance met (`eval_smoke` passed on `repo_comprehension`) with adversarial probes confirming expected failures for invalid task schema and readonly cache miss; no remaining same-stage checkpoints, so checkpoint set to DONE (plan exhausted for Stage 21).
 - 2026-02-06: Implemented 21.11 — added reference tasks (`repo_comprehension`, `change_impact`, `doc_synthesis`) and `tools/rlm/eval_smoke.py`; smoke eval confirms one task exercises bundling + multi-iteration reasoning + subcalls + final artifact creation; moved status to IN_REVIEW.
 - 2026-02-06: Review PASS — 21.10 acceptance met (`skillctl validate skills/rlm-tools` passed) with adversarial probes confirming validation failures for malformed skill manifest and invalid provider selection; auto-advanced to 21.11 and set status to NOT_STARTED.
 - 2026-02-06: Implemented 21.10 — packaged `rlm-tools` skill with `skills/rlm-tools/SKILL.yaml`, added multi-command wrapper `skills/rlm-tools/rlm.py` for `rlm validate|bundle|run|step|resume|providers`, and documented cross-agent usage in `docs/rlm_agents.md`; `skillctl validate skills/rlm-tools` passes; moved status to IN_REVIEW.
@@ -54,6 +55,8 @@ Prove RLM usefulness on real “big context” problems.
 - Added tasks: `tasks/rlm/repo_comprehension.json`, `tasks/rlm/change_impact.json`, `tasks/rlm/doc_synthesis.json`.
 - Added harness: `tools/rlm/eval_smoke.py`.
 - `python3 tools/rlm/eval_smoke.py --task tasks/rlm/repo_comprehension.json` returns `passed: true` with checks: `bundle_dir_exists`, `multi_iteration`, `subcalls_used`, `status_completed`, and `final_artifact_exists`.
+- Review probes: `.vibe/rlm/evidence/21.11/review_eval_invalid_schema.log` (schema fail-fast) and `.vibe/rlm/evidence/21.11/review_eval_readonly_cache_miss.log` (readonly cache miss expected failure).
+- Stage 21 plan exhausted at checkpoint 21.11; awaiting consolidation/stage transition.
 
 ## Active issues
 
