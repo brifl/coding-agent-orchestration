@@ -12,32 +12,27 @@
 ## Current focus
 
 - Stage: 21
-- Checkpoint: 21.5
-- Status: IN_REVIEW  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
+- Checkpoint: 21.6
+- Status: NOT_STARTED  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
 
 ## Objective (current checkpoint)
 
-Enable real subcalls to LLM providers with a unified interface.
+Prevent runaway recursion and make subcalls replayable.
 
 ## Deliverables (current checkpoint)
 
-- Add provider interface: `tools/rlm/providers/base.py`
-- Add providers:
-  - OpenAI
-  - Anthropic
-  - Google (Gemini)
-- Add provider config resolution:
-  - repo-local `.vibe/rlm/providers.json`
-  - global `~/.vibe/providers.json`
-  - env-var-only secrets
-- Add `tools/rlm/provider_check.py`
+- Budget enforcement (per run and per iteration)
+- Mandatory caching for subcall mode (`readwrite|readonly|off`)
+- Deterministic retry policy
+- `tools/rlm/replay.py`
 
 ## Acceptance (current checkpoint)
 
-- `provider_check` passes for active providers (OpenAI, Anthropic, Google) on a configured machine.
+- Second run with `--cache readonly` reproduces identical response hashes and final output.
 
 ## Work log (current session)
 
+- 2026-02-06: Review PASS — 21.5 acceptance met with demo rerun plus adversarial probes (invalid provider selection rejects with exit 2, and credential-scrubbed run reports missing env vars); auto-advanced to 21.6 and set status to NOT_STARTED.
 - 2026-02-06: Issues triage — loaded API keys from repo `.env` via `provider_check` dotenv support, switched health checks to provider listing endpoints for stable auth/connectivity validation, and resolved ISSUE-013; moved status to IN_REVIEW.
 - 2026-02-06: Issues triage — per user direction, deferred Triton support from active Stage 21 scope; updated PLAN/STATE acceptance and blocker criteria to core providers (OpenAI/Anthropic/Google); status remains BLOCKED pending credentials.
 - 2026-02-06: Issues triage — confirmed ISSUE-013 as external prerequisite blocker; clarified exact env vars and concrete unblock evidence command for active providers; status remains BLOCKED.
