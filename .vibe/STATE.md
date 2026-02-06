@@ -13,7 +13,7 @@
 
 - Stage: 21
 - Checkpoint: 21.0
-- Status: NOT_STARTED  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
+- Status: IN_REVIEW  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
 
 ## Objective (current checkpoint)
 
@@ -31,6 +31,7 @@ Define what RLM means in this system, when it should be used, and how it differs
 
 ## Work log (current session)
 
+- 2026-02-06: Implemented 21.0 — added `docs/rlm_overview.md` and `docs/rlm_glossary.md`, including decision table (`RLM vs RAG vs standard loops`) and baseline/subcall + human-assisted provider explanations; moved status to IN_REVIEW.
 - 2026-02-06: Consolidation — archived Stage 19A and Stage 20, pruned PLAN to Stage 21+, transitioned state pointer to 21.0/NOT_STARTED, set RUN_CONTEXT_CAPTURE.
 - 2026-02-06: Implemented 20.5 — added TF-IDF vectorizer + index `--vectors` build path; implemented semantic and hybrid retrieval modes with lex/sem/hybrid comparison evidence; moved to IN_REVIEW.
 - 2026-02-06: Review PASS — 20.4 acceptance met (docs/policy, install, tartu pipeline); auto-advanced to 20.5; status set to NOT_STARTED.
@@ -47,7 +48,12 @@ Define what RLM means in this system, when it should be used, and how it differs
 
 ## Evidence
 
-(Checkpoint 21.0 — not yet started)
+- path: docs/rlm_overview.md
+  - cmd: `cat docs/rlm_overview.md`
+  - result: PASS — includes lifecycle, baseline vs subcall mode, human-assisted provider behavior, and decision table.
+- path: docs/rlm_glossary.md
+  - cmd: `cat docs/rlm_glossary.md`
+  - result: PASS — defines required terms (`root iteration`, `bundle`, `subcall`, `FINAL`, `AWAITING_EXTERNAL`).
 
 ## Active issues
 
