@@ -54,6 +54,7 @@ workflow state, remove the ignore entry locally.
 ## Core tooling
 
 ### `tools/agentctl.py`
+
 The control plane for the workflow. Key commands:
 
 - `status` -- current stage/checkpoint + issue summary (use `--with-context` for full context).
@@ -62,9 +63,11 @@ The control plane for the workflow. Key commands:
 - `add-checkpoint` -- insert a checkpoint from a template into PLAN.md.
 
 ### `tools/prompt_catalog.py`
+
 Lists and retrieves prompts from `prompts/template_prompts.md` by stable ID.
 
 ### `tools/checkpoint_templates.py`
+
 Lists, previews, and instantiates checkpoint templates from `templates/checkpoints/`.
 
 ## Workflow loops (what they do)
