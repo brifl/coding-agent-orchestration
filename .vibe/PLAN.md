@@ -248,3 +248,138 @@ Implement a bounded, auditable Recursive Language Model (RLM) execution harness 
 * **Evidence:**
   * Example output artifact + trace committed (or redacted).
 ---
+
+## Stage 21A — Continuous Documentation Skill (JIT)
+
+**Stage objective:**  
+Design and package a continuous documentation workflow that repeatedly detects and fixes documentation gaps, then analyzes and refactors documentation quality (accuracy, bloat, structure) across README/wiki/embedded guides until only low-severity issues remain.
+
+### Stage invariants (apply to all checkpoints)
+
+- **Severity contract:** Findings use `MAJOR|MODERATE|MINOR` with deterministic rubric rules.
+- **Two-phase loop:** Gap phase (find/fix missing content) and refactor phase (analyze/fix existing content quality) are distinct and traceable.
+- **Source coverage:** Scope includes repository docs, README files, and embedded guides; wiki targets are handled via file-based migration artifacts.
+- **Evidence-first fixes:** Every applied change maps back to one or more finding IDs with before/after counts.
+- **Continuous stop rule:** Workflow may stop only when no `MAJOR|MODERATE` findings remain.
+
+---
+
+### 21A.0 — Documentation scope, severity rubric, and finding schema
+
+* **Objective:**  
+  Define what documentation sources are in scope and codify a deterministic severity rubric/schema for gap and refactor findings.
+* **Deliverables:**
+  * `docs/continuous_documentation_overview.md`
+  * `docs/documentation_severity_rubric.md` (explicit `MAJOR|MODERATE|MINOR` criteria)
+  * Finding schema covering: `finding_id`, `phase` (`gap|refactor`), `category`, `severity`, `location`, `recommendation`
+* **Acceptance:**
+  * Scope covers README/docs/embedded guides and declares wiki migration target rules.
+  * Rubric includes concrete examples for all three severities.
+* **Demo commands:**
+  * `cat docs/documentation_severity_rubric.md`
+* **Evidence:**
+  * Example classification table showing `MAJOR|MODERATE|MINOR` with rationale.
+
+---
+
+### 21A.1 — Gap analysis engine (missing docs and missing sections)
+
+* **Objective:**  
+  Build deterministic gap analysis that identifies missing or incomplete documentation and proposes edits or net-new docs.
+* **Deliverables:**
+  * `prompt.docs_gap_analysis` in `prompts/template_prompts.md`
+  * `tools/docs/doc_gap_report.py`
+  * Report output `.vibe/docs/gap_report.json` with candidate actions (`edit_section|create_doc|create_wiki_page`)
+* **Acceptance:**
+  * Re-running on an unchanged repo snapshot produces stable finding IDs/severity ordering.
+  * Report includes actionable recommendations and supports net-new document proposals.
+* **Demo commands:**
+  * `python tools/docs/doc_gap_report.py --repo-root . --out .vibe/docs/gap_report.json`
+* **Evidence:**
+  * Report excerpt with `MAJOR|MODERATE|MINOR` findings and at least one `create_doc` recommendation.
+
+---
+
+### 21A.2 — Gap remediation engine (close documented gaps)
+
+* **Objective:**  
+  Apply targeted gap fixes by updating existing docs and creating missing documentation artifacts.
+* **Deliverables:**
+  * `prompt.docs_gap_fix` in `prompts/template_prompts.md`
+  * `tools/docs/apply_gap_fixes.py`
+  * Fix log `.vibe/docs/gap_fix_log.jsonl` mapping `finding_id -> changed files`
+* **Acceptance:**
+  * Running remediation then re-analysis reduces `MAJOR|MODERATE` gap counts for targeted findings.
+  * Fix log records all created/updated documents with source finding linkage.
+* **Demo commands:**
+  * `python tools/docs/doc_gap_report.py --repo-root . --out .vibe/docs/gap_report.before.json`
+  * `python tools/docs/apply_gap_fixes.py --report .vibe/docs/gap_report.before.json --apply`
+  * `python tools/docs/doc_gap_report.py --repo-root . --out .vibe/docs/gap_report.after.json`
+* **Evidence:**
+  * Before/after severity counts plus list of created docs.
+
+---
+
+### 21A.3 — Refactor analysis engine (accuracy, bloat, structure)
+
+* **Objective:**  
+  Analyze existing documentation for stale/inaccurate content, bloat, and structure/IA problems, including migration opportunities.
+* **Deliverables:**
+  * `prompt.docs_refactor_analysis` in `prompts/template_prompts.md`
+  * `tools/docs/doc_refactor_report.py`
+  * Report output `.vibe/docs/refactor_report.json` with categories: `accuracy`, `bloat`, `structure`
+  * Migration recommendations: `migrate_to_wiki`, `split_to_code_specific_doc`, `merge_duplicates`
+* **Acceptance:**
+  * Report includes severity-ranked findings for all three categories with concrete fix recommendations.
+  * Findings are deterministic on unchanged input.
+* **Demo commands:**
+  * `python tools/docs/doc_refactor_report.py --repo-root . --out .vibe/docs/refactor_report.json`
+* **Evidence:**
+  * Report excerpt containing at least one finding each for `accuracy`, `bloat`, and `structure`.
+
+---
+
+### 21A.4 — Refactor remediation engine (fix quality issues and migrate docs)
+
+* **Objective:**  
+  Execute documentation refactors that fix accuracy defects, remove bloat, improve structure, and produce wiki/code-doc migration artifacts when recommended.
+* **Deliverables:**
+  * `prompt.docs_refactor_fix` in `prompts/template_prompts.md`
+  * `tools/docs/apply_refactor_fixes.py`
+  * Migration artifacts under `docs/wiki-export/` plus mapping manifest `docs/wiki-export/map.json`
+  * Post-fix validation for links/headings consistency
+* **Acceptance:**
+  * Re-analysis shows reduced unresolved `MAJOR|MODERATE` refactor findings in targeted categories.
+  * Migration mode emits deterministic wiki export artifacts and mapping manifest.
+* **Demo commands:**
+  * `python tools/docs/apply_refactor_fixes.py --report .vibe/docs/refactor_report.json --apply`
+  * `python tools/docs/doc_refactor_report.py --repo-root . --out .vibe/docs/refactor_report.after.json`
+* **Evidence:**
+  * Before/after counts by refactor category and generated migration artifact paths.
+
+---
+
+### 21A.5 — Workflow + skill packaging for continuous-documentation
+
+* **Objective:**  
+  Package the documentation loop as a first-class continuous skill aligned with existing continuous workflow skills.
+* **Deliverables:**
+  * `workflows/continuous-documentation.yaml` with steps:
+    - `prompt.docs_gap_analysis`
+    - `prompt.docs_gap_fix`
+    - `prompt.docs_refactor_analysis`
+    - `prompt.docs_refactor_fix`
+  * `.codex/skills/continuous-documentation/SKILL.md`
+  * `.codex/skills/continuous-documentation/scripts/continuous_documentation.py`
+  * Docs updates: `docs/base_skills.md`, `docs/agent_skill_packs.md`, `docs/skill_lifecycle.md`
+* **Acceptance:**
+  * `workflow_engine` recognizes the new workflow and step ordering.
+  * `skillctl` validation passes for the new skill.
+  * Runner script supports interactive and non-interactive loop modes matching existing continuous skills.
+* **Demo commands:**
+  * `python tools/workflow_engine.py describe continuous-documentation`
+  * `python tools/skillctl.py validate .codex/skills/continuous-documentation`
+* **Evidence:**
+  * Workflow description output and skill validation output captured in `.vibe/STATE.md` during implementation/review.
+
+---
