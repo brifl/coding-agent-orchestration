@@ -90,6 +90,22 @@ With a defined backlog in `.vibe/PLAN.md` and no active issues, the common caden
 `implement -> review (auto-advance)` (repeat), with `consolidation -> context_capture`
 inserted at stage transitions.
 
+### Active issue schema
+
+Use one strict issue format in `.vibe/STATE.md`:
+
+```
+- [ ] ISSUE-123: Short title
+  - Severity: QUESTION|MINOR|MAJOR|BLOCKER
+  - Status: OPEN|IN_PROGRESS|BLOCKED|RESOLVED
+  - Owner: agent|human
+  - Unblock Condition: ...
+  - Evidence Needed: ...
+  - Notes: ...
+```
+
+`agentctl validate --strict` treats missing required fields as validation errors.
+
 ## Context snapshots
 
 Stage 10 introduced `.vibe/CONTEXT.md` to capture only the critical context:

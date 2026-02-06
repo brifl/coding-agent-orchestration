@@ -77,6 +77,15 @@ REQUIRED STATE MUTATIONS
 - Add evidence from demo/verification commands.
 - Add or update issues for any unresolved ambiguity/failure.
 
+ACTIVE ISSUE BLOCK (required format)
+- [ ] ISSUE-123: Short title
+  - Severity: QUESTION|MINOR|MAJOR|BLOCKER
+  - Status: OPEN|IN_PROGRESS|BLOCKED|RESOLVED
+  - Owner: agent|human
+  - Unblock Condition: Specific condition to proceed
+  - Evidence Needed: Command/output/link that closes the issue
+  - Notes: Optional context
+
 REQUIRED COMMANDS
 - Run checkpoint demo commands from `.vibe/PLAN.md` (or closest equivalent if paths changed).
 - Run `git status --porcelain` before and after commit.
@@ -129,12 +138,21 @@ ALLOWED FILES
 REQUIRED STATE MUTATIONS
 - FAIL path:
   - Set status to `IN_PROGRESS` or `BLOCKED`.
-  - Add/update issues with severity and remaining work.
+  - Add/update issues using the required issue block schema.
 - PASS path:
   - Determine next checkpoint in PLAN order (skip `(DONE)`, `(SKIPPED)`, `(SKIP)` entries).
   - If no next checkpoint exists: keep current checkpoint, set status `DONE`, add "plan exhausted" evidence note.
   - If next checkpoint is in the same stage: update checkpoint to next and set status `NOT_STARTED` (auto-advance).
   - If next checkpoint is in a different stage: keep current checkpoint as `DONE` so dispatcher routes to consolidation.
+
+ACTIVE ISSUE BLOCK (required format)
+- [ ] ISSUE-123: Short title
+  - Severity: QUESTION|MINOR|MAJOR|BLOCKER
+  - Status: OPEN|IN_PROGRESS|BLOCKED|RESOLVED
+  - Owner: agent|human
+  - Unblock Condition: Specific condition to proceed
+  - Evidence Needed: Command/output/link that closes the issue
+  - Notes: Optional context
 
 REQUIRED COMMANDS
 - Re-run demo commands from the active checkpoint (or equivalent).
@@ -186,6 +204,15 @@ REQUIRED STATE MUTATIONS
 - For unresolved issues: keep active and update notes with what is still required.
 - Add evidence for each resolved issue.
 - If blocked on missing information, add up to 2 explicit questions.
+
+ACTIVE ISSUE BLOCK (required format)
+- [ ] ISSUE-123: Short title
+  - Severity: QUESTION|MINOR|MAJOR|BLOCKER
+  - Status: OPEN|IN_PROGRESS|BLOCKED|RESOLVED
+  - Owner: agent|human
+  - Unblock Condition: Specific condition to proceed
+  - Evidence Needed: Command/output/link that closes the issue
+  - Notes: Optional context
 
 REQUIRED COMMANDS
 - Run only commands needed to prove issue resolution (or validate no code change needed).
@@ -465,9 +492,9 @@ CONTRACT
 - `.vibe/PLAN.md` lists checkpoints with acceptance criteria.
 
 MODE
-- Single-loop: execute one loop, update STATE.md, then stop.
-- Continuous: invoke `python tools/agentctl.py next` to get the next prompt, execute it, repeat until stop.
-- You have full file editing and command execution capabilities.
+- Single-loop: execute exactly one loop, update STATE, stop.
+- Continuous: repeat dispatcher loops until `recommended_role: "stop"`.
+- You have file editing + shell command capability.
 
 READ ORDER
 1) `AGENTS.md` (optional if already read this session)
@@ -475,11 +502,10 @@ READ ORDER
 3) `.vibe/PLAN.md`
 4) `.vibe/HISTORY.md` (optional)
 
-EXECUTION
-- Run `python tools/agentctl.py --repo-root . next --format json` to get recommended prompt
-- Fetch prompt body: `python tools/prompt_catalog.py prompts/template_prompts.md get <prompt_id>`
-- Execute the prompt, update STATE.md, commit changes
-- For continuous mode: loop until agentctl returns `recommended_role: "stop"`
+STANDARD COMMANDS
+1) `python tools/agentctl.py --repo-root . --format json next`
+2) `python tools/prompt_catalog.py prompts/template_prompts.md get <prompt_id>`
+3) Execute prompt loop, update `.vibe/STATE.md`, commit changes when tracked files changed.
 
 OUTPUT
 A) Current focus (stage / checkpoint / status)
@@ -504,9 +530,9 @@ CONTRACT
 - `.vibe/PLAN.md` is the checkpoint backlog with acceptance criteria.
 
 MODE
-- Single-loop: execute one loop, update STATE.md, then stop.
-- Continuous: invoke `python tools/agentctl.py next` to get the next prompt, execute it, repeat until stop.
-- You have full file editing and command execution capabilities.
+- Single-loop: execute exactly one loop, update STATE, stop.
+- Continuous: repeat dispatcher loops until `recommended_role: "stop"`.
+- You have file editing + shell command capability.
 
 READ ORDER
 1) `AGENTS.md` (optional if already read this session)
@@ -514,11 +540,10 @@ READ ORDER
 3) `.vibe/PLAN.md`
 4) `.vibe/HISTORY.md` (optional)
 
-EXECUTION
-- Run `python tools/agentctl.py --repo-root . next --format json` to get recommended prompt
-- Fetch prompt body: `python tools/prompt_catalog.py prompts/template_prompts.md get <prompt_id>`
-- Execute the prompt, update STATE.md, commit changes
-- For continuous mode: loop until agentctl returns `recommended_role: "stop"`
+STANDARD COMMANDS
+1) `python tools/agentctl.py --repo-root . --format json next`
+2) `python tools/prompt_catalog.py prompts/template_prompts.md get <prompt_id>`
+3) Execute prompt loop, update `.vibe/STATE.md`, commit changes when tracked files changed.
 
 REQUIRED OUTPUT
 1) Current focus (stage / checkpoint / status).
@@ -544,9 +569,9 @@ CONTRACT
 - `.vibe/PLAN.md` is the checkpoint backlog with acceptance and demo commands.
 
 MODE
-- Single-loop: execute one loop, update STATE.md, then stop.
-- Continuous: invoke `python tools/agentctl.py next` to get the next prompt, execute it, repeat.
-- You have file editing and command execution capabilities in VS Code / CLI mode.
+- Single-loop: execute exactly one loop, update STATE, stop.
+- Continuous: repeat dispatcher loops until `recommended_role: "stop"` (or manual stop if required by environment).
+- You have file editing + shell command capability in VS Code/CLI mode.
 
 READ ORDER
 1) `AGENTS.md` (optional if already read this session)
@@ -554,11 +579,10 @@ READ ORDER
 3) `.vibe/PLAN.md`
 4) `.vibe/HISTORY.md` (optional)
 
-EXECUTION
-- Run `python tools/agentctl.py --repo-root . next --format json` to get recommended prompt
-- Fetch prompt body: `python tools/prompt_catalog.py prompts/template_prompts.md get <prompt_id>`
-- Execute the prompt, update STATE.md, commit changes
-- For continuous mode: loop until agentctl returns `recommended_role: "stop"` or manual stop
+STANDARD COMMANDS
+1) `python tools/agentctl.py --repo-root . --format json next`
+2) `python tools/prompt_catalog.py prompts/template_prompts.md get <prompt_id>`
+3) Execute prompt loop, update `.vibe/STATE.md`, commit changes when tracked files changed.
 
 REQUIRED OUTPUT
 1) Current focus (stage / checkpoint / status).

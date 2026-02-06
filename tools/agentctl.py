@@ -51,6 +51,7 @@ ALLOWED_STATUS = {
 # For prioritization (highest -> lowest)
 SEVERITY_ORDER = ["BLOCKER", "MAJOR", "MINOR", "QUESTION"]
 SEVERITIES = tuple(SEVERITY_ORDER)
+ISSUE_STATUS_VALUES = ("OPEN", "IN_PROGRESS", "BLOCKED", "RESOLVED")
 
 Role = Literal[
     "issues_triage",
@@ -70,6 +71,13 @@ class Issue:
     severity: str
     title: str
     line: str
+    issue_id: str | None = None
+    owner: str | None = None
+    status: str | None = None
+    unblock_condition: str | None = None
+    evidence_needed: str | None = None
+    checked: bool = False
+    severity_specified: bool = False
 
 
 @dataclass(frozen=True)
@@ -290,7 +298,7 @@ def _parse_issues_checkbox_format(text: str) -> tuple[Issue, ...]:
 
     issues: list[Issue] = []
     issue_head = re.compile(r"^\s*-\s*\[\s*([xX ]?)\s*\]\s*(.+?)\s*$")
-    severity_line = re.compile(r"(?im)^\s*-\s*Severity\s*:\s*(.+?)\s*$")
+    detail_line = re.compile(r"^\s*-\s*(?P<key>[A-Za-z][A-Za-z _-]*)\s*:\s*(?P<val>.+?)\s*$")
 
     i = 0
     while i < len(section_lines):
@@ -306,26 +314,123 @@ def _parse_issues_checkbox_format(text: str) -> tuple[Issue, ...]:
             i += 1
             continue
 
-        sev: str | None = None
+        checked = m.group(1).strip().lower() == "x"
+        issue_id: str | None = None
+        id_match = re.match(r"(?i)^(ISSUE-[A-Za-z0-9_.-]+)\s*:\s*(.+)$", title)
+        if id_match:
+            issue_id = id_match.group(1).upper()
+
+        fields: dict[str, str] = {}
         j = i + 1
         while j < len(section_lines):
             nxt = section_lines[j]
             if issue_head.match(nxt):
                 break
             if nxt.strip() == "":
-                break
-            sm = severity_line.match(nxt)
-            if sm and sev is None:
-                sev = sm.group(1).strip().split()[0].upper()
+                j += 1
+                continue
+            dm = detail_line.match(nxt)
+            if dm:
+                key = _normalize_issue_detail_key(dm.group("key"))
+                if key and key not in fields:
+                    fields[key] = dm.group("val").strip()
             j += 1
 
+        sev_raw = fields.get("severity")
+        sev = sev_raw.split()[0].upper() if sev_raw else None
         if sev not in SEVERITIES:
             sev = "QUESTION"
 
-        issues.append(Issue(severity=sev, title=title, line=line))
+        status_raw = fields.get("status")
+        status = status_raw.split()[0].upper() if status_raw else None
+
+        issues.append(
+            Issue(
+                severity=sev,
+                title=title,
+                line=line,
+                issue_id=issue_id,
+                owner=fields.get("owner"),
+                status=status,
+                unblock_condition=fields.get("unblock_condition"),
+                evidence_needed=fields.get("evidence_needed"),
+                checked=checked,
+                severity_specified=sev_raw is not None,
+            )
+        )
         i = j
 
     return tuple(issues)
+
+
+def _normalize_issue_detail_key(raw_key: str) -> str | None:
+    normalized = re.sub(r"[^a-z0-9]+", "_", raw_key.strip().lower()).strip("_")
+    aliases = {
+        "severity": "severity",
+        "owner": "owner",
+        "status": "status",
+        "unblock_condition": "unblock_condition",
+        "unblock": "unblock_condition",
+        "evidence_needed": "evidence_needed",
+        "evidence": "evidence_needed",
+        "notes": "notes",
+    }
+    return aliases.get(normalized)
+
+
+def _is_placeholder_value(value: str | None) -> bool:
+    if value is None:
+        return True
+    trimmed = value.strip()
+    if not trimmed:
+        return True
+    lowered = trimmed.lower()
+    if lowered in {"none", "none.", "tbd", "todo", "unknown", "n/a"}:
+        return True
+    return "<" in trimmed and ">" in trimmed
+
+
+def _validate_issue_schema(issues: tuple[Issue, ...]) -> tuple[str, ...]:
+    messages: list[str] = []
+    for issue in issues:
+        if issue.issue_id is None:
+            messages.append(
+                f"Active issue '{issue.title}' should use 'ISSUE-<id>: <title>' in the issue header."
+            )
+            continue
+
+        missing: list[str] = []
+        if not issue.severity_specified:
+            missing.append("Severity")
+        if _is_placeholder_value(issue.owner):
+            missing.append("Owner")
+        if _is_placeholder_value(issue.status):
+            missing.append("Status")
+        elif issue.status not in ISSUE_STATUS_VALUES:
+            messages.append(
+                f"Active issue {issue.issue_id} has invalid Status '{issue.status}'. "
+                f"Allowed: {', '.join(ISSUE_STATUS_VALUES)}."
+            )
+        if _is_placeholder_value(issue.unblock_condition):
+            missing.append("Unblock Condition")
+        if _is_placeholder_value(issue.evidence_needed):
+            missing.append("Evidence Needed")
+
+        if missing:
+            messages.append(
+                f"Active issue {issue.issue_id} missing required field(s): {', '.join(missing)}."
+            )
+
+        if issue.checked and issue.status not in {"RESOLVED"}:
+            messages.append(
+                f"Active issue {issue.issue_id} is checked but Status is not RESOLVED."
+            )
+        if not issue.checked and issue.status == "RESOLVED":
+            messages.append(
+                f"Active issue {issue.issue_id} is unresolved checkbox but Status is RESOLVED."
+            )
+
+    return tuple(messages)
 
 
 def _resolve_path(repo_root: Path, raw_path: str) -> Path:
@@ -626,6 +731,10 @@ def validate(repo_root: Path, strict: bool) -> ValidationResult:
     elif state.status not in ALLOWED_STATUS:
         allowed = ", ".join(sorted(ALLOWED_STATUS))
         errors.append(f".vibe/STATE.md: invalid status '{state.status}'. Allowed: {allowed}")
+
+    issue_schema_messages = _validate_issue_schema(state.issues)
+    for message in issue_schema_messages:
+        (errors if strict else warnings).append(f".vibe/STATE.md: {message}")
 
     # Evidence path is optional; warn if missing
     if not state.evidence_path:
@@ -1072,7 +1181,16 @@ def cmd_validate(args: argparse.Namespace) -> int:
             "checkpoint": res.state.checkpoint,
             "status": res.state.status,
             "evidence_path": res.state.evidence_path,
-            "issues": [{"severity": i.severity, "title": i.title} for i in res.state.issues],
+            "issues": [
+                {
+                    "id": i.issue_id,
+                    "severity": i.severity,
+                    "status": i.status,
+                    "owner": i.owner,
+                    "title": i.title,
+                }
+                for i in res.state.issues
+            ],
         }
     if res.plan_check:
         payload["plan_check"] = {

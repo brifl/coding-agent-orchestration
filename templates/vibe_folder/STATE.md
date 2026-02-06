@@ -33,8 +33,11 @@
 <!-- Keep only active issues here. Move resolved items to HISTORY.md. -->
 - [ ] ISSUE-001: <short title>
   - Severity: QUESTION <!-- QUESTION | MINOR | MAJOR | BLOCKER -->
+  - Status: OPEN <!-- OPEN | IN_PROGRESS | BLOCKED | RESOLVED -->
   - Owner: agent|human
-  - Notes: <what is needed to proceed>
+  - Unblock Condition: <what must be true to proceed>
+  - Evidence Needed: <command/output/link proving resolution>
+  - Notes: <optional context>
 
 ## Decisions
 <!-- Only decisions that matter for future work. -->

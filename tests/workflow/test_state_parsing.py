@@ -12,6 +12,7 @@ from agentctl import (
     _clean_status,
     _parse_issues,
     _slice_active_issues_section,
+    _validate_issue_schema,
 )
 
 
@@ -139,12 +140,21 @@ class TestParseIssues:
 
 - [ ] ISSUE-001: Test issue
   - Severity: MAJOR
+  - Status: OPEN
+  - Owner: agent
+  - Unblock Condition: Clarify API contract
+  - Evidence Needed: Failing test output
   - Notes: Some notes
 """
         issues = _parse_issues(text)
         assert len(issues) == 1
         # Issue has: severity, title, line (not id)
         assert issues[0].severity == "MAJOR"
+        assert issues[0].issue_id == "ISSUE-001"
+        assert issues[0].status == "OPEN"
+        assert issues[0].owner == "agent"
+        assert issues[0].unblock_condition == "Clarify API contract"
+        assert issues[0].evidence_needed == "Failing test output"
         assert "ISSUE-001" in issues[0].title
 
     def test_blocker_format(self):
@@ -156,3 +166,18 @@ class TestParseIssues:
         issues = _parse_issues(text)
         assert len(issues) == 1
         assert issues[0].severity == "BLOCKER"
+
+    def test_issue_schema_validation(self):
+        text = """## Active issues
+
+- [ ] ISSUE-123: Missing fields example
+  - Severity: MINOR
+  - Owner: agent
+"""
+        issues = _parse_issues(text)
+        messages = _validate_issue_schema(issues)
+        assert len(messages) == 1
+        assert "ISSUE-123" in messages[0]
+        assert "Status" in messages[0]
+        assert "Unblock Condition" in messages[0]
+        assert "Evidence Needed" in messages[0]

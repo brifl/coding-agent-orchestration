@@ -86,7 +86,10 @@ Build a deterministic chunking library that splits files into indexed units suit
 
 - [ ] ISSUE-009: Skills fail to load outside current repo (vendor_imports clone collision)
   - Severity: MINOR
+  - Status: OPEN
   - Owner: agent
+  - Unblock Condition: Confirm Codex recommended-skill clone/update behavior no longer fails when vendor_imports target already exists.
+  - Evidence Needed: Successful recommended-skills load in Codex app (or product-side fix/confirmation) without manual cleanup.
   - Notes: External error seen in Codex app: "Unable to load recommended skills: git clone failed: fatal: destination path '\\wsl.localhost\\Ubuntu\\home\\brifl\\.codex\\vendor_imports\\skills' already exists and is not an empty directory." Local tooling now normalizes UNC-style `CODEX_HOME` paths and cross-repo discovery is verified. Remaining work is product-side behavior for recommended skill vendor clone/update handling. Docs for reference: https://developers.openai.com/codex/skills/
 
 ## Decisions
