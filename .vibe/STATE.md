@@ -12,31 +12,28 @@
 ## Current focus
 
 - Stage: 21
-- Checkpoint: 21.10
-- Status: IN_REVIEW  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
+- Checkpoint: 21.11
+- Status: NOT_STARTED  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
 
 ## Objective (current checkpoint)
 
-Package RLM as a first-class skill usable across agents.
+Prove RLM usefulness on real “big context” problems.
 
 ## Deliverables (current checkpoint)
 
-- `skills/rlm-tools/SKILL.yaml`
-- Entrypoints:
-  - `rlm validate`
-  - `rlm bundle`
-  - `rlm run`
-  - `rlm step`
-  - `rlm resume`
-  - `rlm providers`
-- `docs/rlm_agents.md`
+- `tasks/rlm/`:
+  - `repo_comprehension.json`
+  - `change_impact.json`
+  - `doc_synthesis.json`
+- `tools/rlm/eval_smoke.py`
 
 ## Acceptance (current checkpoint)
 
-- `skillctl validate skills/rlm-tools` passes.
+- At least one task demonstrates bundling, multi-iteration runtime reasoning, subcalls, and final artifact creation.
 
 ## Work log (current session)
 
+- 2026-02-06: Review PASS — 21.10 acceptance met (`skillctl validate skills/rlm-tools` passed) with adversarial probes confirming validation failures for malformed skill manifest and invalid provider selection; auto-advanced to 21.11 and set status to NOT_STARTED.
 - 2026-02-06: Implemented 21.10 — packaged `rlm-tools` skill with `skills/rlm-tools/SKILL.yaml`, added multi-command wrapper `skills/rlm-tools/rlm.py` for `rlm validate|bundle|run|step|resume|providers`, and documented cross-agent usage in `docs/rlm_agents.md`; `skillctl validate skills/rlm-tools` passes; moved status to IN_REVIEW.
 - 2026-02-06: Review PASS — 21.8 acceptance met with deterministic provider-choice reruns (`provider_choice_match=true`) plus adversarial probes (invalid policy schema rejected, disallowed explicit provider blocked at runtime); auto-advanced to 21.10 and set status to NOT_STARTED.
 - 2026-02-06: Implemented 21.8 — added deterministic provider-policy selection (`primary` + ordered `fallback` + remaining `allowed`) with explicit-provider allowlist enforcement and deterministic provider-fallback behavior; tightened task schema checks (`primary in allowed`, fallback subset), added `tasks/rlm/provider_policy_example.json`, and verified repeat runs yield identical provider-choice sequences; moved status to IN_REVIEW.
@@ -55,9 +52,7 @@ Package RLM as a first-class skill usable across agents.
 
 ## Evidence
 
-- `python3 tools/skillctl.py validate skills/rlm-tools` -> `OK: skills/rlm-tools`.
-- `python3 skills/rlm-tools/rlm.py --help` shows entrypoints `validate|bundle|run|step|resume|providers`.
-- `python3 skills/rlm-tools/rlm.py validate tasks/rlm/provider_policy_example.json` -> `VALID: tasks/rlm/provider_policy_example.json`.
+- (Pending for checkpoint 21.11; add eval harness and reference-task evidence during implementation/review.)
 
 ## Active issues
 
