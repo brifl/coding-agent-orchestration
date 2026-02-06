@@ -85,6 +85,7 @@ EVIDENCE_STRENGTH_VALUES = ("LOW", "MEDIUM", "HIGH")
 LOOP_REPORT_MAX_FINDINGS = 5
 CONFIDENCE_MIN_REQUIRED = 0.75
 IDEA_IMPACT_TAG_RE = re.compile(r"\[(MAJOR|MODERATE|MINOR)\]", re.IGNORECASE)
+WORK_LOG_CONSOLIDATION_CAP = 10
 
 Role = Literal[
     "issues_triage",
@@ -1202,6 +1203,17 @@ def validate(repo_root: Path, strict: bool) -> ValidationResult:
     issue_schema_messages = _validate_issue_schema(state.issues)
     for message in issue_schema_messages:
         (errors if strict else warnings).append(f".vibe/STATE.md: {message}")
+
+    # Work log size check
+    state_text = _read_text(state_path)
+    sections = _parse_context_sections(state_text)
+    work_log_lines = _get_section_lines(sections, "Work log (current session)")
+    work_log_entries = sum(1 for line in work_log_lines if re.match(r"^\s*-\s+", line))
+    if work_log_entries > WORK_LOG_CONSOLIDATION_CAP:
+        warnings.append(
+            f".vibe/STATE.md: work log has {work_log_entries} entries "
+            f"(>{WORK_LOG_CONSOLIDATION_CAP}); consider running consolidation to prune."
+        )
 
     # Evidence path is optional; warn if missing
     if not state.evidence_path:

@@ -35,6 +35,7 @@ Upgrade the indexer to work at chunk granularity with chunk-level incremental up
 
 ## Work log (current session)
 
+- 2026-02-06: Process improvement — added concrete work-log cap (10 entries) to consolidation prompt; added WORK_LOG_CONSOLIDATION_CAP constant and validation warning to agentctl.py; added 2 tests; all 25 tests pass.
 - 2026-02-05: Review PASS — 20.1 acceptance met; all 5 criteria verified with HIGH confidence; auto-advanced to 20.2; status set to NOT_STARTED.
 - 2026-02-05: Implemented 20.1 — chunker.py with Python/Markdown/Generic/Fallback strategies; import grouping; all 5 acceptance criteria pass; status set to IN_REVIEW.
 - 2026-02-05: Resolved ISSUE-011 — added installable `vibe-one-loop` and `vibe-run` skills; wired bootstrap + skillset + docs to include them.

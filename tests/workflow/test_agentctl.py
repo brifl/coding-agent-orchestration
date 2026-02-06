@@ -8,12 +8,14 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent / "tools"))
 
 from agentctl import (
+    WORK_LOG_CONSOLIDATION_CAP,
     _parse_plan_checkpoint_ids,
     _get_stage_for_checkpoint,
     _detect_stage_transition,
     _is_checkpoint_marked_done,
     _next_checkpoint_after,
     _extract_checkpoint_section,
+    validate,
 )
 
 
@@ -241,3 +243,50 @@ Content here.
         section = _extract_checkpoint_section(plan, "1.0")
         assert section is not None
         assert "Content here" in section
+
+
+class TestWorkLogValidationWarning:
+    """Tests for work log size validation warning."""
+
+    def test_work_log_over_cap_produces_warning(self, tmp_path):
+        vibe = tmp_path / ".vibe"
+        vibe.mkdir()
+        entries = "\n".join(f"- Entry {i}" for i in range(WORK_LOG_CONSOLIDATION_CAP + 5))
+        (vibe / "STATE.md").write_text(
+            f"# STATE\n\n## Current focus\n\n- Stage: 1\n- Checkpoint: 1.0\n"
+            f"- Status: NOT_STARTED\n\n## Work log (current session)\n\n{entries}\n\n"
+            f"## Active issues\n\n(none)\n",
+            encoding="utf-8",
+        )
+        (vibe / "PLAN.md").write_text(
+            "# PLAN\n\n## Stage 1 — Test\n\n### 1.0 — Test checkpoint\n\n"
+            "* **Objective:**\n  Test\n* **Deliverables:**\n  Test\n"
+            "* **Acceptance:**\n  Test\n* **Demo commands:**\n  * `echo test`\n"
+            "* **Evidence:**\n  Test\n",
+            encoding="utf-8",
+        )
+        result = validate(tmp_path, strict=False)
+        work_log_warnings = [w for w in result.warnings if "work log" in w]
+        assert len(work_log_warnings) == 1
+        assert f">{WORK_LOG_CONSOLIDATION_CAP}" in work_log_warnings[0]
+
+    def test_work_log_under_cap_no_warning(self, tmp_path):
+        vibe = tmp_path / ".vibe"
+        vibe.mkdir()
+        entries = "\n".join(f"- Entry {i}" for i in range(WORK_LOG_CONSOLIDATION_CAP - 2))
+        (vibe / "STATE.md").write_text(
+            f"# STATE\n\n## Current focus\n\n- Stage: 1\n- Checkpoint: 1.0\n"
+            f"- Status: NOT_STARTED\n\n## Work log (current session)\n\n{entries}\n\n"
+            f"## Active issues\n\n(none)\n",
+            encoding="utf-8",
+        )
+        (vibe / "PLAN.md").write_text(
+            "# PLAN\n\n## Stage 1 — Test\n\n### 1.0 — Test checkpoint\n\n"
+            "* **Objective:**\n  Test\n* **Deliverables:**\n  Test\n"
+            "* **Acceptance:**\n  Test\n* **Demo commands:**\n  * `echo test`\n"
+            "* **Evidence:**\n  Test\n",
+            encoding="utf-8",
+        )
+        result = validate(tmp_path, strict=False)
+        work_log_warnings = [w for w in result.warnings if "work log" in w]
+        assert len(work_log_warnings) == 0

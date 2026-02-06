@@ -346,7 +346,7 @@ REQUIRED COMMANDS
 EXECUTION
 1) Archive completed stages into `.vibe/HISTORY.md` with concise stage summaries.
 2) Prune `.vibe/STATE.md`:
-   - keep recent work log entries only
+   - keep at most 10 work log entries (remove oldest first)
    - clear evidence for old checkpoints
    - sync objective/deliverables/acceptance to active checkpoint
 3) Prune `.vibe/PLAN.md`:
