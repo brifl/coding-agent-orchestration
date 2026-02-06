@@ -13,7 +13,7 @@
 
 - Stage: 21
 - Checkpoint: 21.2
-- Status: NOT_STARTED  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
+- Status: IN_REVIEW  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
 
 ## Objective (current checkpoint)
 
@@ -34,6 +34,7 @@ Build deterministic context bundles that can exceed model context size.
 
 ## Work log (current session)
 
+- 2026-02-06: Implemented 21.2 — added `tools/rlm/context_bundle.py` with deterministic file ordering and line-stable chunking; demo build produced bundle artifacts and probes confirmed deterministic reruns plus one-line edit locality; moved status to IN_REVIEW.
 - 2026-02-06: Review PASS — 21.1 acceptance met with demo + adversarial probes (semantic invalid schema and malformed JSON); auto-advanced to 21.2 and set status to NOT_STARTED.
 - 2026-02-06: Implemented 21.1 — added `docs/rlm_task_schema.md`, `tools/rlm/validate_task.py`, and example tasks under `tasks/rlm/`; validated pass path on `tasks/rlm/example.json` and fail-fast diagnostics on malformed input; moved status to IN_REVIEW.
 - 2026-02-06: Review PASS — 21.0 acceptance met (`rlm_overview` + `rlm_glossary` + decision table) with adversarial probes for required sections/terms; auto-advanced to 21.1 and set status to NOT_STARTED.
@@ -43,7 +44,6 @@ Build deterministic context bundles that can exceed model context size.
 - 2026-02-06: Review PASS — 20.4 acceptance met (docs/policy, install, tartu pipeline); auto-advanced to 20.5; status set to NOT_STARTED.
 - 2026-02-06: Implemented 20.4 — expanded rag-index SKILL.md usage docs + RAG usage policy; validated `skillctl install` and pipeline query against `/mnt/c/src/tartu`; moved to IN_REVIEW.
 - 2026-02-06: Review PASS — 20.3 acceptance met (format, diversity, budget, mode fallback) with adversarial probes; auto-advanced to 20.4; status set to NOT_STARTED.
-- 2026-02-06: Implemented 20.3 — retrieve.py now emits provenance headings + language fences, enforces max-per-file and max-context-chars, and supports mode fallback (`sem`/`hybrid` -> `lex`); moved to IN_REVIEW.
 
 ## Workflow state
 
@@ -51,7 +51,12 @@ Build deterministic context bundles that can exceed model context size.
 
 ## Evidence
 
-(Checkpoint 21.2 — not yet started)
+- path: tools/rlm/context_bundle.py
+  - cmd: `python3 tools/rlm/context_bundle.py build --task tasks/rlm/example.json`
+  - result: PASS — bundle emitted manifest/chunks/meta under `.vibe/rlm/bundles/repo_comprehension_demo` (`SOURCE_COUNT: 10`, `CHUNK_COUNT: 934`).
+- path: tools/rlm/context_bundle.py
+  - cmd: `python3 - <<'PY' ...` (determinism + one-line edit locality probe)
+  - result: PASS — repeated builds were byte-identical; one-line edit changed only 1 chunk in the edited file.
 
 ## Active issues
 
