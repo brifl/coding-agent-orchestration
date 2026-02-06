@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -63,6 +64,60 @@ def _record_loop_result(agentctl_path: Path, repo_root: Path, loop_result_line: 
     p = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
     if p.returncode != 0:
         raise RuntimeError(p.stderr.strip() or p.stdout.strip() or "loop-result command failed.")
+
+
+def _extract_loop_result_line(output: str) -> str | None:
+    found: str | None = None
+    for raw in output.splitlines():
+        line = raw.strip()
+        if line.startswith("LOOP_RESULT:"):
+            found = line
+    return found
+
+
+def _run_executor(
+    executor_cmd: str,
+    repo_root: Path,
+    decision: dict,
+) -> str:
+    env = os.environ.copy()
+    env.update(
+        {
+            "VIBE_REPO_ROOT": str(repo_root),
+            "VIBE_DECISION_JSON": json.dumps(decision, separators=(",", ":")),
+            "VIBE_RECOMMENDED_ROLE": str(decision.get("recommended_role") or ""),
+            "VIBE_PROMPT_ID": str(decision.get("recommended_prompt_id") or ""),
+            "VIBE_STAGE": str(decision.get("stage") or ""),
+            "VIBE_CHECKPOINT": str(decision.get("checkpoint") or ""),
+            "VIBE_STATUS": str(decision.get("status") or ""),
+        }
+    )
+    p = subprocess.run(
+        executor_cmd,
+        shell=True,
+        cwd=str(repo_root),
+        env=env,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+    )
+    if p.stdout:
+        sys.stdout.write(p.stdout)
+    if p.stderr:
+        sys.stderr.write(p.stderr)
+    if p.returncode != 0:
+        raise RuntimeError(
+            f"executor failed ({p.returncode}). "
+            f"stdout={p.stdout.strip()!r} stderr={p.stderr.strip()!r}"
+        )
+
+    loop_result_line = _extract_loop_result_line((p.stdout or "") + "\n" + (p.stderr or ""))
+    if not loop_result_line:
+        raise RuntimeError(
+            "executor completed but did not emit LOOP_RESULT line. "
+            "Expected output containing: LOOP_RESULT: {...}"
+        )
+    return loop_result_line
 
 
 def _prompt_for_loop_result(agentctl_path: Path, repo_root: Path) -> int:
@@ -124,6 +179,14 @@ def main() -> int:
     ap.add_argument("--max-loops", type=int, default=0, help="Loop cap for safety (0 = until stop)")
     ap.add_argument("--show-decision", action="store_true", help="Print agentctl decision JSON to stderr each loop")
     ap.add_argument(
+        "--executor",
+        default="",
+        help=(
+            "Optional shell command run after each emitted prompt. "
+            "Command must print a LOOP_RESULT line that this runner records automatically."
+        ),
+    )
+    ap.add_argument(
         "--non-interactive",
         action="store_true",
         help="Do not pause between loops. Use only when another process updates state.",
@@ -179,6 +242,15 @@ def main() -> int:
             return 2
 
         loop_count += 1
+        if args.executor:
+            try:
+                loop_result_line = _run_executor(args.executor, repo_root, decision)
+                _record_loop_result(agentctl_path, repo_root, loop_result_line)
+            except RuntimeError as exc:
+                print(f"ERROR: {exc}", file=sys.stderr)
+                return 2
+            continue
+
         if args.non_interactive:
             continue
         if not sys.stdin.isatty():

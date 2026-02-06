@@ -143,6 +143,39 @@ class ValidationResult:
     plan_check: PlanCheck | None
 
 
+def _iter_visible_markdown_lines(
+    text: str,
+    *,
+    keepends: bool = False,
+) -> Iterable[tuple[int, str, bool]]:
+    """Yield (line_no, line, is_visible) while hiding fenced-code block content.
+
+    Headings inside fenced code blocks are treated as invisible for parser logic.
+    """
+    lines = text.splitlines(keepends=keepends)
+    in_fence = False
+    fence_char = ""
+    fence_len = 0
+    fence_pat = re.compile(r"^\s*(`{3,}|~{3,})")
+
+    for line_no, line in enumerate(lines, start=1):
+        m = fence_pat.match(line)
+        if m:
+            token = m.group(1)
+            char = token[0]
+            length = len(token)
+            if not in_fence:
+                in_fence = True
+                fence_char = char
+                fence_len = length
+            elif char == fence_char and length >= fence_len:
+                in_fence = False
+            yield (line_no, line, False)
+            continue
+
+        yield (line_no, line, not in_fence)
+
+
 def _parse_plan_checkpoint_ids(plan_text: str) -> list[str]:
     """
     Extract checkpoint ids in order from headings.
@@ -157,9 +190,14 @@ def _parse_plan_checkpoint_ids(plan_text: str) -> list[str]:
     ids: list[str] = []
     # capture (DONE), (SKIPPED), or (SKIP) optionally, then capture the checkpoint id X.Y (with optional stage suffix)
     pat = re.compile(
-        rf"(?im)^\s*#{{3,6}}\s+(?:\(\s*(?:DONE|SKIPPED|SKIP)\s*\)\s+)?(?P<id>{CHECKPOINT_ID_PATTERN})\b"
+        rf"^\s*#{{3,6}}\s+(?:\(\s*(?:DONE|SKIPPED|SKIP)\s*\)\s+)?(?P<id>{CHECKPOINT_ID_PATTERN})\b"
     )
-    for m in pat.finditer(plan_text):
+    for _, line, is_visible in _iter_visible_markdown_lines(plan_text):
+        if not is_visible:
+            continue
+        m = pat.match(line)
+        if not m:
+            continue
         raw_id = m.group("id")
         try:
             ids.append(normalize_checkpoint_id(raw_id))
@@ -176,10 +214,11 @@ def _parse_stage_headings(plan_text: str) -> list[tuple[str, int, str]]:
       ## Stage 14 — Title
       ## (SKIP) Stage 14 — Title
     """
-    lines = plan_text.splitlines()
     results: list[tuple[str, int, str]] = []
-    stage_pat = re.compile(r"(?im)^##\s+(?:\(\s*SKIP\s*\)\s+)?Stage\s+(?P<stage>\S+)")
-    for idx, line in enumerate(lines, start=1):
+    stage_pat = re.compile(r"^##\s+(?:\(\s*SKIP\s*\)\s+)?Stage\s+(?P<stage>\S+)")
+    for idx, line, is_visible in _iter_visible_markdown_lines(plan_text):
+        if not is_visible:
+            continue
         m = stage_pat.match(line)
         if m:
             results.append((m.group("stage"), idx, line.rstrip()))
@@ -188,12 +227,15 @@ def _parse_stage_headings(plan_text: str) -> list[tuple[str, int, str]]:
 
 def _find_stage_bounds(plan_text: str, stage: str) -> tuple[int | None, int | None]:
     lines = plan_text.splitlines(keepends=True)
-    stage_pat = re.compile(rf"(?im)^##\s+(?:\(\s*SKIP\s*\)\s+)?Stage\s+{re.escape(stage)}\b")
-    next_stage_pat = re.compile(rf"(?im)^##\s+(?:\(\s*SKIP\s*\)\s+)?Stage\s+{STAGE_ID_PATTERN}\b")
+    indexed_lines = list(_iter_visible_markdown_lines(plan_text, keepends=True))
+    stage_pat = re.compile(rf"^##\s+(?:\(\s*SKIP\s*\)\s+)?Stage\s+{re.escape(stage)}\b")
+    next_stage_pat = re.compile(rf"^##\s+(?:\(\s*SKIP\s*\)\s+)?Stage\s+{STAGE_ID_PATTERN}\b")
     start_idx = None
     end_idx = None
 
-    for idx, line in enumerate(lines):
+    for idx, (_, line, is_visible) in enumerate(indexed_lines):
+        if not is_visible:
+            continue
         if start_idx is None and stage_pat.match(line):
             start_idx = idx
             continue
@@ -236,18 +278,19 @@ def _get_stage_for_checkpoint(plan_text: str, checkpoint_id: str) -> str | None:
 
     Returns the stage number as a string, or None if not found.
     """
-    lines = plan_text.splitlines()
     current_stage: str | None = None
-    stage_pat = re.compile(rf"(?im)^\s*##\s+(?:\(\s*SKIP\s*\)\s+)?Stage\s+(?P<stage>{STAGE_ID_PATTERN})\b")
+    stage_pat = re.compile(rf"^\s*##\s+(?:\(\s*SKIP\s*\)\s+)?Stage\s+(?P<stage>{STAGE_ID_PATTERN})\b")
     try:
         checkpoint_norm = normalize_checkpoint_id(checkpoint_id)
     except ValueError:
         checkpoint_norm = checkpoint_id
     checkpoint_pat = re.compile(
-        rf"(?im)^\s*#{{3,6}}\s+(?:\(\s*(?:DONE|SKIPPED|SKIP)\s*\)\s+)?{re.escape(checkpoint_norm)}\b"
+        rf"^\s*#{{3,6}}\s+(?:\(\s*(?:DONE|SKIPPED|SKIP)\s*\)\s+)?{re.escape(checkpoint_norm)}\b"
     )
 
-    for line in lines:
+    for _, line, is_visible in _iter_visible_markdown_lines(plan_text):
+        if not is_visible:
+            continue
         stage_match = stage_pat.match(line)
         if stage_match:
             current_stage = normalize_stage_id(stage_match.group("stage"))
@@ -277,8 +320,11 @@ def _is_checkpoint_marked_done(plan_text: str, checkpoint_id: str) -> bool:
 
     Note: (SKIP) is intentionally NOT matched here — skipped-for-later
     checkpoints are not considered done."""
-    pat = re.compile(rf"(?im)^\s*#{{3,6}}\s+\(\s*(?:DONE|SKIPPED)\s*\)\s+{re.escape(checkpoint_id)}\b")
-    return bool(pat.search(plan_text))
+    pat = re.compile(rf"^\s*#{{3,6}}\s+\(\s*(?:DONE|SKIPPED)\s*\)\s+{re.escape(checkpoint_id)}\b")
+    for _, line, is_visible in _iter_visible_markdown_lines(plan_text):
+        if is_visible and pat.match(line):
+            return True
+    return False
 
 
 def _is_checkpoint_skipped(plan_text: str, checkpoint_id: str) -> bool:
@@ -286,8 +332,11 @@ def _is_checkpoint_skipped(plan_text: str, checkpoint_id: str) -> bool:
 
     (SKIP) checkpoints are deferred — bypassed during advance but preserved
     during consolidation.  Removing the marker reactivates the checkpoint."""
-    pat = re.compile(rf"(?im)^\s*#{{3,6}}\s+\(\s*SKIP\s*\)\s+{re.escape(checkpoint_id)}\b")
-    return bool(pat.search(plan_text))
+    pat = re.compile(rf"^\s*#{{3,6}}\s+\(\s*SKIP\s*\)\s+{re.escape(checkpoint_id)}\b")
+    for _, line, is_visible in _iter_visible_markdown_lines(plan_text):
+        if is_visible and pat.match(line):
+            return True
+    return False
 
 
 def _next_checkpoint_after(plan_ids: list[str], current_id: str) -> str | None:
@@ -1066,8 +1115,11 @@ def load_state(repo_root: Path, state_path: Path | None = None) -> StateInfo:
 
 def _plan_has_stage(plan_text: str, stage: str) -> bool:
     # Matches: "## Stage 0 — Name" or "## (SKIP) Stage 0 - Name" or "## Stage 0"
-    pat = re.compile(rf"(?im)^##\s+(?:\(\s*SKIP\s*\)\s+)?Stage\s+{re.escape(stage)}\b")
-    return bool(pat.search(plan_text))
+    pat = re.compile(rf"^##\s+(?:\(\s*SKIP\s*\)\s+)?Stage\s+{re.escape(stage)}\b")
+    for _, line, is_visible in _iter_visible_markdown_lines(plan_text):
+        if is_visible and pat.match(line):
+            return True
+    return False
 
 
 def _extract_checkpoint_section(plan_text: str, checkpoint_id: str) -> str | None:
@@ -1080,24 +1132,37 @@ def _extract_checkpoint_section(plan_text: str, checkpoint_id: str) -> str | Non
       ### Checkpoint 0.0: Foo   (legacy)
       #### (DONE) 0.0 — Foo     (tolerant)
     """
+    indexed_lines = list(_iter_visible_markdown_lines(plan_text, keepends=True))
     head_pat = re.compile(
-        r"(?im)^(#{3,6})\s+.*?\b" + re.escape(checkpoint_id) + r"\b.*?$"
+        r"^\s*(#{3,6})\s+.*?\b" + re.escape(checkpoint_id) + r"\b.*?$"
     )
-    m = head_pat.search(plan_text)
-    if not m:
+
+    start_idx: int | None = None
+    level: int | None = None
+    for idx, (_, line, is_visible) in enumerate(indexed_lines):
+        if not is_visible:
+            continue
+        m = head_pat.match(line)
+        if m:
+            start_idx = idx
+            level = len(m.group(1))
+            break
+
+    if start_idx is None or level is None:
         return None
 
-    level = len(m.group(1))
-    start = m.start()
+    next_pat = re.compile(r"^\s*(#{1,6})\s+")
+    end_idx = len(indexed_lines)
+    for idx in range(start_idx + 1, len(indexed_lines)):
+        _, line, is_visible = indexed_lines[idx]
+        if not is_visible:
+            continue
+        nm = next_pat.match(line)
+        if nm and len(nm.group(1)) <= level:
+            end_idx = idx
+            break
 
-    next_pat = re.compile(r"(?im)^\s*(#{1,6})\s+")
-    for nm in next_pat.finditer(plan_text, m.end()):
-        next_level = len(nm.group(1))
-        if next_level <= level:
-            end = nm.start()
-            return plan_text[start:end].rstrip()
-
-    return plan_text[start:].rstrip()
+    return "".join(line for _, line, _ in indexed_lines[start_idx:end_idx]).rstrip()
 
 
 def check_plan_for_checkpoint(repo_root: Path, checkpoint_id: str) -> PlanCheck:

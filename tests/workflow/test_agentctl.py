@@ -68,6 +68,19 @@ Some description without checkpoints.
         ids = _parse_plan_checkpoint_ids(plan)
         assert ids == []
 
+    def test_ignores_checkpoint_headings_inside_fenced_blocks(self):
+        plan = """
+### 1.0 — First checkpoint
+
+```markdown
+### 9.9 — Example heading inside code fence
+```
+
+### 1.1 — Second checkpoint
+"""
+        ids = _parse_plan_checkpoint_ids(plan)
+        assert ids == ["1.0", "1.1"]
+
 
 class TestGetStageForCheckpoint:
     """Tests for _get_stage_for_checkpoint function."""
@@ -243,6 +256,74 @@ Content here.
         section = _extract_checkpoint_section(plan, "1.0")
         assert section is not None
         assert "Content here" in section
+
+    def test_fenced_heading_does_not_terminate_section(self):
+        plan = """
+## Stage 1
+
+### 1.0 — First checkpoint
+
+* **Objective:**
+  Test objective.
+
+```markdown
+### 9.9 — Fake heading in example
+```
+
+* **Acceptance:**
+  Real acceptance after fenced example.
+
+### 1.1 — Second checkpoint
+"""
+        section = _extract_checkpoint_section(plan, "1.0")
+        assert section is not None
+        assert "Real acceptance after fenced example." in section
+        assert "Second checkpoint" not in section
+
+
+def test_validate_strict_with_fenced_heading_examples(tmp_path):
+    vibe = tmp_path / ".vibe"
+    vibe.mkdir()
+    (vibe / "STATE.md").write_text(
+        "# STATE\n\n## Current focus\n\n"
+        "- Stage: 1\n- Checkpoint: 1.0\n- Status: NOT_STARTED\n\n"
+        "## Active issues\n\n(None)\n",
+        encoding="utf-8",
+    )
+    (vibe / "PLAN.md").write_text(
+        """# PLAN
+
+## Stage 1 — Test stage
+
+### 1.0 — Test checkpoint
+
+* **Objective:**
+  Objective text.
+
+* **Deliverables:**
+  * Deliverable text.
+
+```markdown
+### 9.9 — Fake heading in example
+* **Acceptance:**
+  fake acceptance in sample block
+```
+
+* **Acceptance:**
+  Real acceptance criteria.
+
+* **Demo commands:**
+  * `echo test`
+
+* **Evidence:**
+  * Real evidence criteria.
+""",
+        encoding="utf-8",
+    )
+
+    result = validate(tmp_path, strict=True)
+    assert result.ok is True
+    assert not any("missing 'Acceptance'" in msg for msg in result.errors)
 
 
 class TestWorkLogValidationWarning:
