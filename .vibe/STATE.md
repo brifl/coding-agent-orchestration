@@ -12,26 +12,25 @@
 ## Current focus
 
 - Stage: 21
-- Checkpoint: 21.6
-- Status: IN_REVIEW  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
+- Checkpoint: 21.8
+- Status: NOT_STARTED  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
 
 ## Objective (current checkpoint)
 
-Prevent runaway recursion and make subcalls replayable.
+Make provider choice deterministic and explicit.
 
 ## Deliverables (current checkpoint)
 
-- Budget enforcement (per run and per iteration)
-- Mandatory caching for subcall mode (`readwrite|readonly|off`)
-- Deterministic retry policy
-- `tools/rlm/replay.py`
+- Task schema fields for provider policy
+- Executor logic honoring primary/allowed/fallback ordering
 
 ## Acceptance (current checkpoint)
 
-- Second run with `--cache readonly` reproduces identical response hashes and final output.
+- Same task and config yields same provider choice.
 
 ## Work log (current session)
 
+- 2026-02-06: Review PASS — 21.6 acceptance met (`readwrite` -> `readonly` replay produced identical response hashes/final artifact), demo command rerun now works without `--fresh`, and adversarial probes confirmed expected failures for missing cache + subcall budget breach; auto-advanced to 21.8 and set status to NOT_STARTED.
 - 2026-02-06: Issues triage — resolved ISSUE-014 by resetting run-scoped runtime/trace/output artifacts at `executor.py run` start, so non-fresh reruns no longer load finalized runtime state; reran readonly demo command twice successfully; status set back to IN_REVIEW.
 - 2026-02-06: Review FAIL — reran 21.6 demo command exactly (`python3 skills/rlm-tools/executor.py run --task tasks/rlm/subcalls_example.json --cache readonly`) and found non-fresh reruns fail with `Runtime already finalized`; opened ISSUE-014 and moved status to IN_PROGRESS for targeted executor run-reset fix.
 - 2026-02-06: Implemented 21.6 — added subcall-mode cache policy enforcement (`readwrite|readonly|off` with mandatory explicit selection), per-iteration/per-run subcall budgets, deterministic retry tracing, and `tools/rlm/replay.py`; verified readonly replay reproduces identical response hashes/final artifact and captured adversarial budget/cache probes; moved status to IN_REVIEW.
@@ -52,15 +51,7 @@ Prevent runaway recursion and make subcalls replayable.
 
 ## Evidence
 
-- `python3 skills/rlm-tools/executor.py run --task tasks/rlm/subcalls_example.json --cache readwrite --fresh` and `python3 skills/rlm-tools/executor.py run --task tasks/rlm/subcalls_example.json --cache readonly --fresh` both completed with identical `response_hashes` and final artifact hash.
-- Replay summaries: `.vibe/rlm/runs/subcalls_example.readwrite.summary.json` and `.vibe/rlm/runs/subcalls_example.readonly.summary.json`; comparison artifact: `.vibe/rlm/runs/subcalls_example.compare.json` (`response_hashes_match=true`, `final_artifact_sha256_match=true`).
-- Readonly cache-hit trace evidence: `.vibe/rlm/runs/subcalls_example/trace.jsonl` contains `event=subcall`, `cache_status=hit`, `attempts=0`.
-- Mandatory cache enforcement probe: `.vibe/rlm/evidence/21.6/probe_missing_cache.log` shows `Subcall mode requires explicit --cache`.
-- Readonly cache-miss probe: `.vibe/rlm/runs/probe_cache_miss/trace.jsonl` records `Readonly cache miss ...` and run stops `STEP_ERROR`.
-- Per-iteration budget probe: `.vibe/rlm/runs/probe_per_iter_limit/trace.jsonl` records `Subcall budget exceeded for iteration 1`.
-- Per-run budget probe: `.vibe/rlm/runs/probe_total_limit/trace.jsonl` records `Subcall budget exceeded for run: max_subcalls_total=1`.
-- Deterministic retry probe: `.vibe/rlm/runs/probe_retry/trace.jsonl` subcall event shows `attempts=2` on first-call transient failure scenario.
-- ISSUE-014 fix verification: `python3 skills/rlm-tools/executor.py run --task tasks/rlm/subcalls_example.json --cache readonly` succeeds on repeated non-fresh invocations (no `Runtime already finalized` failure).
+- (Pending for checkpoint 21.8; add provider-selection determinism evidence during implementation/review.)
 
 ## Active issues
 
