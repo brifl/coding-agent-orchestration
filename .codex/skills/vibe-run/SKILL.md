@@ -23,6 +23,8 @@ dispatcher returns `recommended_role == "stop"`.
   - `python3 scripts/vibe_run.py --repo-root . --show-decision`
 - Non-interactive mode (advanced):
   - `python3 scripts/vibe_run.py --repo-root . --non-interactive --max-loops 10 --show-decision`
+- Run a specific workflow continuously (for example `continuous-refactor`):
+  - `python3 scripts/vibe_run.py --repo-root . --workflow continuous-refactor --show-decision`
 
 ## Notes
 

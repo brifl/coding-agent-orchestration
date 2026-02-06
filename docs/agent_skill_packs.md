@@ -17,6 +17,8 @@ All agents use the same prompt catalog and bootstraps:
   1) Run `$vibe-one-loop` for single-loop execution.
   2) Run `$vibe-run` for continuous execution (do not stop after one loop;
      it repeats until the dispatcher returns `recommended_role == "stop"`).
+  3) Run `$continuous-refactor` for continuous refactor-only execution
+     (workflow pinned to `continuous-refactor`).
 
 ## Claude Code
 
@@ -56,5 +58,6 @@ All agents use the same prompt catalog and bootstraps:
 
 ## Differences (explicit)
 
-- Codex supports continuous mode with `$vibe-run` (loops until dispatcher stop).
-- Other agents rely on manual or tool-enabled execution of single loops.
+- Codex supports continuous mode with `$vibe-run` and `$continuous-refactor`.
+- Other agents can use installed skill scripts in a tool-enabled environment,
+  or fall back to manual prompt execution.

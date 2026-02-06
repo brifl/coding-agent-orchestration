@@ -166,7 +166,7 @@ manual bootstraps found in `prompts/init/`.
 ## Single-loop vs continuous
 
 - **Single loop**: run one loop and stop (use `$vibe-one-loop` or manual prompts).
-- **Continuous**: loop until `agentctl` returns `recommended_role == "stop"`.
+- **Continuous**: loop until `agentctl` returns `recommended_role == "stop"` (use `$vibe-run` or `$continuous-refactor`).
 
 Codex's `$vibe-run` skill implements continuous mode. It must keep looping until
 the dispatcher says stop--never just one cycle.

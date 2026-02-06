@@ -31,6 +31,8 @@ skills:
     version: ">=1.0.0"
   - name: vibe-run
     version: ">=1.0.0"
+  - name: continuous-refactor
+    version: ">=1.0.0"
 ```
 
 ```yaml

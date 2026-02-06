@@ -21,6 +21,7 @@ These skills are defined in `docs/base_skills.md` and are **immutable**:
 | vibe-loop | Single loop execution | No |
 | vibe-one-loop | Single loop alias for compatibility | No |
 | vibe-run | Continuous execution | No |
+| continuous-refactor | Continuous refactor workflow execution | No |
 | agentctl | Dispatcher and validation | No (interface only) |
 
 **What "no breaking changes" means:**

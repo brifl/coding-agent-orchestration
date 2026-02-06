@@ -22,7 +22,7 @@ def _skills_root_from_this_script() -> Path:
     return Path(__file__).resolve().parents[2]
 
 
-def _run_agentctl_next(repo_root: Path, agentctl_path: Path) -> dict:
+def _run_agentctl_next(repo_root: Path, agentctl_path: Path, workflow: str = "") -> dict:
     cmd = [
         sys.executable,
         str(agentctl_path),
@@ -32,6 +32,8 @@ def _run_agentctl_next(repo_root: Path, agentctl_path: Path) -> dict:
         "json",
         "next",
     ]
+    if workflow:
+        cmd.extend(["--workflow", workflow])
     p = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
     if p.returncode != 0:
         raise RuntimeError(f"agentctl failed ({p.returncode}): {p.stderr.strip() or p.stdout.strip()}")
@@ -118,6 +120,7 @@ def main() -> int:
     ap = argparse.ArgumentParser(prog="vibe_run.py")
     ap.add_argument("--repo-root", default=".", help="Target repo root (default: current directory)")
     ap.add_argument("--catalog", default="", help="Optional path to template_prompts.md")
+    ap.add_argument("--workflow", default="", help="Optional workflow name passed to agentctl next")
     ap.add_argument("--max-loops", type=int, default=0, help="Loop cap for safety (0 = until stop)")
     ap.add_argument("--show-decision", action="store_true", help="Print agentctl decision JSON to stderr each loop")
     ap.add_argument(
@@ -144,7 +147,7 @@ def main() -> int:
             return 0
 
         try:
-            decision = _run_agentctl_next(repo_root, agentctl_path)
+            decision = _run_agentctl_next(repo_root, agentctl_path, args.workflow)
         except RuntimeError as exc:
             print(f"ERROR: {exc}", file=sys.stderr)
             return 2
