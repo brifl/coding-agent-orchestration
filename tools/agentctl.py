@@ -1528,6 +1528,21 @@ def _count_nonempty_signal_lines(lines: list[str]) -> int:
     return count
 
 
+def _consolidation_trigger_reason(repo_root: Path) -> str | None:
+    """Check if work log bloat warrants a consolidation loop."""
+    state_path = repo_root / ".vibe" / "STATE.md"
+    if not state_path.exists():
+        return None
+
+    sections = _parse_context_sections(_read_text(state_path))
+    work_log_lines = _get_section_lines(sections, "Work log (current session)")
+    work_log_entries = sum(1 for line in work_log_lines if re.match(r"^\s*-\s+", line))
+    if work_log_entries > WORK_LOG_CONSOLIDATION_CAP:
+        return f"Work log has {work_log_entries} entries (>{WORK_LOG_CONSOLIDATION_CAP}); consolidation needed to prune."
+
+    return None
+
+
 def _process_improvements_trigger_reason(repo_root: Path, workflow_flags: dict[str, bool]) -> str | None:
     if workflow_flags.get("RUN_PROCESS_IMPROVEMENTS"):
         return "Workflow flag RUN_PROCESS_IMPROVEMENTS is set."
@@ -1537,12 +1552,7 @@ def _process_improvements_trigger_reason(repo_root: Path, workflow_flags: dict[s
         return None
 
     sections = _parse_context_sections(_read_text(state_path))
-    work_log_lines = _get_section_lines(sections, "Work log (current session)")
     evidence_lines = _get_section_lines(sections, "Evidence")
-
-    work_log_entries = sum(1 for line in work_log_lines if re.match(r"^\s*-\s+", line))
-    if work_log_entries > 15:
-        return f"Work log has {work_log_entries} entries (>15)."
 
     evidence_signal_lines = _count_nonempty_signal_lines(evidence_lines)
     if evidence_signal_lines > 50:
@@ -1614,11 +1624,15 @@ def _recommend_next(state: StateInfo, repo_root: Path) -> tuple[Role, str]:
         if top in {"MAJOR", "QUESTION"}:
             return ("issues_triage", f"Active issues present (top impact: {top}).")
 
-        # Context capture is a first-class maintenance loop.
+        # Maintenance loops fire before implementation when NOT_STARTED.
         if state.status == "NOT_STARTED":
             context_reason = _context_capture_trigger_reason(repo_root, workflow_flags)
             if context_reason:
                 return ("context_capture", context_reason)
+
+            consolidation_reason = _consolidation_trigger_reason(repo_root)
+            if consolidation_reason:
+                return ("consolidation", consolidation_reason)
 
             process_reason = _process_improvements_trigger_reason(repo_root, workflow_flags)
             if process_reason:

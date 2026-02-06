@@ -10,7 +10,7 @@ from pathlib import Path
 # Add tools directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent.parent / "tools"))
 
-from agentctl import StateInfo, _recommend_next, _resolve_next_prompt_selection  # type: ignore
+from agentctl import WORK_LOG_CONSOLIDATION_CAP, StateInfo, _recommend_next, _resolve_next_prompt_selection  # type: ignore
 
 
 def _write_state(repo_root: Path, body: str) -> None:
@@ -95,7 +95,7 @@ def test_context_capture_flag_routes_to_context_capture(temp_repo: Path) -> None
     assert "RUN_CONTEXT_CAPTURE" in reason
 
 
-def test_work_log_bloat_routes_to_improvements(temp_repo: Path) -> None:
+def test_work_log_bloat_routes_to_consolidation(temp_repo: Path) -> None:
     work_log = "\n".join(f"- 2026-02-06: entry {idx}" for idx in range(1, 17))
     _write_state(
         temp_repo,
@@ -117,14 +117,14 @@ def test_work_log_bloat_routes_to_improvements(temp_repo: Path) -> None:
 (None yet)
 """,
     )
-    # Avoid automatic context-capture recommendation so we can test improvements routing.
+    # Avoid automatic context-capture recommendation so we can test consolidation routing.
     context_path = temp_repo / ".vibe" / "CONTEXT.md"
     context_path.write_text("# CONTEXT\n", encoding="utf-8")
 
     state = StateInfo(stage="1", checkpoint="1.0", status="NOT_STARTED", evidence_path=None, issues=())
     role, reason = _recommend_next(state, temp_repo)
-    assert role == "improvements"
-    assert "Work log has 16 entries" in reason
+    assert role == "consolidation"
+    assert "consolidation needed" in reason
 
 
 def test_done_stage_transition_routes_to_consolidation(temp_repo: Path) -> None:
@@ -680,3 +680,54 @@ steps:
     assert role == "implement"
     assert prompt_id == "prompt.test_generation"
     assert "selected prompt.test_generation" in reason
+
+
+class TestWorkLogConsolidationRouting:
+    """Work log bloat should route to consolidation, not improvements."""
+
+    def test_work_log_over_cap_routes_to_consolidation(self, tmp_path):
+        vibe = tmp_path / ".vibe"
+        vibe.mkdir()
+        entries = "\n".join(f"- Entry {i}" for i in range(WORK_LOG_CONSOLIDATION_CAP + 5))
+        _write_state(
+            tmp_path,
+            f"# STATE\n\n## Current focus\n\n- Stage: 1\n- Checkpoint: 1.0\n"
+            f"- Status: NOT_STARTED\n\n## Work log (current session)\n\n{entries}\n\n"
+            f"## Active issues\n\n(none)\n",
+        )
+        _write_plan(
+            tmp_path,
+            "# PLAN\n\n## Stage 1 — Test\n\n### 1.0 — Test\n\n"
+            "* **Objective:**\n  T\n* **Deliverables:**\n  T\n"
+            "* **Acceptance:**\n  T\n* **Demo commands:**\n  * `echo t`\n"
+            "* **Evidence:**\n  T\n",
+        )
+        # Prevent context_capture from firing first
+        (vibe / "CONTEXT.md").write_text("# CONTEXT\n", encoding="utf-8")
+        state = StateInfo(stage="1", checkpoint="1.0", status="NOT_STARTED", evidence_path=None, issues=())
+        role, reason = _recommend_next(state, tmp_path)
+        assert role == "consolidation", f"Expected consolidation, got {role}: {reason}"
+        assert "consolidation needed" in reason
+
+    def test_work_log_under_cap_routes_to_implement(self, tmp_path):
+        vibe = tmp_path / ".vibe"
+        vibe.mkdir()
+        entries = "\n".join(f"- Entry {i}" for i in range(WORK_LOG_CONSOLIDATION_CAP - 2))
+        _write_state(
+            tmp_path,
+            f"# STATE\n\n## Current focus\n\n- Stage: 1\n- Checkpoint: 1.0\n"
+            f"- Status: NOT_STARTED\n\n## Work log (current session)\n\n{entries}\n\n"
+            f"## Active issues\n\n(none)\n",
+        )
+        _write_plan(
+            tmp_path,
+            "# PLAN\n\n## Stage 1 — Test\n\n### 1.0 — Test\n\n"
+            "* **Objective:**\n  T\n* **Deliverables:**\n  T\n"
+            "* **Acceptance:**\n  T\n* **Demo commands:**\n  * `echo t`\n"
+            "* **Evidence:**\n  T\n",
+        )
+        # Prevent context_capture from firing first
+        (vibe / "CONTEXT.md").write_text("# CONTEXT\n", encoding="utf-8")
+        state = StateInfo(stage="1", checkpoint="1.0", status="NOT_STARTED", evidence_path=None, issues=())
+        role, reason = _recommend_next(state, tmp_path)
+        assert role == "implement", f"Expected implement, got {role}: {reason}"
