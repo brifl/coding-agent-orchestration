@@ -12,25 +12,26 @@
 ## Current focus
 
 - Stage: 21
-- Checkpoint: 21.0
-- Status: IN_REVIEW  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
+- Checkpoint: 21.1
+- Status: NOT_STARTED  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
 
 ## Objective (current checkpoint)
 
-Define what RLM means in this system, when it should be used, and how it differs from standard prompts and RAG.
+Define a strict invocation format for RLM runs and validate it before execution.
 
 ## Deliverables (current checkpoint)
 
-- Add `docs/rlm_overview.md` (RLM concepts, lifecycle, examples)
-- Add `docs/rlm_glossary.md` (terminology: root iteration, bundle, subcall, FINAL, etc.)
-- Add a decision table for when to use RLM vs RAG vs standard Vibe loops
+- Add `docs/rlm_task_schema.md`
+- Add `tools/rlm/validate_task.py`
+- Add example tasks in `tasks/rlm/`
 
 ## Acceptance (current checkpoint)
 
-- Documentation clearly explains baseline vs subcall mode and human-assisted providers
+- Invalid tasks fail fast with file/line diagnostics.
 
 ## Work log (current session)
 
+- 2026-02-06: Review PASS — 21.0 acceptance met (`rlm_overview` + `rlm_glossary` + decision table) with adversarial probes for required sections/terms; auto-advanced to 21.1 and set status to NOT_STARTED.
 - 2026-02-06: Implemented 21.0 — added `docs/rlm_overview.md` and `docs/rlm_glossary.md`, including decision table (`RLM vs RAG vs standard loops`) and baseline/subcall + human-assisted provider explanations; moved status to IN_REVIEW.
 - 2026-02-06: Consolidation — archived Stage 19A and Stage 20, pruned PLAN to Stage 21+, transitioned state pointer to 21.0/NOT_STARTED, set RUN_CONTEXT_CAPTURE.
 - 2026-02-06: Implemented 20.5 — added TF-IDF vectorizer + index `--vectors` build path; implemented semantic and hybrid retrieval modes with lex/sem/hybrid comparison evidence; moved to IN_REVIEW.
@@ -40,7 +41,6 @@ Define what RLM means in this system, when it should be used, and how it differs
 - 2026-02-06: Implemented 20.3 — retrieve.py now emits provenance headings + language fences, enforces max-per-file and max-context-chars, and supports mode fallback (`sem`/`hybrid` -> `lex`); moved to IN_REVIEW.
 - 2026-02-06: Review PASS — 20.2 acceptance met with adversarial probes; auto-advanced to 20.3; status set to NOT_STARTED.
 - 2026-02-06: Implemented 20.2 follow-up — fixed chunk-level incremental diffing and malformed FTS query handling; acceptance probes now pass; moved to IN_REVIEW.
-- 2026-02-06: Review FAIL — 20.2 unmet: one-line edit re-indexed all chunks for a changed file; opened ISSUE-012 and returned status to IN_PROGRESS.
 
 ## Workflow state
 
@@ -48,12 +48,7 @@ Define what RLM means in this system, when it should be used, and how it differs
 
 ## Evidence
 
-- path: docs/rlm_overview.md
-  - cmd: `cat docs/rlm_overview.md`
-  - result: PASS — includes lifecycle, baseline vs subcall mode, human-assisted provider behavior, and decision table.
-- path: docs/rlm_glossary.md
-  - cmd: `cat docs/rlm_glossary.md`
-  - result: PASS — defines required terms (`root iteration`, `bundle`, `subcall`, `FINAL`, `AWAITING_EXTERNAL`).
+(Checkpoint 21.1 — not yet started)
 
 ## Active issues
 
