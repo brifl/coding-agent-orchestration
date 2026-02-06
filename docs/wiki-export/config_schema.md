@@ -1,13 +1,12 @@
 # Config Schema
 
-This page is generated as a wiki-export seed from documentation gap remediation.
+This page is maintained as a deterministic wiki-export artifact.
 
-- Source file: `docs/config_schema.md`
-- Migration intent: Seed a wiki export page for long-form cross-cutting guidance.
+- Source: `docs/config_schema.md`
+- Refactor intent: Create a navigable wiki mirror and leave concise repo-local doc pointers.
 
-## Suggested Outline
+## Suggested Navigation
 
-1. Scope
-2. Prerequisites
-3. Procedures
-4. Troubleshooting
+1. Overview
+2. Procedures
+3. Troubleshooting

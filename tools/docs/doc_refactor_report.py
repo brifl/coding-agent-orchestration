@@ -211,7 +211,8 @@ def build_refactor_report(repo_root: Path) -> dict[str, Any]:
 
     # Bloat: parallel skill docs likely overlap.
     skill_docs = sorted(path for path in rel_files if path.startswith("docs/skill_") and path.endswith(".md"))
-    if len(skill_docs) >= 3:
+    skill_reference_exists = "docs/skill_reference.md" in rel_files
+    if len(skill_docs) >= 3 and not skill_reference_exists:
         findings.append(
             _build_finding(
                 category="bloat",
@@ -224,6 +225,24 @@ def build_refactor_report(repo_root: Path) -> dict[str, Any]:
                 },
                 rationale="Multiple skill-focused docs increase duplication risk and maintenance overhead.",
                 evidence=f"Found {len(skill_docs)} skill-related docs: {', '.join(skill_docs[:4])}.",
+            )
+        )
+    elif len(skill_docs) >= 3 and skill_reference_exists:
+        findings.append(
+            _build_finding(
+                category="bloat",
+                severity="MINOR",
+                location={"path": "docs/skill_reference.md"},
+                recommendation={
+                    "action": "merge_duplicates",
+                    "target_path": "docs/skill_reference.md",
+                    "summary": "Continue consolidating duplicate sections into the shared skill reference.",
+                },
+                rationale="A consolidation surface exists; remaining bloat is incremental.",
+                evidence=(
+                    f"Found {len(skill_docs)} skill-related docs and existing "
+                    "docs/skill_reference.md consolidation entrypoint."
+                ),
             )
         )
     else:
@@ -246,18 +265,23 @@ def build_refactor_report(repo_root: Path) -> dict[str, Any]:
     largest = _largest_docs_file(repo_root, files)
     if largest:
         largest_path, line_count = largest
+        wiki_target = f"docs/wiki-export/{Path(largest_path).stem}.md"
+        target_exists = wiki_target in rel_files
         findings.append(
             _build_finding(
                 category="structure",
-                severity="MODERATE" if line_count >= 140 else "MINOR",
+                severity="MODERATE" if line_count >= 140 and not target_exists else "MINOR",
                 location={"path": largest_path},
                 recommendation={
                     "action": "migrate_to_wiki",
-                    "target_path": f"docs/wiki-export/{Path(largest_path).stem}.md",
+                    "target_path": wiki_target,
                     "summary": "Create a navigable wiki mirror and leave concise repo-local doc pointers.",
                 },
                 rationale="Large documents are harder to navigate and version as a single page.",
-                evidence=f"Largest documentation file is {largest_path} with {line_count} lines.",
+                evidence=(
+                    f"Largest documentation file is {largest_path} with {line_count} lines; "
+                    f"wiki target exists={target_exists}."
+                ),
             )
         )
     else:

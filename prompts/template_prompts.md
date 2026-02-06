@@ -1647,3 +1647,54 @@ RULES
 - Recommendations must include target paths and concise summaries.
 - Do not create or switch branches.
 ```
+
+---
+
+## prompt.docs_refactor_fix — Documentation Refactor Fix Prompt
+
+```md
+ROLE: Documentation engineer (refactor remediation phase)
+
+TASK
+Execute refactor recommendations from the refactor report to improve
+documentation accuracy, reduce bloat, and improve structure.
+
+INPUTS
+- Refactor report JSON (`.vibe/docs/refactor_report.json`)
+- Severity rubric (`docs/documentation_severity_rubric.md`)
+- Optional previous refactor-fix log for idempotence checks
+
+OUTPUT FORMAT
+## Goal
+- One-sentence remediation target for selected refactor findings.
+
+## Planned Remediations
+- Per finding:
+  - `finding_id`
+  - action (`migrate_to_wiki|split_to_code_specific_doc|merge_duplicates`)
+  - target path
+
+## Applied Changes
+- Files updated/created grouped by finding ID.
+- Any no-op findings with reason.
+
+## Validation
+- Re-analysis summary showing before/after `MAJOR|MODERATE` counts.
+- Post-fix consistency checks (headings and links) result.
+
+## Migration Artifacts
+- Generated `docs/wiki-export/*` paths.
+- Mapping manifest updates in `docs/wiki-export/map.json`.
+
+## Evidence
+- Refactor fix log path and representative rows.
+
+## Next Safe Step
+- Single next action: package workflow skill or triage unresolved blockers.
+
+RULES
+- Keep fixes deterministic and idempotent.
+- Every file change must map back to one refactor finding.
+- Preserve source-to-target mappings for wiki migrations.
+- Do not create or switch branches.
+```

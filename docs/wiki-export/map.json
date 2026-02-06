@@ -1,0 +1,10 @@
+{
+  "entries": [
+    {
+      "finding_id": "refactor:structure:docs_config_schema.md:10757d23d6",
+      "source": "docs/config_schema.md",
+      "target": "docs/wiki-export/config_schema.md"
+    }
+  ],
+  "schema_version": 1
+}

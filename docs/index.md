@@ -17,3 +17,5 @@ This index maps the primary documentation surfaces in this repository.
 ## Maintenance Note
 
 Update this index whenever new top-level docs are added.
+
+- `docs/skill_reference.md`
