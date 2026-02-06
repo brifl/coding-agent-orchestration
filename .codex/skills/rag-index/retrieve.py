@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Retrieve prompt-ready snippets from a RAG index.
+"""Retrieve prompt-ready snippets from a chunk-level RAG index.
 
 Supports direct retrieval from an existing index and a one-shot pipeline
 that scans directories, builds an index, and searches in one call.
@@ -18,32 +18,112 @@ import indexer
 import scanner
 
 
-def format_results(results: list[dict[str, Any]], max_chars: int) -> str:
-    """Format search results as prompt-ready snippets.
+_ALLOWED_MODES = ("lex", "sem", "hybrid")
 
-    Each snippet is formatted as:
-    # file: rel_path
-    ```
-    snippet
-    ```
-    """
-    blocks: list[str] = []
-    total = 0
 
+def _normalize_mode(mode: str) -> str:
+    normalized = mode.strip().lower()
+    if normalized not in _ALLOWED_MODES:
+        raise ValueError(f"invalid mode '{mode}'; expected one of: {', '.join(_ALLOWED_MODES)}")
+    if normalized in {"sem", "hybrid"}:
+        print(
+            f"WARNING: mode '{normalized}' is not implemented yet; falling back to 'lex'.",
+            file=sys.stderr,
+        )
+        return "lex"
+    return normalized
+
+
+def _normalize_language_tag(language: Any) -> str:
+    if not isinstance(language, str) or not language.strip():
+        return "text"
+    cleaned = "".join(ch for ch in language.strip().lower() if ch.isalnum() or ch in {"+", "-", "_"})
+    return cleaned or "text"
+
+
+def _path_key(result: dict[str, Any]) -> str:
+    rel_path = result.get("rel_path")
+    if isinstance(rel_path, str) and rel_path.strip():
+        return rel_path.strip()
+    path = result.get("path")
+    if isinstance(path, str) and path.strip():
+        return path.strip()
+    return "unknown"
+
+
+def _int_or_none(value: Any) -> int | None:
+    if isinstance(value, int):
+        return value
+    if isinstance(value, str):
+        try:
+            return int(value.strip())
+        except ValueError:
+            return None
+    return None
+
+
+def _line_range(result: dict[str, Any]) -> str:
+    start_line = _int_or_none(result.get("start_line"))
+    end_line = _int_or_none(result.get("end_line"))
+    if start_line is None or end_line is None:
+        return "?"
+    return f"{start_line}-{end_line}"
+
+
+def _select_diverse_results(results: list[dict[str, Any]], max_per_file: int) -> list[dict[str, Any]]:
+    if max_per_file < 1:
+        raise ValueError("--max-per-file must be >= 1")
+    selected: list[dict[str, Any]] = []
+    counts: dict[str, int] = {}
     for result in results:
-        rel_path = result.get("rel_path") or result.get("path") or "unknown"
-        snippet = result.get("snippet") or ""
-        block = f"# file: {rel_path}\n```\n{snippet}\n```"
+        key = _path_key(result)
+        seen = counts.get(key, 0)
+        if seen >= max_per_file:
+            continue
+        counts[key] = seen + 1
+        selected.append(result)
+    return selected
 
-        separator = "\n\n" if blocks else ""
-        projected = total + len(separator) + len(block)
+
+def format_results(
+    query: str,
+    results: list[dict[str, Any]],
+    *,
+    max_chars: int,
+    max_per_file: int,
+) -> str:
+    """Format ranked search results into prompt-ready, budgeted context."""
+    if max_chars < 1:
+        raise ValueError("--max-context-chars must be >= 1")
+
+    filtered = _select_diverse_results(results, max_per_file)
+    if not filtered:
+        return ""
+
+    header = f'<!-- RAG context for: "{query}" -->'
+    if len(header) > max_chars:
+        return ""
+
+    blocks: list[str] = [header]
+    total = len(header)
+
+    for result in filtered:
+        snippet = str(result.get("snippet") or "").strip()
+        if not snippet:
+            continue
+        path = _path_key(result)
+        lines = _line_range(result)
+        language_tag = _normalize_language_tag(result.get("language"))
+        block = f"### {path}:{lines}\n```{language_tag}\n{snippet}\n```"
+
+        projected = total + 2 + len(block)
         if projected > max_chars:
-            break
-        if separator:
-            total += len(separator)
+            continue
         blocks.append(block)
-        total += len(block)
+        total = projected
 
+    if len(blocks) == 1:
+        return ""
     return "\n\n".join(blocks)
 
 
@@ -53,10 +133,20 @@ def retrieve(
     *,
     top_k: int = 5,
     max_chars: int = 8000,
+    max_per_file: int = 3,
+    mode: str = "lex",
 ) -> str:
     """Retrieve formatted snippets for a query from an index."""
+    if top_k < 1:
+        raise ValueError("--top-k must be >= 1")
+    _normalize_mode(mode)
     results = indexer.search_index(query, index_path, top_k=top_k)
-    return format_results(results, max_chars)
+    return format_results(
+        query,
+        results,
+        max_chars=max_chars,
+        max_per_file=max_per_file,
+    )
 
 
 def _write_manifest(manifest: list[dict[str, Any]], path: Path) -> None:
@@ -70,6 +160,8 @@ def pipeline(
     index_path: str | None = None,
     top_k: int = 5,
     max_chars: int = 8000,
+    max_per_file: int = 3,
+    mode: str = "lex",
     include: list[str] | None = None,
     exclude: list[str] | None = None,
     file_types: list[str] | None = None,
@@ -89,7 +181,15 @@ def pipeline(
         respect_gitignore=respect_gitignore,
     )
 
-    stats = {"indexed": 0, "skipped": 0, "removed": 0, "errors": 0}
+    stats = {
+        "files_processed": 0,
+        "files_skipped": 0,
+        "files_removed": 0,
+        "chunks_indexed": 0,
+        "chunks_skipped": 0,
+        "chunks_removed": 0,
+        "errors": 0,
+    }
     if not manifest:
         return "", stats
 
@@ -99,7 +199,14 @@ def pipeline(
         if index_path is None:
             index_path = str(Path(tmpdir) / "index.db")
         stats = indexer.build_index(str(manifest_path), index_path)
-        formatted = retrieve(query, index_path, top_k=top_k, max_chars=max_chars)
+        formatted = retrieve(
+            query,
+            index_path,
+            top_k=top_k,
+            max_chars=max_chars,
+            max_per_file=max_per_file,
+            mode=mode,
+        )
 
     return formatted, stats
 
@@ -127,16 +234,35 @@ def _run_retrieve(argv: list[str]) -> int:
         "--max-context-chars", type=int, default=8000,
         help="Maximum total output characters (default: 8000).",
     )
+    parser.add_argument(
+        "--max-per-file",
+        type=int,
+        default=3,
+        help="Maximum number of snippets per file (default: 3).",
+    )
+    parser.add_argument(
+        "--mode",
+        choices=_ALLOWED_MODES,
+        default="lex",
+        help="Retrieval mode (sem/hybrid currently fall back to lex).",
+    )
 
     args = parser.parse_args(argv)
-    results = indexer.search_index(args.query, args.index, top_k=args.top_k)
-    if not results:
-        print("No results found.")
-        return 0
+    try:
+        formatted = retrieve(
+            args.query,
+            args.index,
+            top_k=args.top_k,
+            max_chars=args.max_context_chars,
+            max_per_file=args.max_per_file,
+            mode=args.mode,
+        )
+    except ValueError as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
+        return 2
 
-    formatted = format_results(results, args.max_context_chars)
     if not formatted.strip():
-        print("No results fit within max-context-chars.")
+        print("No results found.")
         return 0
 
     print(formatted)
@@ -166,6 +292,18 @@ def _run_pipeline(argv: list[str]) -> int:
     parser.add_argument(
         "--max-context-chars", type=int, default=8000,
         help="Maximum total output characters (default: 8000).",
+    )
+    parser.add_argument(
+        "--max-per-file",
+        type=int,
+        default=3,
+        help="Maximum number of snippets per file (default: 3).",
+    )
+    parser.add_argument(
+        "--mode",
+        choices=_ALLOWED_MODES,
+        default="lex",
+        help="Retrieval mode (sem/hybrid currently fall back to lex).",
     )
     parser.add_argument(
         "--include",
@@ -198,18 +336,24 @@ def _run_pipeline(argv: list[str]) -> int:
     )
 
     args = parser.parse_args(argv)
-    formatted, stats = pipeline(
-        args.query,
-        args.dirs,
-        index_path=args.index,
-        top_k=args.top_k,
-        max_chars=args.max_context_chars,
-        include=args.include,
-        exclude=args.exclude,
-        file_types=_normalize_file_types(args.file_types),
-        max_depth=args.max_depth,
-        respect_gitignore=not args.no_gitignore,
-    )
+    try:
+        formatted, stats = pipeline(
+            args.query,
+            args.dirs,
+            index_path=args.index,
+            top_k=args.top_k,
+            max_chars=args.max_context_chars,
+            max_per_file=args.max_per_file,
+            mode=args.mode,
+            include=args.include,
+            exclude=args.exclude,
+            file_types=_normalize_file_types(args.file_types),
+            max_depth=args.max_depth,
+            respect_gitignore=not args.no_gitignore,
+        )
+    except ValueError as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
+        return 2
 
     if not formatted.strip():
         print("No results found.")
@@ -218,9 +362,11 @@ def _run_pipeline(argv: list[str]) -> int:
     print(formatted)
     print(
         "Index built: "
-        f"{stats['indexed']} indexed, "
-        f"{stats['skipped']} skipped (unchanged), "
-        f"{stats['removed']} removed, "
+        f"{stats['chunks_indexed']} chunks indexed, "
+        f"{stats['chunks_skipped']} chunks skipped (unchanged), "
+        f"{stats['chunks_removed']} chunks removed, "
+        f"{stats['files_processed']} files processed, "
+        f"{stats['files_removed']} files removed, "
         f"{stats['errors']} errors.",
         file=sys.stderr,
     )
