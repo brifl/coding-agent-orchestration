@@ -277,3 +277,9 @@ Other branches are selected when state/issue/planning conditions require them.
 ## License
 
 See `LICENSE`.
+
+## Documentation
+
+- `docs/index.md` - navigation index for core docs.
+- `docs/continuous_documentation_overview.md` - documentation loop scope and schema.
+- `docs/documentation_severity_rubric.md` - severity classification guidance.

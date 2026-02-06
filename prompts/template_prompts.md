@@ -1550,3 +1550,51 @@ RULES
 - `create_doc`/`create_wiki_page` recommendations must include explicit target paths.
 - Do not create or switch branches.
 ```
+
+---
+
+## prompt.docs_gap_fix — Documentation Gap Fix Prompt
+
+```md
+ROLE: Documentation engineer (gap remediation)
+
+TASK
+Apply scoped fixes for gap findings by editing existing docs and creating
+missing docs/wiki targets with explicit traceability back to finding IDs.
+
+INPUTS
+- Gap report JSON (findings with recommendations)
+- Severity rubric (`docs/documentation_severity_rubric.md`)
+- Scope contract (`docs/continuous_documentation_overview.md`)
+
+OUTPUT FORMAT
+## Goal
+- One-sentence remediation objective tied to selected findings.
+
+## Planned Changes
+- Finding-by-finding plan with:
+  - `finding_id`
+  - action (`edit_section|create_doc|create_wiki_page`)
+  - target path
+
+## Applied Changes
+- Files created/updated grouped by finding ID.
+- Any skipped/no-op findings with reason.
+
+## Validation
+- Before/after counts for `MAJOR` and `MODERATE` findings.
+- Command outputs for remediation and re-analysis runs.
+
+## Evidence
+- Fix log path (`.vibe/docs/gap_fix_log.jsonl`) and representative rows.
+
+## Next Safe Step
+- Single next action: move to refactor analysis or triage unresolved blockers.
+
+RULES
+- Preserve deterministic ordering from the input report.
+- Keep fixes minimal and directly tied to recommendation intent.
+- Do not mutate unrelated docs or code.
+- Every applied change must map back to one `finding_id`.
+- Do not create or switch branches.
+```

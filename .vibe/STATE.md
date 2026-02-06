@@ -13,7 +13,7 @@
 
 - Stage: 21A
 - Checkpoint: 21A.2
-- Status: NOT_STARTED  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
+- Status: IN_REVIEW  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
 
 ## Objective (current checkpoint)
 
@@ -32,6 +32,7 @@ Apply targeted gap fixes by updating existing docs and creating missing document
 
 ## Work log (current session)
 
+- 2026-02-06: Implemented 21A.2 — added `prompt.docs_gap_fix` and remediation tool `tools/docs/apply_gap_fixes.py`; executed before/apply/after demo flow, generated `.vibe/docs/gap_fix_log.jsonl` linking `finding_id -> changed_files`, and created/updated docs (`docs/index.md`, `docs/embedded_guides.md`, `docs/wiki-export/config_schema.md`, `README.md`) reducing `MAJOR|MODERATE` gap counts from `1|2` to `0|0`; moved status to IN_REVIEW.
 - 2026-02-06: Review PASS — 21A.1 acceptance met by rerunning `doc_gap_report` and adversarial probes for deterministic ordering, unique IDs, and action-schema bounds; no blocking findings, so checkpoint auto-advanced to 21A.2 and status set to NOT_STARTED.
 - 2026-02-06: Implemented 21A.1 — added `prompt.docs_gap_analysis` to `prompts/template_prompts.md` and created deterministic scanner `tools/docs/doc_gap_report.py`; demo run produced `.vibe/docs/gap_report.json` with actionable `edit_section|create_doc|create_wiki_page` recommendations and rerun stability check confirmed identical `(finding_id, severity)` ordering; moved status to IN_REVIEW.
 - 2026-02-06: Review PASS — 21A.0 acceptance met by rerunning demo (`cat docs/documentation_severity_rubric.md`) plus adversarial probes validating required schema fields and full severity-example coverage; no blocking findings, so checkpoint auto-advanced to 21A.1 and status set to NOT_STARTED.
@@ -41,7 +42,6 @@ Apply targeted gap fixes by updating existing docs and creating missing document
 - 2026-02-06: Implemented 21.11 — added reference tasks (`repo_comprehension`, `change_impact`, `doc_synthesis`) and `tools/rlm/eval_smoke.py`; smoke eval confirms one task exercises bundling + multi-iteration reasoning + subcalls + final artifact creation; moved status to IN_REVIEW.
 - 2026-02-06: Review PASS — 21.10 acceptance met (`skillctl validate skills/rlm-tools` passed) with adversarial probes confirming validation failures for malformed skill manifest and invalid provider selection; auto-advanced to 21.11 and set status to NOT_STARTED.
 - 2026-02-06: Implemented 21.10 — packaged `rlm-tools` skill with `skills/rlm-tools/SKILL.yaml`, added multi-command wrapper `skills/rlm-tools/rlm.py` for `rlm validate|bundle|run|step|resume|providers`, and documented cross-agent usage in `docs/rlm_agents.md`; `skillctl validate skills/rlm-tools` passes; moved status to IN_REVIEW.
-- 2026-02-06: Review PASS — 21.8 acceptance met with deterministic provider-choice reruns (`provider_choice_match=true`) plus adversarial probes (invalid policy schema rejected, disallowed explicit provider blocked at runtime); auto-advanced to 21.10 and set status to NOT_STARTED.
 
 ## Workflow state
 
@@ -49,7 +49,9 @@ Apply targeted gap fixes by updating existing docs and creating missing document
 
 ## Evidence
 
-- (Pending for checkpoint 21A.2; 21A.1 review evidence captured in work-log entry.)
+- `python3 tools/docs/doc_gap_report.py --repo-root . --out .vibe/docs/gap_report.before.json` reported severity counts `MAJOR=1`, `MODERATE=2`, `MINOR=1`.
+- `python3 tools/docs/apply_gap_fixes.py --report .vibe/docs/gap_report.before.json --apply` applied 4/4 findings and wrote `.vibe/docs/gap_fix_log.jsonl` with per-finding changed file mappings.
+- `python3 tools/docs/doc_gap_report.py --repo-root . --out .vibe/docs/gap_report.after.json` reported `MAJOR=0`, `MODERATE=0`, confirming targeted remediation reduction.
 
 ## Active issues
 
