@@ -220,13 +220,13 @@ scanner.py  →  manifest.json  →  chunker.py  →  indexer.py  →  index.db 
     ```
     <!-- RAG context for: "{query}" -->
 
-    ### .codex/skills/rag-index/scanner.py:20-31
+    \### .codex/skills/rag-index/scanner.py:20-31
     ```python
     def _parse_gitignore(gitignore_path: Path) -> list[str]:
         ...
     ```
 
-    ### .codex/skills/rag-index/scanner.py:74-95
+    \### .codex/skills/rag-index/scanner.py:74-95
 
     ```python
     def scan_directories(...):
