@@ -1696,6 +1696,21 @@ def _role_for_prompt_id(prompt_id: str) -> Role | None:
     return PROMPT_ROLE_MAP.get(prompt_id)
 
 
+def _load_workflow_selector(repo_root: Path):
+    try:
+        from workflow_engine import select_next_prompt
+        return select_next_prompt
+    except Exception:
+        repo_tools_dir = (repo_root / "tools").resolve()
+        if repo_tools_dir.exists() and str(repo_tools_dir) not in sys.path:
+            sys.path.insert(0, str(repo_tools_dir))
+        try:
+            from workflow_engine import select_next_prompt
+            return select_next_prompt
+        except Exception as exc:
+            raise RuntimeError(f"Failed to load workflow engine: {exc}") from exc
+
+
 def _resolve_next_prompt_selection(
     state: StateInfo,
     repo_root: Path,
@@ -1712,10 +1727,7 @@ def _resolve_next_prompt_selection(
     if catalog_error:
         raise RuntimeError(catalog_error)
 
-    try:
-        from workflow_engine import select_next_prompt
-    except Exception as exc:
-        raise RuntimeError(f"Failed to load workflow engine: {exc}") from exc
+    select_next_prompt = _load_workflow_selector(repo_root)
 
     allowed_prompt_ids = {
         prompt_id

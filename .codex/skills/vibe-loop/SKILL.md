@@ -25,11 +25,14 @@ This skill uses `.vibe/STATE.md` and `.vibe/PLAN.md` to recommend the next loop 
 ## How to use
 
 - Show current status:
-  - Run: `python3 scripts/agentctl.py --repo-root . status --format json`
+  - Run: `python3 scripts/agentctl.py --repo-root . --format json status`
 - Recommend next loop:
-  - Run: `python3 scripts/agentctl.py --repo-root . next --format json`
+  - Run: `python3 scripts/agentctl.py --repo-root . --format json next`
+- Recommend next loop using a named workflow (for example `workflows/continuous-refactor.yaml`):
+  - Run: `python3 scripts/agentctl.py --repo-root . --format json next --workflow continuous-refactor`
+  - Pass the workflow file stem (`continuous-refactor`), not the `.yaml` filename.
 - Validate invariants:
-  - Run: `python3 scripts/agentctl.py --repo-root . validate --format json`
+  - Run: `python3 scripts/agentctl.py --repo-root . --format json validate`
   - Strict mode (recommended in CI): add `--strict`
 - Record loop completion from emitted LOOP_RESULT:
   - Run: `python3 scripts/agentctl.py --repo-root . --format json loop-result --line 'LOOP_RESULT: {...}'`

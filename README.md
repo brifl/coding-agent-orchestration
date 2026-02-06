@@ -171,6 +171,25 @@ manual bootstraps found in `prompts/init/`.
 Codex's `$vibe-run` skill implements continuous mode. It must keep looping until
 the dispatcher says stop--never just one cycle.
 
+### Run a named workflow with a skill
+
+To invoke `workflows/continuous-refactor.yaml`, pass the workflow name
+`continuous-refactor` (without `.yaml`) to `agentctl next`.
+
+Using repo-local skills:
+
+```bash
+python3 .codex/skills/vibe-loop/scripts/agentctl.py --repo-root . --format json next --workflow continuous-refactor
+```
+
+Using a globally installed `vibe-loop` skill:
+
+```bash
+python3 scripts/agentctl.py --repo-root /path/to/repo --format json next --workflow continuous-refactor
+```
+
+Then run the returned `recommended_prompt_id` and record `LOOP_RESULT` as usual.
+
 ### `$vibe-run` decision flow (happy path + alternate paths)
 
 ```mermaid

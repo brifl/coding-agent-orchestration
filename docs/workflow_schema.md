@@ -45,3 +45,14 @@ triggers:
 steps:
   - prompt_id: prompt.issues_triage
 ```
+
+## Invoke from skills
+
+Use the `vibe-loop` skill's `agentctl.py` and pass workflow name (file stem):
+
+```bash
+python3 .codex/skills/vibe-loop/scripts/agentctl.py --repo-root . --format json next --workflow continuous-refactor
+```
+
+This selects prompts from `workflows/continuous-refactor.yaml` while still
+enforcing dispatcher role compatibility.
