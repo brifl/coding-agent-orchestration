@@ -123,6 +123,61 @@ def _append_cache_entry(path: Path, payload: dict[str, Any]) -> None:
         handle.write(json.dumps(payload, sort_keys=True) + "\n")
 
 
+def _normalize_provider_name(value: Any) -> str:
+    return str(value).strip().lower()
+
+
+def _normalize_provider_list(value: Any, field: str) -> list[str]:
+    if not isinstance(value, list):
+        raise RuntimeError(f"{field} must be an array of provider names.")
+    normalized: list[str] = []
+    for idx, item in enumerate(value):
+        name = _normalize_provider_name(item)
+        if not name:
+            raise RuntimeError(f"{field}[{idx}] must be a non-empty provider name.")
+        if name not in normalized:
+            normalized.append(name)
+    return normalized
+
+
+def _provider_policy_details(provider_policy: dict[str, Any]) -> dict[str, Any]:
+    primary = _normalize_provider_name(provider_policy.get("primary", ""))
+    allowed = _normalize_provider_list(
+        provider_policy.get("allowed"),
+        "provider_policy.allowed",
+    )
+    fallback = _normalize_provider_list(
+        provider_policy.get("fallback", []),
+        "provider_policy.fallback",
+    )
+
+    if not primary:
+        raise RuntimeError("provider_policy.primary must be a non-empty provider name.")
+    if primary not in allowed:
+        raise RuntimeError("provider_policy.primary must be listed in provider_policy.allowed.")
+    invalid_fallback = [name for name in fallback if name not in allowed]
+    if invalid_fallback:
+        raise RuntimeError(
+            "provider_policy.fallback entries must be listed in provider_policy.allowed: "
+            + ", ".join(invalid_fallback)
+        )
+
+    candidate_order: list[str] = [primary]
+    for name in fallback:
+        if name not in candidate_order:
+            candidate_order.append(name)
+    for name in allowed:
+        if name not in candidate_order:
+            candidate_order.append(name)
+
+    return {
+        "allowed": allowed,
+        "candidate_order": candidate_order,
+        "fallback": fallback,
+        "primary": primary,
+    }
+
+
 def _mock_provider_response(provider: str, prompt: str) -> str:
     request_material = {
         "prompt": prompt,
@@ -133,17 +188,28 @@ def _mock_provider_response(provider: str, prompt: str) -> str:
 
 
 def _query_with_deterministic_retry(provider: str, prompt: str) -> tuple[str, int]:
+    normalized_prompt = str(prompt)
+    fail_provider = ""
+    if normalized_prompt.startswith("FAIL_PROVIDER:"):
+        parts = normalized_prompt.split(":", 2)
+        if len(parts) == 3:
+            fail_provider = parts[1].strip().lower()
+            normalized_prompt = parts[2]
+
     failures: list[str] = []
     for attempt in range(1, DEFAULT_RETRY_ATTEMPTS + 1):
         try:
+            if fail_provider and provider == fail_provider:
+                raise RuntimeError(f"simulated deterministic failure for provider '{provider}'")
+
             # Deterministic transient failure hook for testing retry behavior.
-            if prompt.startswith("TRANSIENT_FAIL_ONCE:") and attempt == 1:
+            if normalized_prompt.startswith("TRANSIENT_FAIL_ONCE:") and attempt == 1:
                 raise RuntimeError("simulated transient provider failure")
 
-            normalized_prompt = prompt
-            if prompt.startswith("TRANSIENT_FAIL_ONCE:"):
-                normalized_prompt = prompt.split(":", 1)[1]
-            return _mock_provider_response(provider, normalized_prompt), attempt
+            response_prompt = normalized_prompt
+            if normalized_prompt.startswith("TRANSIENT_FAIL_ONCE:"):
+                response_prompt = normalized_prompt.split(":", 1)[1]
+            return _mock_provider_response(provider, response_prompt), attempt
         except RuntimeError as exc:
             failures.append(f"attempt {attempt}: {exc}")
 
@@ -162,8 +228,9 @@ def _build_llm_query_handler(
     provider_policy = task.get("provider_policy")
     if not isinstance(provider_policy, dict):
         raise RuntimeError("Task provider_policy must be an object.")
-
-    default_provider = str(provider_policy.get("primary", "mock")).strip().lower() or "mock"
+    policy = _provider_policy_details(provider_policy)
+    allowed_providers = set(policy["allowed"])
+    provider_order = list(policy["candidate_order"])
     cache_mode = str(state.get("cache_mode", "off")).strip().lower()
     if cache_mode not in CACHE_MODES:
         raise RuntimeError(f"Invalid cache mode '{cache_mode}'.")
@@ -178,7 +245,16 @@ def _build_llm_query_handler(
         nonlocal iteration_subcalls
 
         prompt_text = str(prompt)
-        provider_name = str(provider or default_provider).strip().lower() or "mock"
+        requested_provider = _normalize_provider_name(provider) if provider is not None else ""
+        if requested_provider:
+            if requested_provider not in allowed_providers:
+                allowed_raw = ", ".join(policy["allowed"])
+                raise RuntimeErrorState(
+                    f"Requested provider '{requested_provider}' is not allowed; allowed=[{allowed_raw}]"
+                )
+            provider_candidates = [requested_provider]
+        else:
+            provider_candidates = list(provider_order)
 
         max_subcalls_per_iter = int(state.get("max_subcalls_per_iter", 0))
         max_subcalls_total = int(state.get("max_subcalls_total", 0))
@@ -196,25 +272,62 @@ def _build_llm_query_handler(
                 f"max_subcalls_total={max_subcalls_total}."
             )
 
-        request_payload = {
-            "prompt": prompt_text,
-            "provider": provider_name,
-        }
-        request_hash = _sha256_text(_stable_json(request_payload))
-
-        cached = cache_index.get(request_hash)
+        request_payload: dict[str, Any] = {}
+        request_hash = ""
+        provider_name = ""
+        response_hash = ""
+        response_text = ""
         cache_status = "miss"
         attempts = 0
-        if cached is not None:
+
+        for candidate in provider_candidates:
+            candidate_payload = {
+                "prompt": prompt_text,
+                "provider": candidate,
+            }
+            candidate_hash = _sha256_text(_stable_json(candidate_payload))
+            cached = cache_index.get(candidate_hash)
+            if cached is None:
+                continue
+            provider_name = candidate
+            request_payload = candidate_payload
+            request_hash = candidate_hash
             response_text = str(cached.get("response_text", ""))
             response_hash = str(cached.get("response_hash", "")) or _sha256_text(response_text)
             cache_status = "hit"
-        elif cache_mode == "readonly":
+            break
+
+        if cache_status != "hit" and cache_mode == "readonly":
             raise RuntimeErrorState(
-                f"Readonly cache miss for request_hash={request_hash} in {cache_path}"
+                "Readonly cache miss for provider candidates "
+                f"{provider_candidates} and prompt hash seed "
+                f"{_sha256_text(prompt_text)} in {cache_path}"
             )
-        else:
-            response_text, attempts = _query_with_deterministic_retry(provider_name, prompt_text)
+
+        if cache_status != "hit":
+            provider_failures: list[str] = []
+            for candidate in provider_candidates:
+                candidate_payload = {
+                    "prompt": prompt_text,
+                    "provider": candidate,
+                }
+                candidate_hash = _sha256_text(_stable_json(candidate_payload))
+                try:
+                    response_text, attempts = _query_with_deterministic_retry(candidate, prompt_text)
+                    provider_name = candidate
+                    request_payload = candidate_payload
+                    request_hash = candidate_hash
+                    break
+                except RuntimeErrorState as exc:
+                    provider_failures.append(f"{candidate}: {exc}")
+                    continue
+
+            if not provider_name:
+                raise RuntimeErrorState(
+                    "All provider candidates failed in deterministic order: "
+                    + "; ".join(provider_failures)
+                )
+
             response_hash = _sha256_text(response_text)
             if cache_mode == "readwrite":
                 cache_entry = {
@@ -245,6 +358,8 @@ def _build_llm_query_handler(
                 "event": "subcall",
                 "iteration": iteration_number,
                 "provider": provider_name,
+                "provider_candidates": provider_candidates,
+                "provider_requested": requested_provider or None,
                 "recorded_at": _utc_now(),
                 "request_hash": request_hash,
                 "response_hash": response_hash,
@@ -256,6 +371,7 @@ def _build_llm_query_handler(
             "attempts": attempts,
             "cache": cache_status,
             "provider": provider_name,
+            "provider_candidates": provider_candidates,
             "request_hash": request_hash,
             "response_hash": response_hash,
             "text": response_text,

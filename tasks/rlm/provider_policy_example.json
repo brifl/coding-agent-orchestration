@@ -1,0 +1,48 @@
+{
+  "task_id": "provider_policy_example",
+  "query": "Demonstrate deterministic provider selection from primary/allowed/fallback policy.",
+  "context_sources": [
+    {
+      "type": "file",
+      "path": "tasks/rlm/fixtures/baseline_notes.txt"
+    }
+  ],
+  "bundle": {
+    "chunking_strategy": "by_chars",
+    "max_chars": 400
+  },
+  "mode": "subcalls",
+  "provider_policy": {
+    "primary": "openai",
+    "allowed": [
+      "openai",
+      "anthropic",
+      "google"
+    ],
+    "fallback": [
+      "anthropic",
+      "google"
+    ],
+    "kilo_requires_human": true
+  },
+  "limits": {
+    "max_root_iters": 4,
+    "max_depth": 1,
+    "max_subcalls_total": 3,
+    "max_subcalls_per_iter": 3,
+    "timeout_s": 120,
+    "max_stdout_chars": 500
+  },
+  "outputs": {
+    "final_path": ".vibe/rlm/runs/provider_policy_example/final.md",
+    "artifact_paths": []
+  },
+  "trace": {
+    "trace_path": ".vibe/rlm/runs/provider_policy_example/trace.jsonl",
+    "redaction_mode": "metadata_only"
+  },
+  "baseline_program": [
+    "resp_auto = llm_query('policy:auto')\nresp_fallback = llm_query('FAIL_PROVIDER:openai:policy:fallback')\nresp_explicit = llm_query('policy:explicit', provider='google')\nmemory['providers'] = {\n  'auto': resp_auto['provider'],\n  'fallback': resp_fallback['provider'],\n  'explicit': resp_explicit['provider']\n}\nprint(memory['providers'])",
+    "FINAL(memory['providers'])"
+  ]
+}

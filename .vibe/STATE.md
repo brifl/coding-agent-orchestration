@@ -13,7 +13,7 @@
 
 - Stage: 21
 - Checkpoint: 21.8
-- Status: NOT_STARTED  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
+- Status: IN_REVIEW  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
 
 ## Objective (current checkpoint)
 
@@ -30,6 +30,7 @@ Make provider choice deterministic and explicit.
 
 ## Work log (current session)
 
+- 2026-02-06: Implemented 21.8 — added deterministic provider-policy selection (`primary` + ordered `fallback` + remaining `allowed`) with explicit-provider allowlist enforcement and deterministic provider-fallback behavior; tightened task schema checks (`primary in allowed`, fallback subset), added `tasks/rlm/provider_policy_example.json`, and verified repeat runs yield identical provider-choice sequences; moved status to IN_REVIEW.
 - 2026-02-06: Review PASS — 21.6 acceptance met (`readwrite` -> `readonly` replay produced identical response hashes/final artifact), demo command rerun now works without `--fresh`, and adversarial probes confirmed expected failures for missing cache + subcall budget breach; auto-advanced to 21.8 and set status to NOT_STARTED.
 - 2026-02-06: Issues triage — resolved ISSUE-014 by resetting run-scoped runtime/trace/output artifacts at `executor.py run` start, so non-fresh reruns no longer load finalized runtime state; reran readonly demo command twice successfully; status set back to IN_REVIEW.
 - 2026-02-06: Review FAIL — reran 21.6 demo command exactly (`python3 skills/rlm-tools/executor.py run --task tasks/rlm/subcalls_example.json --cache readonly`) and found non-fresh reruns fail with `Runtime already finalized`; opened ISSUE-014 and moved status to IN_PROGRESS for targeted executor run-reset fix.
@@ -47,7 +48,11 @@ Make provider choice deterministic and explicit.
 
 ## Evidence
 
-- (Pending for checkpoint 21.8; add provider-selection determinism evidence during implementation/review.)
+- Demo command (closest equivalent due mandatory cache in 21.6): `python3 skills/rlm-tools/executor.py run --task tasks/rlm/provider_policy_example.json --cache readwrite --fresh`.
+- Determinism evidence: `.vibe/rlm/runs/provider_policy_example.providers.run1.json` and `.vibe/rlm/runs/provider_policy_example.providers.run2.json` match on provider-choice sequence; comparison artifact `.vibe/rlm/runs/provider_policy_example.compare.json` has `provider_choice_match=true`.
+- Fallback ordering evidence: first iteration in `provider_policy_example` selects `openai` (auto), then `anthropic` when `openai` is deterministically failed via `FAIL_PROVIDER:openai:...`, then `google` for explicit request.
+- Schema enforcement probe: `python3 tools/rlm/validate_task.py .vibe/rlm/evidence/21.8/provider_policy_invalid_schema.json` fails with `provider_policy.primary must be present in provider_policy.allowed`.
+- Explicit-provider enforcement probe: `.vibe/rlm/runs/provider_policy_invalid_runtime/trace.jsonl` records `Requested provider 'kilo' is not allowed`.
 
 ## Active issues
 

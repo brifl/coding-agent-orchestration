@@ -178,6 +178,39 @@ def _validate_provider_policy(value: Any, errors: list[Diagnostic], line_index: 
     fallback = value.get("fallback")
     _ensure_string_list(fallback, "provider_policy.fallback", errors, line_index, allow_empty=True)
 
+    if _is_nonempty_string(primary) and isinstance(allowed, list):
+        normalized_primary = str(primary).strip().lower()
+        normalized_allowed = {
+            str(item).strip().lower()
+            for item in allowed
+            if _is_nonempty_string(item)
+        }
+        if normalized_primary not in normalized_allowed:
+            _add_error(
+                errors,
+                "provider_policy.primary",
+                "Field 'provider_policy.primary' must be present in provider_policy.allowed.",
+                line_index,
+            )
+
+    if isinstance(allowed, list) and isinstance(fallback, list):
+        normalized_allowed = {
+            str(item).strip().lower()
+            for item in allowed
+            if _is_nonempty_string(item)
+        }
+        for idx, item in enumerate(fallback):
+            if not _is_nonempty_string(item):
+                continue
+            normalized_item = str(item).strip().lower()
+            if normalized_item not in normalized_allowed:
+                _add_error(
+                    errors,
+                    f"provider_policy.fallback[{idx}]",
+                    "provider_policy.fallback entries must also be present in provider_policy.allowed.",
+                    line_index,
+                )
+
     kilo_requires_human = value.get("kilo_requires_human")
     if not isinstance(kilo_requires_human, bool):
         _add_error(
