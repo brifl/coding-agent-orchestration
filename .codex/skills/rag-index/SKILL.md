@@ -39,7 +39,7 @@ The workflow is scan -> index -> retrieve, with a one-shot pipeline for ad-hoc u
    - Useful options:
      - `--max-context-chars 8000` hard output budget
      - `--max-per-file 3` diversity cap
-     - `--mode lex|sem|hybrid` (`sem`/`hybrid` currently warn and fall back to `lex`)
+     - `--mode lex|sem|hybrid` (`sem` uses TF-IDF cosine; `hybrid` blends lexical + semantic scores)
 5. One-shot pipeline (retrieve):
    - `python3 retrieve.py pipeline "query" --dirs <path1> <path2>`
    - Optional:

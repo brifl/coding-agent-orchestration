@@ -32,6 +32,7 @@ if str(_skill_dir) not in sys.path:
     sys.path.insert(0, str(_skill_dir))
 
 from chunker import chunk_file  # noqa: E402
+import vectorizer  # noqa: E402
 
 
 _SCHEMA_VERSION = 2
@@ -70,6 +71,11 @@ def _init_db(conn: sqlite3.Connection) -> None:
             chunk_id,
             chunk_text,
             tokenize='porter unicode61'
+        );
+
+        CREATE TABLE IF NOT EXISTS vectors (
+            chunk_id TEXT PRIMARY KEY,
+            vector   TEXT NOT NULL
         );
     """)
     conn.execute(
@@ -131,6 +137,8 @@ def _read_file_text(path: str) -> str | None:
 def build_index(
     manifest_path: str,
     output_path: str,
+    *,
+    build_vectors: bool = False,
 ) -> dict[str, int]:
     """Build or update an index from a manifest file.
 
@@ -157,6 +165,8 @@ def build_index(
         "chunks_indexed": 0,
         "chunks_skipped": 0,
         "chunks_removed": 0,
+        "vectors_indexed": 0,
+        "vector_vocab_size": 0,
         "errors": 0,
     }
 
@@ -354,6 +364,16 @@ def build_index(
             conn.execute("DELETE FROM docs WHERE doc_id = ?", (doc_id,))
             stats["files_removed"] += 1
 
+    chunks_mutated = stats["chunks_indexed"] > 0 or stats["chunks_removed"] > 0
+    if build_vectors:
+        vec_stats = vectorizer.rebuild_vectors(conn)
+        stats["vectors_indexed"] = vec_stats["vectors_indexed"]
+        stats["vector_vocab_size"] = vec_stats["vector_vocab_size"]
+    elif chunks_mutated:
+        # Prevent stale semantic retrieval when chunk content changed but vectors
+        # were not rebuilt in this run.
+        vectorizer.clear_vectors(conn)
+
     conn.commit()
     conn.close()
     return stats
@@ -429,6 +449,11 @@ def main(argv: list[str] | None = None) -> None:
         "--output", "-o", required=True,
         help="Path to the SQLite index database.",
     )
+    build_p.add_argument(
+        "--vectors",
+        action="store_true",
+        help="Recompute TF-IDF vectors for semantic/hybrid retrieval.",
+    )
 
     # search subcommand
     search_p = sub.add_parser("search", help="Search the index.")
@@ -445,7 +470,7 @@ def main(argv: list[str] | None = None) -> None:
     args = parser.parse_args(argv)
 
     if args.command == "build":
-        stats = build_index(args.manifest, args.output)
+        stats = build_index(args.manifest, args.output, build_vectors=args.vectors)
         print(
             f"Index built: {stats['files_processed']} files processed, "
             f"{stats['files_skipped']} files skipped (unchanged), "
@@ -453,6 +478,8 @@ def main(argv: list[str] | None = None) -> None:
             f"{stats['chunks_indexed']} chunks indexed, "
             f"{stats['chunks_skipped']} chunks skipped, "
             f"{stats['chunks_removed']} chunks removed, "
+            f"{stats['vectors_indexed']} vectors indexed, "
+            f"vocab {stats['vector_vocab_size']}, "
             f"{stats['errors']} errors."
         )
 

@@ -16,6 +16,7 @@ from typing import Any
 
 import indexer
 import scanner
+import vectorizer
 
 
 _ALLOWED_MODES = ("lex", "sem", "hybrid")
@@ -25,12 +26,6 @@ def _normalize_mode(mode: str) -> str:
     normalized = mode.strip().lower()
     if normalized not in _ALLOWED_MODES:
         raise ValueError(f"invalid mode '{mode}'; expected one of: {', '.join(_ALLOWED_MODES)}")
-    if normalized in {"sem", "hybrid"}:
-        print(
-            f"WARNING: mode '{normalized}' is not implemented yet; falling back to 'lex'.",
-            file=sys.stderr,
-        )
-        return "lex"
     return normalized
 
 
@@ -127,6 +122,72 @@ def format_results(
     return "\n\n".join(blocks)
 
 
+def _normalize_score_map(raw_scores: dict[str, float]) -> dict[str, float]:
+    if not raw_scores:
+        return {}
+    minimum = min(raw_scores.values())
+    maximum = max(raw_scores.values())
+    if maximum == minimum:
+        return {chunk_id: 1.0 for chunk_id in raw_scores}
+    span = maximum - minimum
+    return {
+        chunk_id: (score - minimum) / span
+        for chunk_id, score in raw_scores.items()
+    }
+
+
+def _hybrid_results(query: str, index_path: str, *, top_k: int, alpha: float = 0.6) -> list[dict[str, Any]]:
+    candidate_k = max(top_k * 5, top_k)
+    lexical = indexer.search_index(query, index_path, top_k=candidate_k)
+    semantic = vectorizer.semantic_search(index_path, query, top_k=candidate_k)
+
+    by_id: dict[str, dict[str, Any]] = {}
+    lex_scores: dict[str, float] = {}
+    sem_scores: dict[str, float] = {}
+
+    for row in lexical:
+        chunk_id = str(row.get("chunk_id", "")).strip()
+        if not chunk_id:
+            continue
+        by_id[chunk_id] = row
+        # BM25 is lower-is-better; flip sign so higher-is-better for normalization.
+        lex_scores[chunk_id] = -float(row.get("score", 0.0))
+
+    for row in semantic:
+        chunk_id = str(row.get("chunk_id", "")).strip()
+        if not chunk_id:
+            continue
+        by_id.setdefault(chunk_id, row)
+        sem_scores[chunk_id] = float(row.get("score", 0.0))
+
+    lex_norm = _normalize_score_map(lex_scores)
+    sem_norm = _normalize_score_map(sem_scores)
+
+    combined: list[dict[str, Any]] = []
+    for chunk_id, row in by_id.items():
+        score = alpha * lex_norm.get(chunk_id, 0.0) + (1.0 - alpha) * sem_norm.get(chunk_id, 0.0)
+        merged = dict(row)
+        merged["score"] = round(score, 4)
+        combined.append(merged)
+
+    combined.sort(key=lambda item: float(item.get("score", 0.0)), reverse=True)
+    return combined[:top_k]
+
+
+def _search_by_mode(
+    query: str,
+    index_path: str,
+    *,
+    top_k: int,
+    mode: str,
+) -> list[dict[str, Any]]:
+    if mode == "lex":
+        return indexer.search_index(query, index_path, top_k=top_k)
+    if mode == "sem":
+        return vectorizer.semantic_search(index_path, query, top_k=top_k)
+    return _hybrid_results(query, index_path, top_k=top_k)
+
+
 def retrieve(
     query: str,
     index_path: str,
@@ -139,8 +200,13 @@ def retrieve(
     """Retrieve formatted snippets for a query from an index."""
     if top_k < 1:
         raise ValueError("--top-k must be >= 1")
-    _normalize_mode(mode)
-    results = indexer.search_index(query, index_path, top_k=top_k)
+    normalized_mode = _normalize_mode(mode)
+    results = _search_by_mode(
+        query,
+        index_path,
+        top_k=top_k,
+        mode=normalized_mode,
+    )
     return format_results(
         query,
         results,
@@ -198,14 +264,19 @@ def pipeline(
         _write_manifest(manifest, manifest_path)
         if index_path is None:
             index_path = str(Path(tmpdir) / "index.db")
-        stats = indexer.build_index(str(manifest_path), index_path)
+        normalized_mode = _normalize_mode(mode)
+        stats = indexer.build_index(
+            str(manifest_path),
+            index_path,
+            build_vectors=normalized_mode in {"sem", "hybrid"},
+        )
         formatted = retrieve(
             query,
             index_path,
             top_k=top_k,
             max_chars=max_chars,
             max_per_file=max_per_file,
-            mode=mode,
+            mode=normalized_mode,
         )
 
     return formatted, stats
@@ -244,7 +315,7 @@ def _run_retrieve(argv: list[str]) -> int:
         "--mode",
         choices=_ALLOWED_MODES,
         default="lex",
-        help="Retrieval mode (sem/hybrid currently fall back to lex).",
+        help="Retrieval mode.",
     )
 
     args = parser.parse_args(argv)
@@ -303,7 +374,7 @@ def _run_pipeline(argv: list[str]) -> int:
         "--mode",
         choices=_ALLOWED_MODES,
         default="lex",
-        help="Retrieval mode (sem/hybrid currently fall back to lex).",
+        help="Retrieval mode.",
     )
     parser.add_argument(
         "--include",
@@ -365,6 +436,8 @@ def _run_pipeline(argv: list[str]) -> int:
         f"{stats['chunks_indexed']} chunks indexed, "
         f"{stats['chunks_skipped']} chunks skipped (unchanged), "
         f"{stats['chunks_removed']} chunks removed, "
+        f"{stats.get('vectors_indexed', 0)} vectors indexed, "
+        f"vocab {stats.get('vector_vocab_size', 0)}, "
         f"{stats['files_processed']} files processed, "
         f"{stats['files_removed']} files removed, "
         f"{stats['errors']} errors.",
