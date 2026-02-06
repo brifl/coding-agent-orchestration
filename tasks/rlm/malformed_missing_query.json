@@ -1,0 +1,40 @@
+{
+  "task_id": "bad_task",
+  "context_sources": [
+    {
+      "type": "dir",
+      "path": "."
+    }
+  ],
+  "bundle": {
+    "chunking_strategy": "by_chars",
+    "max_chars": 5000
+  },
+  "mode": "subcalls",
+  "provider_policy": {
+    "primary": "openai",
+    "allowed": [
+      "openai"
+    ],
+    "fallback": [
+      "anthropic"
+    ],
+    "kilo_requires_human": true
+  },
+  "limits": {
+    "max_root_iters": 0,
+    "max_depth": 2,
+    "max_subcalls_total": 4,
+    "max_subcalls_per_iter": 2,
+    "timeout_s": 900,
+    "max_stdout_chars": 40000
+  },
+  "outputs": {
+    "final_path": ".vibe/rlm/runs/bad_task/final.md",
+    "artifact_paths": []
+  },
+  "trace": {
+    "trace_path": ".vibe/rlm/runs/bad_task/trace.jsonl",
+    "redaction_mode": "metadata_only"
+  }
+}

@@ -1,0 +1,50 @@
+{
+  "task_id": "repo_comprehension_demo",
+  "query": "Summarize architecture and extension points for Stage 21 rollout.",
+  "context_sources": [
+    {
+      "type": "dir",
+      "path": ".",
+      "include": [
+        "tools/**/*.py",
+        "docs/**/*.md",
+        "prompts/**/*.md"
+      ],
+      "exclude": [
+        ".git/**",
+        "**/__pycache__/**"
+      ]
+    }
+  ],
+  "bundle": {
+    "chunking_strategy": "by_chars",
+    "max_chars": 5000
+  },
+  "mode": "baseline",
+  "provider_policy": {
+    "primary": "openai",
+    "allowed": [
+      "openai"
+    ],
+    "fallback": [],
+    "kilo_requires_human": true
+  },
+  "limits": {
+    "max_root_iters": 6,
+    "max_depth": 2,
+    "max_subcalls_total": 0,
+    "max_subcalls_per_iter": 0,
+    "timeout_s": 900,
+    "max_stdout_chars": 40000
+  },
+  "outputs": {
+    "final_path": ".vibe/rlm/runs/repo_comprehension_demo/final.md",
+    "artifact_paths": [
+      ".vibe/rlm/runs/repo_comprehension_demo/notes.json"
+    ]
+  },
+  "trace": {
+    "trace_path": ".vibe/rlm/runs/repo_comprehension_demo/trace.jsonl",
+    "redaction_mode": "metadata_only"
+  }
+}
