@@ -12,27 +12,29 @@
 ## Current focus
 
 - Stage: 21A
-- Checkpoint: 21A.4
-- Status: IN_REVIEW  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
+- Checkpoint: 21A.5
+- Status: NOT_STARTED  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
 
 ## Objective (current checkpoint)
 
-Execute documentation refactors that fix accuracy defects, remove bloat, improve structure, and produce wiki/code-doc migration artifacts when recommended.
+Package the documentation loop as a first-class continuous skill aligned with existing continuous workflow skills.
 
 ## Deliverables (current checkpoint)
 
-- `prompt.docs_refactor_fix` in `prompts/template_prompts.md`
-- `tools/docs/apply_refactor_fixes.py`
-- Migration artifacts under `docs/wiki-export/` plus mapping manifest `docs/wiki-export/map.json`
-- Post-fix validation for links/headings consistency
+- `workflows/continuous-documentation.yaml` with steps: `prompt.docs_gap_analysis`, `prompt.docs_gap_fix`, `prompt.docs_refactor_analysis`, `prompt.docs_refactor_fix`
+- `.codex/skills/continuous-documentation/SKILL.md`
+- `.codex/skills/continuous-documentation/scripts/continuous_documentation.py`
+- Docs updates: `docs/base_skills.md`, `docs/agent_skill_packs.md`, `docs/skill_lifecycle.md`
 
 ## Acceptance (current checkpoint)
 
-- Re-analysis shows reduced unresolved `MAJOR|MODERATE` refactor findings in targeted categories.
-- Migration mode emits deterministic wiki export artifacts and mapping manifest.
+- `workflow_engine` recognizes the new workflow and step ordering.
+- `skillctl` validation passes for the new skill.
+- Runner script supports interactive and non-interactive loop modes matching existing continuous skills.
 
 ## Work log (current session)
 
+- 2026-02-06: Review PASS — 21A.4 acceptance met with rerun remediation + re-analysis showing `MAJOR|MODERATE` reduced from `1|2` to `0|0`, deterministic `docs/wiki-export/map.json` validation, and adversarial checks confirming only `MINOR` residual findings; fixed idempotence bug in merge remediation (`skill_reference` self-link) and revalidated zero-change rerun; checkpoint auto-advanced to 21A.5 with status NOT_STARTED.
 - 2026-02-06: Implemented 21A.4 — added `prompt.docs_refactor_fix`, created `tools/docs/apply_refactor_fixes.py`, and updated refactor analyzer severity logic to respect completed merge/wiki remediation artifacts; remediation run applied 3 findings with no link/heading validation errors, produced deterministic migration manifest `docs/wiki-export/map.json`, and re-analysis reduced unresolved `MAJOR|MODERATE` counts from `1|2` to `0|0`; moved status to IN_REVIEW.
 - 2026-02-06: Review PASS — 21A.3 acceptance met by rerunning `doc_refactor_report` and adversarial probes confirming category coverage (`accuracy|bloat|structure`), deterministic sort/id stability, and strict recommendation-action boundaries; no blocking findings, so checkpoint auto-advanced to 21A.4 and status set to NOT_STARTED.
 - 2026-02-06: Implemented 21A.3 — added `prompt.docs_refactor_analysis` and deterministic analyzer `tools/docs/doc_refactor_report.py`; demo report `.vibe/docs/refactor_report.json` produced severity-ranked findings across `accuracy|bloat|structure` with concrete migration recommendations (`migrate_to_wiki`, `split_to_code_specific_doc`, `merge_duplicates`), and rerun stability check confirmed identical ordered `(finding_id, severity, category)` tuples; moved status to IN_REVIEW.
@@ -41,7 +43,6 @@ Execute documentation refactors that fix accuracy defects, remove bloat, improve
 - 2026-02-06: Review PASS — 21A.1 acceptance met by rerunning `doc_gap_report` and adversarial probes for deterministic ordering, unique IDs, and action-schema bounds; no blocking findings, so checkpoint auto-advanced to 21A.2 and status set to NOT_STARTED.
 - 2026-02-06: Implemented 21A.1 — added `prompt.docs_gap_analysis` to `prompts/template_prompts.md` and created deterministic scanner `tools/docs/doc_gap_report.py`; demo run produced `.vibe/docs/gap_report.json` with actionable `edit_section|create_doc|create_wiki_page` recommendations and rerun stability check confirmed identical `(finding_id, severity)` ordering; moved status to IN_REVIEW.
 - 2026-02-06: Review PASS — 21A.0 acceptance met by rerunning demo (`cat docs/documentation_severity_rubric.md`) plus adversarial probes validating required schema fields and full severity-example coverage; no blocking findings, so checkpoint auto-advanced to 21A.1 and status set to NOT_STARTED.
-- 2026-02-06: Implemented 21A.0 — added `docs/continuous_documentation_overview.md` (scope + wiki migration rules + finding schema) and `docs/documentation_severity_rubric.md` (deterministic `MAJOR|MODERATE|MINOR` criteria with concrete examples); ran checkpoint demo command and prepared review evidence; moved status to IN_REVIEW.
 - 2026-02-06: Consolidation — transitioned pointer from completed Stage 21 (`21.11/DONE`) to Stage 21A (`21A.0/NOT_STARTED`), refreshed objective/deliverables/acceptance to 21A.0, and pruned work log to latest 10 entries.
 
 ## Workflow state
@@ -50,9 +51,7 @@ Execute documentation refactors that fix accuracy defects, remove bloat, improve
 
 ## Evidence
 
-- `python3 tools/docs/apply_refactor_fixes.py --report .vibe/docs/refactor_report.json --apply` applied 3 findings with `validation_errors=[]` and wrote `.vibe/docs/refactor_fix_log.jsonl`.
-- `python3 tools/docs/doc_refactor_report.py --repo-root . --out .vibe/docs/refactor_report.after.json` reports `MAJOR=0`, `MODERATE=0` (down from `MAJOR=1`, `MODERATE=2` in `.vibe/docs/refactor_report.json`).
-- Migration artifacts emitted deterministically under `docs/wiki-export/`, including `docs/wiki-export/map.json`.
+- (Pending for checkpoint 21A.5; 21A.4 review evidence captured in work-log entry.)
 
 ## Active issues
 
