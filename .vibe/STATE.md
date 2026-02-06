@@ -13,7 +13,7 @@
 
 - Stage: 21
 - Checkpoint: 21.6
-- Status: NOT_STARTED  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
+- Status: IN_REVIEW  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
 
 ## Objective (current checkpoint)
 
@@ -32,6 +32,7 @@ Prevent runaway recursion and make subcalls replayable.
 
 ## Work log (current session)
 
+- 2026-02-06: Implemented 21.6 — added subcall-mode cache policy enforcement (`readwrite|readonly|off` with mandatory explicit selection), per-iteration/per-run subcall budgets, deterministic retry tracing, and `tools/rlm/replay.py`; verified readonly replay reproduces identical response hashes/final artifact and captured adversarial budget/cache probes; moved status to IN_REVIEW.
 - 2026-02-06: Consolidation — pruned STATE work log to the most recent 10 entries and cleared stale 21.5 evidence; stage/checkpoint/status remain aligned at 21.6 / NOT_STARTED.
 - 2026-02-06: Review PASS — 21.5 acceptance met with demo rerun plus adversarial probes (invalid provider selection rejects with exit 2, and credential-scrubbed run reports missing env vars); auto-advanced to 21.6 and set status to NOT_STARTED.
 - 2026-02-06: Issues triage — loaded API keys from repo `.env` via `provider_check` dotenv support, switched health checks to provider listing endpoints for stable auth/connectivity validation, and resolved ISSUE-013; moved status to IN_REVIEW.
@@ -49,7 +50,14 @@ Prevent runaway recursion and make subcalls replayable.
 
 ## Evidence
 
-- (Pending for checkpoint 21.6; add replay/cache evidence during implementation/review.)
+- `python3 skills/rlm-tools/executor.py run --task tasks/rlm/subcalls_example.json --cache readwrite --fresh` and `python3 skills/rlm-tools/executor.py run --task tasks/rlm/subcalls_example.json --cache readonly --fresh` both completed with identical `response_hashes` and final artifact hash.
+- Replay summaries: `.vibe/rlm/runs/subcalls_example.readwrite.summary.json` and `.vibe/rlm/runs/subcalls_example.readonly.summary.json`; comparison artifact: `.vibe/rlm/runs/subcalls_example.compare.json` (`response_hashes_match=true`, `final_artifact_sha256_match=true`).
+- Readonly cache-hit trace evidence: `.vibe/rlm/runs/subcalls_example/trace.jsonl` contains `event=subcall`, `cache_status=hit`, `attempts=0`.
+- Mandatory cache enforcement probe: `.vibe/rlm/evidence/21.6/probe_missing_cache.log` shows `Subcall mode requires explicit --cache`.
+- Readonly cache-miss probe: `.vibe/rlm/runs/probe_cache_miss/trace.jsonl` records `Readonly cache miss ...` and run stops `STEP_ERROR`.
+- Per-iteration budget probe: `.vibe/rlm/runs/probe_per_iter_limit/trace.jsonl` records `Subcall budget exceeded for iteration 1`.
+- Per-run budget probe: `.vibe/rlm/runs/probe_total_limit/trace.jsonl` records `Subcall budget exceeded for run: max_subcalls_total=1`.
+- Deterministic retry probe: `.vibe/rlm/runs/probe_retry/trace.jsonl` subcall event shows `attempts=2` on first-call transient failure scenario.
 
 ## Active issues
 
