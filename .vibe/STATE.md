@@ -12,26 +12,27 @@
 ## Current focus
 
 - Stage: 21A
-- Checkpoint: 21A.1
-- Status: IN_REVIEW  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
+- Checkpoint: 21A.2
+- Status: NOT_STARTED  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
 
 ## Objective (current checkpoint)
 
-Build deterministic gap analysis that identifies missing or incomplete documentation and proposes edits or net-new docs.
+Apply targeted gap fixes by updating existing docs and creating missing documentation artifacts.
 
 ## Deliverables (current checkpoint)
 
-- `prompt.docs_gap_analysis` in `prompts/template_prompts.md`
-- `tools/docs/doc_gap_report.py`
-- `.vibe/docs/gap_report.json` with candidate actions (`edit_section|create_doc|create_wiki_page`)
+- `prompt.docs_gap_fix` in `prompts/template_prompts.md`
+- `tools/docs/apply_gap_fixes.py`
+- `.vibe/docs/gap_fix_log.jsonl` mapping `finding_id -> changed files`
 
 ## Acceptance (current checkpoint)
 
-- Re-running on an unchanged repo snapshot produces stable finding IDs/severity ordering.
-- Report includes actionable recommendations and supports net-new document proposals.
+- Running remediation then re-analysis reduces `MAJOR|MODERATE` gap counts for targeted findings.
+- Fix log records all created/updated documents with source finding linkage.
 
 ## Work log (current session)
 
+- 2026-02-06: Review PASS — 21A.1 acceptance met by rerunning `doc_gap_report` and adversarial probes for deterministic ordering, unique IDs, and action-schema bounds; no blocking findings, so checkpoint auto-advanced to 21A.2 and status set to NOT_STARTED.
 - 2026-02-06: Implemented 21A.1 — added `prompt.docs_gap_analysis` to `prompts/template_prompts.md` and created deterministic scanner `tools/docs/doc_gap_report.py`; demo run produced `.vibe/docs/gap_report.json` with actionable `edit_section|create_doc|create_wiki_page` recommendations and rerun stability check confirmed identical `(finding_id, severity)` ordering; moved status to IN_REVIEW.
 - 2026-02-06: Review PASS — 21A.0 acceptance met by rerunning demo (`cat docs/documentation_severity_rubric.md`) plus adversarial probes validating required schema fields and full severity-example coverage; no blocking findings, so checkpoint auto-advanced to 21A.1 and status set to NOT_STARTED.
 - 2026-02-06: Implemented 21A.0 — added `docs/continuous_documentation_overview.md` (scope + wiki migration rules + finding schema) and `docs/documentation_severity_rubric.md` (deterministic `MAJOR|MODERATE|MINOR` criteria with concrete examples); ran checkpoint demo command and prepared review evidence; moved status to IN_REVIEW.
@@ -41,8 +42,6 @@ Build deterministic gap analysis that identifies missing or incomplete documenta
 - 2026-02-06: Review PASS — 21.10 acceptance met (`skillctl validate skills/rlm-tools` passed) with adversarial probes confirming validation failures for malformed skill manifest and invalid provider selection; auto-advanced to 21.11 and set status to NOT_STARTED.
 - 2026-02-06: Implemented 21.10 — packaged `rlm-tools` skill with `skills/rlm-tools/SKILL.yaml`, added multi-command wrapper `skills/rlm-tools/rlm.py` for `rlm validate|bundle|run|step|resume|providers`, and documented cross-agent usage in `docs/rlm_agents.md`; `skillctl validate skills/rlm-tools` passes; moved status to IN_REVIEW.
 - 2026-02-06: Review PASS — 21.8 acceptance met with deterministic provider-choice reruns (`provider_choice_match=true`) plus adversarial probes (invalid policy schema rejected, disallowed explicit provider blocked at runtime); auto-advanced to 21.10 and set status to NOT_STARTED.
-- 2026-02-06: Implemented 21.8 — added deterministic provider-policy selection (`primary` + ordered `fallback` + remaining `allowed`) with explicit-provider allowlist enforcement and deterministic provider-fallback behavior; tightened task schema checks (`primary in allowed`, fallback subset), added `tasks/rlm/provider_policy_example.json`, and verified repeat runs yield identical provider-choice sequences; moved status to IN_REVIEW.
-- 2026-02-06: Review PASS — 21.6 acceptance met (`readwrite` -> `readonly` replay produced identical response hashes/final artifact), demo command rerun now works without `--fresh`, and adversarial probes confirmed expected failures for missing cache + subcall budget breach; auto-advanced to 21.8 and set status to NOT_STARTED.
 
 ## Workflow state
 
@@ -50,8 +49,7 @@ Build deterministic gap analysis that identifies missing or incomplete documenta
 
 ## Evidence
 
-- `python3 tools/docs/doc_gap_report.py --repo-root . --out .vibe/docs/gap_report.json` succeeded and produced actionable findings with action counts: `{\"create_doc\": 2, \"create_wiki_page\": 1, \"edit_section\": 1}`.
-- Rerun determinism check (`gap_report.json` vs `gap_report.rerun.json`) reported `stable_pairs=True` for ordered `(finding_id, severity)` tuples.
+- (Pending for checkpoint 21A.2; 21A.1 review evidence captured in work-log entry.)
 
 ## Active issues
 
