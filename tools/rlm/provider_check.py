@@ -16,13 +16,18 @@ if str(TOOLS_DIR) not in sys.path:
 from providers import build_provider, provider_names  # type: ignore
 from providers.config import resolve_provider_config  # type: ignore
 
+ACTIVE_PROVIDER_NAMES = ("openai", "anthropic", "google")
+
 
 def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Run RLM provider health checks.")
     parser.add_argument(
         "--provider",
         default="all",
-        help="Provider to check: openai|anthropic|google|triton|all",
+        help=(
+            "Provider selection: all (active providers) | "
+            "openai|anthropic|google|triton | comma-separated list"
+        ),
     )
     parser.add_argument(
         "--repo-root",
@@ -35,7 +40,7 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 def _normalize_provider_selection(raw: str) -> list[str]:
     normalized = raw.strip().lower()
     if normalized in {"", "all"}:
-        return list(provider_names())
+        return list(ACTIVE_PROVIDER_NAMES)
     values = [item.strip().lower() for item in normalized.split(",") if item.strip()]
     valid = set(provider_names())
     invalid = [name for name in values if name not in valid]

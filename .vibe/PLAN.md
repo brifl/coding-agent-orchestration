@@ -14,7 +14,7 @@
 ## Stage 21 — RLM (Recursive Language Model) Tools Skill
 
 **Stage objective:**  
-Implement a bounded, auditable Recursive Language Model (RLM) execution harness that allows agents to reason over arbitrarily large contexts by offloading prompt data into a persistent runtime environment and iterating under explicit limits. The system must support real provider-backed subcalls (OpenAI, Anthropic, Google, Triton HTTP) and a human-assisted Kilo provider, while remaining deterministic, replayable, and safe.
+Implement a bounded, auditable Recursive Language Model (RLM) execution harness that allows agents to reason over arbitrarily large contexts by offloading prompt data into a persistent runtime environment and iterating under explicit limits. The system must support real provider-backed subcalls (OpenAI, Anthropic, Google) and a human-assisted Kilo provider, while remaining deterministic, replayable, and safe.
 
 ### Stage invariants (apply to all checkpoints)
 
@@ -136,7 +136,6 @@ Implement a bounded, auditable Recursive Language Model (RLM) execution harness 
     - OpenAI
     - Anthropic
     - Google (Gemini)
-    - Triton HTTP (TensorRT-LLM)
   * Config resolution:
     - repo-local `.vibe/rlm/providers.json`
     - global `~/.vibe/providers.json`
@@ -144,7 +143,7 @@ Implement a bounded, auditable Recursive Language Model (RLM) execution harness 
   * Health check:
     - `tools/rlm/provider_check.py`
 * **Acceptance:**
-  * `provider_check` passes for all four providers on a configured machine.
+  * `provider_check` passes for all active providers (OpenAI, Anthropic, Google) on a configured machine.
 * **Demo commands:**
   * `python tools/rlm/provider_check.py --provider openai`
 * **Evidence:**
@@ -206,23 +205,6 @@ Implement a bounded, auditable Recursive Language Model (RLM) execution harness 
   * `python skills/rlm-tools/executor.py run --task tasks/rlm/provider_policy_example.json`
 * **Evidence:**
   * Trace confirms deterministic selection.
-
----
-
-### 21.9 — Triton HTTP codec contract
-
-* **Objective:**  
-  Support TensorRT-LLM via HTTP with extensible input/output codecs.
-* **Deliverables:**
-  * Codec interface (`encode` / `decode`)
-  * v1 `raw_text` codec
-  * Docs: `docs/rlm_triton.md`
-* **Acceptance:**
-  * `provider_check --provider triton` succeeds using raw_text codec.
-* **Demo commands:**
-  * `python tools/rlm/provider_check.py --provider triton`
-* **Evidence:**
-  * Successful completion output.
 
 ---
 
