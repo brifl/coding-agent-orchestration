@@ -148,28 +148,56 @@ manual bootstraps found in `prompts/init/`.
 Codex's `$vibe-run` skill implements continuous mode. It must keep looping until
 the dispatcher says stop--never just one cycle.
 
-### `$vibe-run` happy-path flow (no issues, defined backlog)
+### `$vibe-run` decision flow (happy path + alternate paths)
 
 ```mermaid
 flowchart TD
     A[Start $vibe-run] --> B[Run agentctl.py next]
     B --> C{recommended_role}
+
     C -->|implement| D[Run prompt.checkpoint_implementation]
-    D --> E[STATE status becomes IN_REVIEW]
+    D --> E[Update STATE<br/>usually IN_REVIEW]
     E --> B
+
     C -->|review| F[Run prompt.checkpoint_review]
-    F --> G[STATE status becomes DONE]
-    G --> B
-    C -->|advance| H[Run prompt.advance_checkpoint]
-    H --> I[STATE moves to next checkpoint with NOT_STARTED]
+    F --> G{Review result}
+    G -->|PASS| H[Set checkpoint DONE]
+    H --> B
+    G -->|FAIL| I[Set IN_PROGRESS or BLOCKED<br/>add issues]
     I --> B
-    C -->|consolidation| J[Run prompt.consolidation at stage boundary]
-    J --> B
+
+    C -->|advance| J[Run prompt.advance_checkpoint]
+    J --> K[Move to next checkpoint<br/>set NOT_STARTED]
+    K --> B
+
+    C -->|issues_triage| L[Run prompt.issues_triage]
+    L --> M[Resolve/clarify top issues]
+    M --> B
+
+    C -->|consolidation| N[Run prompt.consolidation]
+    N --> O[Archive completed stage<br/>sync docs/state]
+    O --> B
+
+    C -->|design| P[Run prompt.stage_design]
+    P --> Q[Refine PLAN/STATE]
+    Q --> B
+
+    C -->|improvements| R[Run prompt.process_improvements]
+    R --> S[Improve workflow system]
+    S --> B
+
     C -->|stop| Z[Exit loop]
+
+    classDef happy fill:#e9f7ef,stroke:#2e7d32,color:#1b5e20,stroke-width:1px;
+    classDef other fill:#fff8e1,stroke:#f9a825,color:#6d4c41,stroke-width:1px;
+    classDef terminal fill:#ffebee,stroke:#c62828,color:#7f1d1d,stroke-width:1px;
+    class D,E,F,G,H,J,K happy;
+    class L,M,N,O,P,Q,R,S,I other;
+    class Z terminal;
 ```
 
-`issues_triage`, `design`, and `improvements` are outside this no-issues path and
-are only selected when state or planning conditions call for them.
+Happy path is `implement -> review (PASS) -> advance` with `consolidation` at stage boundaries.
+Other branches are selected when state/issue/planning conditions require them.
 
 ## How to start a session
 
