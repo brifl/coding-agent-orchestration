@@ -23,7 +23,7 @@ REQUIRED STATE MUTATIONS
 - Do not set status to `IN_REVIEW` or `DONE` in this loop.
 
 REQUIRED COMMANDS
-- Run `python3 tools/agentctl.py --repo-root . validate --format json` after edits.
+- Run `python3 .codex/skills/vibe-loop/scripts/agentctl.py --repo-root . validate --format json` after edits.
 
 EXECUTION
 1) Keep detailed planning to the next 1-3 stages only.
@@ -53,7 +53,7 @@ LOOP_RESULT (required final line)
 Emit exactly one line:
 LOOP_RESULT: {"loop":"design","result":"updated|blocked","stage":"<id>","checkpoint":"<id>","status":"<status>","next_role_hint":"implement|issues_triage|stop","report":<report_json>}
 Then record it with:
-`python3 tools/agentctl.py --repo-root . --format json loop-result --line 'LOOP_RESULT: {...,"report":<report_json>}'`
+`python3 .codex/skills/vibe-loop/scripts/agentctl.py --repo-root . --format json loop-result --line 'LOOP_RESULT: {...,"report":<report_json>}'`
 
 STOP CONDITION
 Stop after updating `.vibe/PLAN.md` (and `.vibe/STATE.md` only if needed), emitting and recording LOOP_RESULT, and returning control to dispatcher.
@@ -98,7 +98,7 @@ ACTIVE ISSUE BLOCK (required format)
 REQUIRED COMMANDS
 - Run checkpoint demo commands from `.vibe/PLAN.md` (or closest equivalent if paths changed).
 - Run `git status --porcelain` before and after commit.
-- Run `python3 tools/agentctl.py --repo-root . validate --strict` before emitting LOOP_RESULT.
+- Run `python3 .codex/skills/vibe-loop/scripts/agentctl.py --repo-root . validate --strict` before emitting LOOP_RESULT.
 
 EXECUTION
 1) Implement only current checkpoint deliverables.
@@ -132,7 +132,7 @@ LOOP_RESULT (required final line)
 Emit exactly one line:
 LOOP_RESULT: {"loop":"implement","result":"ready_for_review|blocked","stage":"<id>","checkpoint":"<id>","status":"IN_REVIEW|BLOCKED","next_role_hint":"review|issues_triage","report":<report_json>}
 Then record it with:
-`python3 tools/agentctl.py --repo-root . --format json loop-result --line 'LOOP_RESULT: {...,"report":<report_json>}'`
+`python3 .codex/skills/vibe-loop/scripts/agentctl.py --repo-root . --format json loop-result --line 'LOOP_RESULT: {...,"report":<report_json>}'`
 
 STOP CONDITION
 Stop after commit(s), state updates, LOOP_RESULT output + record, and return control to dispatcher.
@@ -183,7 +183,7 @@ REQUIRED COMMANDS
 - Re-run demo commands from the active checkpoint (or equivalent).
 - Run focused checks needed to verify acceptance claims.
 - Run at least 2 adversarial probes (negative-path, boundary, or regression probe).
-- Run `python3 tools/agentctl.py --repo-root . validate --strict` before emitting LOOP_RESULT.
+- Run `python3 .codex/skills/vibe-loop/scripts/agentctl.py --repo-root . validate --strict` before emitting LOOP_RESULT.
 
 EXECUTION
 1) Pass A: Verify deliverables and every acceptance criterion with explicit evidence (pass/fail per item).
@@ -224,7 +224,7 @@ LOOP_RESULT (required final line)
 Emit exactly one line:
 LOOP_RESULT: {"loop":"review","result":"pass|fail","stage":"<id>","checkpoint":"<id>","status":"NOT_STARTED|DONE|IN_PROGRESS|BLOCKED","next_role_hint":"implement|consolidation|issues_triage|stop","report":<report_json>}
 Then record it with:
-`python3 tools/agentctl.py --repo-root . --format json loop-result --line 'LOOP_RESULT: {...,"report":<report_json>}'`
+`python3 .codex/skills/vibe-loop/scripts/agentctl.py --repo-root . --format json loop-result --line 'LOOP_RESULT: {...,"report":<report_json>}'`
 
 STOP CONDITION
 Stop after state updates, LOOP_RESULT output + record, and return control to dispatcher.
@@ -269,7 +269,7 @@ ACTIVE ISSUE BLOCK (required format)
 
 REQUIRED COMMANDS
 - Run only commands needed to prove issue resolution (or validate no code change needed).
-- Run `python3 tools/agentctl.py --repo-root . validate --strict` before emitting LOOP_RESULT.
+- Run `python3 .codex/skills/vibe-loop/scripts/agentctl.py --repo-root . validate --strict` before emitting LOOP_RESULT.
 
 EXECUTION
 1) Diversity-first candidate generation (required):
@@ -303,7 +303,7 @@ LOOP_RESULT (required final line)
 Emit exactly one line:
 LOOP_RESULT: {"loop":"issues_triage","result":"resolved|partial|blocked","stage":"<id>","checkpoint":"<id>","status":"<status>","next_role_hint":"implement|review|issues_triage|stop","report":<report_json>}
 Then record it with:
-`python3 tools/agentctl.py --repo-root . --format json loop-result --line 'LOOP_RESULT: {...,"report":<report_json>}'`
+`python3 .codex/skills/vibe-loop/scripts/agentctl.py --repo-root . --format json loop-result --line 'LOOP_RESULT: {...,"report":<report_json>}'`
 
 STOP CONDITION
 Stop after top issues are resolved/clarified and LOOP_RESULT is emitted + recorded.
@@ -322,7 +322,7 @@ to the next stage.
 
 PREFLIGHT
 1) Read `AGENTS.md` (optional if already read), `.vibe/STATE.md`, `.vibe/PLAN.md`, `.vibe/HISTORY.md` (optional), `README.md` (optional).
-2) Run `python3 tools/agentctl.py --repo-root . validate`.
+2) Run `python3 .codex/skills/vibe-loop/scripts/agentctl.py --repo-root . validate`.
 3) Determine whether this consolidation is tied to a stage transition.
 
 ALLOWED FILES
@@ -341,7 +341,7 @@ REQUIRED STATE MUTATIONS
   - Ensure `## Workflow state` contains `- [x] RUN_CONTEXT_CAPTURE`.
 
 REQUIRED COMMANDS
-- `python3 tools/agentctl.py --repo-root . validate --format json` before and after edits.
+- `python3 .codex/skills/vibe-loop/scripts/agentctl.py --repo-root . validate --format json` before and after edits.
 
 EXECUTION
 1) Archive completed stages into `.vibe/HISTORY.md` with concise stage summaries.
@@ -372,7 +372,7 @@ LOOP_RESULT (required final line)
 Emit exactly one line:
 LOOP_RESULT: {"loop":"consolidation","result":"aligned|blocked","stage":"<id>","checkpoint":"<id>","status":"<status>","next_role_hint":"context_capture|implement|issues_triage","report":<report_json>}
 Then record it with:
-`python3 tools/agentctl.py --repo-root . --format json loop-result --line 'LOOP_RESULT: {...,"report":<report_json>}'`
+`python3 .codex/skills/vibe-loop/scripts/agentctl.py --repo-root . --format json loop-result --line 'LOOP_RESULT: {...,"report":<report_json>}'`
 
 STOP CONDITION
 Stop after docs are aligned, validation passes, LOOP_RESULT is emitted + recorded, and control returns to dispatcher.
@@ -428,7 +428,7 @@ LOOP_RESULT (required final line)
 Emit exactly one line:
 LOOP_RESULT: {"loop":"context_capture","result":"updated|blocked","stage":"<id>","checkpoint":"<id>","status":"<status>","next_role_hint":"implement|review|issues_triage|stop","report":<report_json>}
 Then record it with:
-`python3 tools/agentctl.py --repo-root . --format json loop-result --line 'LOOP_RESULT: {...,"report":<report_json>}'`
+`python3 .codex/skills/vibe-loop/scripts/agentctl.py --repo-root . --format json loop-result --line 'LOOP_RESULT: {...,"report":<report_json>}'`
 
 STOP CONDITION
 Stop after context update, optional flag clear, and LOOP_RESULT emission + record.
@@ -447,14 +447,14 @@ GOAL
 Implement one bounded improvement to the workflow system with objective validation.
 
 PREFLIGHT
-1) Read `AGENTS.md` (optional if already read), `.vibe/STATE.md`, `.vibe/PLAN.md`, `.vibe/HISTORY.md` (optional), `prompts/template_prompts.md`, `tools/agentctl.py` (if relevant), `README.md` (optional).
-2) Run `python3 tools/agentctl.py --repo-root . validate --strict`.
+1) Read `AGENTS.md` (optional if already read), `.vibe/STATE.md`, `.vibe/PLAN.md`, `.vibe/HISTORY.md` (optional), `prompts/template_prompts.md`, `.codex/skills/vibe-loop/scripts/agentctl.py` (if relevant), `README.md` (optional).
+2) Run `python3 .codex/skills/vibe-loop/scripts/agentctl.py --repo-root . validate --strict`.
 3) Diagnose at least one concrete process problem before choosing work.
 
 ALLOWED FILES
 - `prompts/template_prompts.md`
 - `AGENTS.md`
-- `tools/agentctl.py` (+ tests)
+- `.codex/skills/vibe-loop/scripts/agentctl.py` (+ tests)
 - `docs/*.md`
 - CI config files
 - `.gitignore`
@@ -465,7 +465,7 @@ REQUIRED STATE MUTATIONS
 - Add a work-log note summarizing what was improved and how it was validated.
 
 REQUIRED COMMANDS
-- `python3 tools/agentctl.py --repo-root . validate --strict`
+- `python3 .codex/skills/vibe-loop/scripts/agentctl.py --repo-root . validate --strict`
 - Additional test/validation commands required by the chosen improvement.
 
 EXECUTION
@@ -513,7 +513,7 @@ LOOP_RESULT (required final line)
 Emit exactly one line:
 LOOP_RESULT: {"loop":"improvements","result":"completed|blocked","stage":"<id>","checkpoint":"<id>","status":"<status>","next_role_hint":"implement|review|issues_triage|stop","report":<report_json>}
 Then record it with:
-`python3 tools/agentctl.py --repo-root . --format json loop-result --line 'LOOP_RESULT: {...,"report":<report_json>}'`
+`python3 .codex/skills/vibe-loop/scripts/agentctl.py --repo-root . --format json loop-result --line 'LOOP_RESULT: {...,"report":<report_json>}'`
 
 STOP CONDITION
 Stop after one validated improvement and LOOP_RESULT emission + record.
@@ -545,7 +545,7 @@ REQUIRED STATE MUTATIONS
 - If no next checkpoint exists, keep checkpoint unchanged and add a "plan exhausted" evidence note.
 
 REQUIRED COMMANDS
-- `python3 tools/agentctl.py --repo-root . validate --format json`
+- `python3 .codex/skills/vibe-loop/scripts/agentctl.py --repo-root . validate --format json`
 
 EXECUTION
 1) Move forward by one checkpoint at most.
@@ -568,7 +568,7 @@ LOOP_RESULT (required final line)
 Emit exactly one line:
 LOOP_RESULT: {"loop":"advance","result":"advanced|exhausted|blocked","stage":"<id>","checkpoint":"<id>","status":"NOT_STARTED|DONE","next_role_hint":"implement|stop","report":<report_json>}
 Then record it with:
-`python3 tools/agentctl.py --repo-root . --format json loop-result --line 'LOOP_RESULT: {...,"report":<report_json>}'`
+`python3 .codex/skills/vibe-loop/scripts/agentctl.py --repo-root . --format json loop-result --line 'LOOP_RESULT: {...,"report":<report_json>}'`
 
 STOP CONDITION
 Stop after updating `.vibe/STATE.md`, emitting + recording LOOP_RESULT, and returning to dispatcher.
@@ -605,7 +605,7 @@ A) Current focus (stage / checkpoint / status / issues count)
 B) Next loop (`design` / `implement` / `review` / `issues_triage` / `advance` / `consolidation` / `context_capture` / `improvements` / `stop`)
 C) If running a loop, do it now and stop afterward.
 D) Record loop completion:
-   `python3 tools/agentctl.py --repo-root . --format json loop-result --line 'LOOP_RESULT: {...,"report":<report_json>}'`
+   `python3 .codex/skills/vibe-loop/scripts/agentctl.py --repo-root . --format json loop-result --line 'LOOP_RESULT: {...,"report":<report_json>}'`
 E) If blocked, add up to 2 questions as issues in `.vibe/STATE.md`, then stop.
 ```
 
@@ -634,11 +634,11 @@ READ ORDER
 4) `.vibe/HISTORY.md` (optional)
 
 STANDARD COMMANDS
-1) `python3 tools/agentctl.py --repo-root . --format json next`
+1) `python3 .codex/skills/vibe-loop/scripts/agentctl.py --repo-root . --format json next`
 2) `python3 tools/prompt_catalog.py prompts/template_prompts.md get <prompt_id>`
 3) Execute prompt loop, update `.vibe/STATE.md`, commit changes when tracked files changed.
 4) Record loop completion:
-   `python3 tools/agentctl.py --repo-root . --format json loop-result --line 'LOOP_RESULT: {...,"report":<report_json>}'`
+   `python3 .codex/skills/vibe-loop/scripts/agentctl.py --repo-root . --format json loop-result --line 'LOOP_RESULT: {...,"report":<report_json>}'`
 
 OUTPUT
 A) Current focus (stage / checkpoint / status)
@@ -674,11 +674,11 @@ READ ORDER
 4) `.vibe/HISTORY.md` (optional)
 
 STANDARD COMMANDS
-1) `python3 tools/agentctl.py --repo-root . --format json next`
+1) `python3 .codex/skills/vibe-loop/scripts/agentctl.py --repo-root . --format json next`
 2) `python3 tools/prompt_catalog.py prompts/template_prompts.md get <prompt_id>`
 3) Execute prompt loop, update `.vibe/STATE.md`, commit changes when tracked files changed.
 4) Record loop completion:
-   `python3 tools/agentctl.py --repo-root . --format json loop-result --line 'LOOP_RESULT: {...,"report":<report_json>}'`
+   `python3 .codex/skills/vibe-loop/scripts/agentctl.py --repo-root . --format json loop-result --line 'LOOP_RESULT: {...,"report":<report_json>}'`
 
 REQUIRED OUTPUT
 1) Current focus (stage / checkpoint / status).
@@ -715,11 +715,11 @@ READ ORDER
 4) `.vibe/HISTORY.md` (optional)
 
 STANDARD COMMANDS
-1) `python3 tools/agentctl.py --repo-root . --format json next`
+1) `python3 .codex/skills/vibe-loop/scripts/agentctl.py --repo-root . --format json next`
 2) `python3 tools/prompt_catalog.py prompts/template_prompts.md get <prompt_id>`
 3) Execute prompt loop, update `.vibe/STATE.md`, commit changes when tracked files changed.
 4) Record loop completion:
-   `python3 tools/agentctl.py --repo-root . --format json loop-result --line 'LOOP_RESULT: {...,"report":<report_json>}'`
+   `python3 .codex/skills/vibe-loop/scripts/agentctl.py --repo-root . --format json loop-result --line 'LOOP_RESULT: {...,"report":<report_json>}'`
 
 REQUIRED OUTPUT
 1) Current focus (stage / checkpoint / status).
@@ -765,7 +765,7 @@ DISPATCHER CONTRACT (when selected by `agentctl` workflow)
 - Emit exactly one line:
   `LOOP_RESULT: {"loop":"design","result":"updated|blocked","stage":"<id>","checkpoint":"<id>","status":"<status>","next_role_hint":"implement|issues_triage|stop","report":<report_json>}`
 - Record it with:
-  `python3 tools/agentctl.py --repo-root . --format json loop-result --line 'LOOP_RESULT: {...,"report":<report_json>}'`
+  `python3 .codex/skills/vibe-loop/scripts/agentctl.py --repo-root . --format json loop-result --line 'LOOP_RESULT: {...,"report":<report_json>}'`
 
 STOP CONDITION
 Stop after producing the structured feature list.
@@ -805,7 +805,7 @@ DISPATCHER CONTRACT (when selected by `agentctl` workflow)
 - Emit exactly one line:
   `LOOP_RESULT: {"loop":"design","result":"updated|blocked","stage":"<id>","checkpoint":"<id>","status":"<status>","next_role_hint":"implement|issues_triage|stop","report":<report_json>}`
 - Record it with:
-  `python3 tools/agentctl.py --repo-root . --format json loop-result --line 'LOOP_RESULT: {...,"report":<report_json>}'`
+  `python3 .codex/skills/vibe-loop/scripts/agentctl.py --repo-root . --format json loop-result --line 'LOOP_RESULT: {...,"report":<report_json>}'`
 
 STOP CONDITION
 Stop after listing sub-features and any risks.
@@ -845,7 +845,7 @@ DISPATCHER CONTRACT (when selected by `agentctl` workflow)
 - Emit exactly one line:
   `LOOP_RESULT: {"loop":"design","result":"updated|blocked","stage":"<id>","checkpoint":"<id>","status":"<status>","next_role_hint":"implement|issues_triage|stop","report":<report_json>}`
 - Record it with:
-  `python3 tools/agentctl.py --repo-root . --format json loop-result --line 'LOOP_RESULT: {...,"report":<report_json>}'`
+  `python3 .codex/skills/vibe-loop/scripts/agentctl.py --repo-root . --format json loop-result --line 'LOOP_RESULT: {...,"report":<report_json>}'`
 
 STOP CONDITION
 Stop after producing the architecture output.
@@ -883,7 +883,7 @@ DISPATCHER CONTRACT (when selected by `agentctl` workflow)
 - Emit exactly one line:
   `LOOP_RESULT: {"loop":"design","result":"updated|blocked","stage":"<id>","checkpoint":"<id>","status":"<status>","next_role_hint":"implement|issues_triage|stop","report":<report_json>}`
 - Record it with:
-  `python3 tools/agentctl.py --repo-root . --format json loop-result --line 'LOOP_RESULT: {...,"report":<report_json>}'`
+  `python3 .codex/skills/vibe-loop/scripts/agentctl.py --repo-root . --format json loop-result --line 'LOOP_RESULT: {...,"report":<report_json>}'`
 
 STOP CONDITION
 Stop after listing the milestones.
@@ -919,7 +919,7 @@ DISPATCHER CONTRACT (when selected by `agentctl` workflow)
 - Emit exactly one line:
   `LOOP_RESULT: {"loop":"design","result":"updated|blocked","stage":"<id>","checkpoint":"<id>","status":"<status>","next_role_hint":"implement|issues_triage|stop","report":<report_json>}`
 - Record it with:
-  `python3 tools/agentctl.py --repo-root . --format json loop-result --line 'LOOP_RESULT: {...,"report":<report_json>}'`
+  `python3 .codex/skills/vibe-loop/scripts/agentctl.py --repo-root . --format json loop-result --line 'LOOP_RESULT: {...,"report":<report_json>}'`
 
 STOP CONDITION
 Stop after producing the stage sections.
@@ -958,7 +958,7 @@ DISPATCHER CONTRACT (when selected by `agentctl` workflow)
 - Emit exactly one line:
   `LOOP_RESULT: {"loop":"design","result":"updated|blocked","stage":"<id>","checkpoint":"<id>","status":"<status>","next_role_hint":"implement|issues_triage|stop","report":<report_json>}`
 - Record it with:
-  `python3 tools/agentctl.py --repo-root . --format json loop-result --line 'LOOP_RESULT: {...,"report":<report_json>}'`
+  `python3 .codex/skills/vibe-loop/scripts/agentctl.py --repo-root . --format json loop-result --line 'LOOP_RESULT: {...,"report":<report_json>}'`
 
 STOP CONDITION
 Stop after generating the checkpoint sections.
@@ -1034,11 +1034,11 @@ RULES
 
 DISPATCHER CONTRACT (when selected by `agentctl` workflow)
 - Update `.vibe/STATE.md` work log + evidence with scan findings.
-- Run `python3 tools/agentctl.py --repo-root . validate --strict` before handoff.
+- Run `python3 .codex/skills/vibe-loop/scripts/agentctl.py --repo-root . validate --strict` before handoff.
 - Emit exactly one line:
   `LOOP_RESULT: {"loop":"implement","result":"ready_for_review|blocked","stage":"<id>","checkpoint":"<id>","status":"IN_REVIEW|BLOCKED","next_role_hint":"review|issues_triage","report":<report_json>}`
 - Record it with:
-  `python3 tools/agentctl.py --repo-root . --format json loop-result --line 'LOOP_RESULT: {...,"report":<report_json>}'`
+  `python3 .codex/skills/vibe-loop/scripts/agentctl.py --repo-root . --format json loop-result --line 'LOOP_RESULT: {...,"report":<report_json>}'`
 ```
 
 ---
@@ -1093,11 +1093,11 @@ RULES
 
 DISPATCHER CONTRACT (when selected by `agentctl` workflow)
 - Update `.vibe/STATE.md` work log + evidence with file edits and verification outputs.
-- Run `python3 tools/agentctl.py --repo-root . validate --strict` before handoff.
+- Run `python3 .codex/skills/vibe-loop/scripts/agentctl.py --repo-root . validate --strict` before handoff.
 - Emit exactly one line:
   `LOOP_RESULT: {"loop":"implement","result":"ready_for_review|blocked","stage":"<id>","checkpoint":"<id>","status":"IN_REVIEW|BLOCKED","next_role_hint":"review|issues_triage","report":<report_json>}`
 - Record it with:
-  `python3 tools/agentctl.py --repo-root . --format json loop-result --line 'LOOP_RESULT: {...,"report":<report_json>}'`
+  `python3 .codex/skills/vibe-loop/scripts/agentctl.py --repo-root . --format json loop-result --line 'LOOP_RESULT: {...,"report":<report_json>}'`
 ```
 
 ---
@@ -1150,11 +1150,11 @@ RULES
 
 DISPATCHER CONTRACT (when selected by `agentctl` workflow)
 - Update `.vibe/STATE.md` work log + evidence with verification matrix and residual risks.
-- Run `python3 tools/agentctl.py --repo-root . validate --strict` before handoff.
+- Run `python3 .codex/skills/vibe-loop/scripts/agentctl.py --repo-root . validate --strict` before handoff.
 - Emit exactly one line:
   `LOOP_RESULT: {"loop":"review","result":"pass|fail","stage":"<id>","checkpoint":"<id>","status":"NOT_STARTED|DONE|IN_PROGRESS|BLOCKED","next_role_hint":"implement|consolidation|issues_triage|stop","report":<report_json>}`
 - Record it with:
-  `python3 tools/agentctl.py --repo-root . --format json loop-result --line 'LOOP_RESULT: {...,"report":<report_json>}'`
+  `python3 .codex/skills/vibe-loop/scripts/agentctl.py --repo-root . --format json loop-result --line 'LOOP_RESULT: {...,"report":<report_json>}'`
 ```
 
 ---
@@ -1223,7 +1223,7 @@ DISPATCHER CONTRACT (when selected by `agentctl` workflow)
 - Emit exactly one line:
   `LOOP_RESULT: {"loop":"design","result":"updated|blocked","stage":"<id>","checkpoint":"<id>","status":"<status>","next_role_hint":"implement|issues_triage|stop","report":<report_json>}`
 - Record it with:
-  `python3 tools/agentctl.py --repo-root . --format json loop-result --line 'LOOP_RESULT: {...,"report":<report_json>}'`
+  `python3 .codex/skills/vibe-loop/scripts/agentctl.py --repo-root . --format json loop-result --line 'LOOP_RESULT: {...,"report":<report_json>}'`
 ```
 
 ---
@@ -1273,11 +1273,11 @@ RULES
 
 DISPATCHER CONTRACT (when selected by `agentctl` workflow)
 - Update `.vibe/STATE.md` work log + evidence with generated tests and run output.
-- Run `python3 tools/agentctl.py --repo-root . validate --strict` before handoff.
+- Run `python3 .codex/skills/vibe-loop/scripts/agentctl.py --repo-root . validate --strict` before handoff.
 - Emit exactly one line:
   `LOOP_RESULT: {"loop":"implement","result":"ready_for_review|blocked","stage":"<id>","checkpoint":"<id>","status":"IN_REVIEW|BLOCKED","next_role_hint":"review|issues_triage","report":<report_json>}`
 - Record it with:
-  `python3 tools/agentctl.py --repo-root . --format json loop-result --line 'LOOP_RESULT: {...,"report":<report_json>}'`
+  `python3 .codex/skills/vibe-loop/scripts/agentctl.py --repo-root . --format json loop-result --line 'LOOP_RESULT: {...,"report":<report_json>}'`
 ```
 
 ---
@@ -1325,11 +1325,11 @@ RULES
 
 DISPATCHER CONTRACT (when selected by `agentctl` workflow)
 - Update `.vibe/STATE.md` work log + evidence with test quality verdict and top fixes.
-- Run `python3 tools/agentctl.py --repo-root . validate --strict` before handoff.
+- Run `python3 .codex/skills/vibe-loop/scripts/agentctl.py --repo-root . validate --strict` before handoff.
 - Emit exactly one line:
   `LOOP_RESULT: {"loop":"review","result":"pass|fail","stage":"<id>","checkpoint":"<id>","status":"NOT_STARTED|DONE|IN_PROGRESS|BLOCKED","next_role_hint":"implement|consolidation|issues_triage|stop","report":<report_json>}`
 - Record it with:
-  `python3 tools/agentctl.py --repo-root . --format json loop-result --line 'LOOP_RESULT: {...,"report":<report_json>}'`
+  `python3 .codex/skills/vibe-loop/scripts/agentctl.py --repo-root . --format json loop-result --line 'LOOP_RESULT: {...,"report":<report_json>}'`
 ```
 
 ---
@@ -1380,7 +1380,7 @@ DISPATCHER CONTRACT (when selected by `agentctl` workflow)
 - Emit exactly one line:
   `LOOP_RESULT: {"loop":"design","result":"updated|blocked","stage":"<id>","checkpoint":"<id>","status":"<status>","next_role_hint":"implement|issues_triage|stop","report":<report_json>}`
 - Record it with:
-  `python3 tools/agentctl.py --repo-root . --format json loop-result --line 'LOOP_RESULT: {...,"report":<report_json>}'`
+  `python3 .codex/skills/vibe-loop/scripts/agentctl.py --repo-root . --format json loop-result --line 'LOOP_RESULT: {...,"report":<report_json>}'`
 ```
 
 ---
@@ -1433,11 +1433,11 @@ RULES
 
 DISPATCHER CONTRACT (when selected by `agentctl` workflow)
 - Update `.vibe/STATE.md` work log + evidence with delivered intake form and open questions.
-- Run `python3 tools/agentctl.py --repo-root . validate --strict` before handoff.
+- Run `python3 .codex/skills/vibe-loop/scripts/agentctl.py --repo-root . validate --strict` before handoff.
 - Emit exactly one line:
   `LOOP_RESULT: {"loop":"issues_triage","result":"resolved|partial|blocked","stage":"<id>","checkpoint":"<id>","status":"<status>","next_role_hint":"implement|review|issues_triage|stop","report":<report_json>}`
 - Record it with:
-  `python3 tools/agentctl.py --repo-root . --format json loop-result --line 'LOOP_RESULT: {...,"report":<report_json>}'`
+  `python3 .codex/skills/vibe-loop/scripts/agentctl.py --repo-root . --format json loop-result --line 'LOOP_RESULT: {...,"report":<report_json>}'`
 ```
 
 ---
@@ -1493,11 +1493,11 @@ RULES
 
 DISPATCHER CONTRACT (when selected by `agentctl` workflow)
 - Update `.vibe/STATE.md` work log + evidence with triage decisions and checkpoint proposals.
-- Run `python3 tools/agentctl.py --repo-root . validate --strict` before handoff.
+- Run `python3 .codex/skills/vibe-loop/scripts/agentctl.py --repo-root . validate --strict` before handoff.
 - Emit exactly one line:
   `LOOP_RESULT: {"loop":"issues_triage","result":"resolved|partial|blocked","stage":"<id>","checkpoint":"<id>","status":"<status>","next_role_hint":"implement|review|issues_triage|stop","report":<report_json>}`
 - Record it with:
-  `python3 tools/agentctl.py --repo-root . --format json loop-result --line 'LOOP_RESULT: {...,"report":<report_json>}'`
+  `python3 .codex/skills/vibe-loop/scripts/agentctl.py --repo-root . --format json loop-result --line 'LOOP_RESULT: {...,"report":<report_json>}'`
 ```
 
 ---

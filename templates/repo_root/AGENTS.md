@@ -55,7 +55,7 @@ Each checkpoint should define:
 ### Role loops
 
 The agent should operate in one of these loops, as appropriate to `.vibe/STATE.md`.
-This registry is canonical and must stay aligned with `tools/agentctl.py` role mapping.
+This registry is canonical and must stay aligned with `.codex/skills/vibe-loop/scripts/agentctl.py` role mapping.
 
 | Role key | Loop name | Intent | Typical transition |
 | --- | --- | --- | --- |
@@ -102,7 +102,7 @@ Each active issue in `.vibe/STATE.md` should use this format:
 - `Impact` drives triage priority.
 - `Status` reflects current resolution state.
 - `Unblock Condition` and `Evidence Needed` should be concrete and testable.
-- `python tools/agentctl.py --repo-root . validate --strict` should fail if required fields are missing.
+- `python .codex/skills/vibe-loop/scripts/agentctl.py --repo-root . validate --strict` should fail if required fields are missing.
 
 ## Version control policy (required)
 
