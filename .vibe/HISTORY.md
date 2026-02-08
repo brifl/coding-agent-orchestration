@@ -13,6 +13,10 @@
 
 ## Completed stages
 
+### 2026-02-06 — Stage 21A: Continuous Documentation Skill (completed)
+
+Designed and packaged a continuous documentation workflow (gap analysis, gap fix, refactor analysis, refactor fix) as a first-class skill with workflow YAML, SKILL.md manifest, runner script, and updated skill docs (checkpoints 21A.0–21A.5).
+
 ### 2026-02-06 — Stage 20: RAG Pipeline Hardening (completed)
 
 Hardened the RAG stack end-to-end: deterministic scanner metadata, chunk-aware indexing, chunk-level retrieval formatting/diversity controls, agent-facing packaging, and stdlib TF-IDF semantic/hybrid search.
