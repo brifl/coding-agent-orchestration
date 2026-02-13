@@ -1,15 +1,15 @@
 {
-  "checkpoint": "21.0",
-  "loop": "implement",
-  "next_role_hint": "review",
+  "checkpoint": "21.1",
+  "loop": "review",
+  "next_role_hint": "implement",
   "protocol_version": 1,
-  "recorded_at": "2026-02-13T06:41:21.708962+00:00",
+  "recorded_at": "2026-02-13T06:42:35.955576+00:00",
   "report": {
     "acceptance_matrix": [
       {
         "confidence": 1.0,
         "critical": true,
-        "evidence": "rlm_overview.md lines 33-56 cover both modes and human-assisted providers",
+        "evidence": "rlm_overview.md lines 33-56",
         "evidence_strength": "HIGH",
         "item": "Documentation explains baseline vs subcall mode and human-assisted providers",
         "status": "PASS"
@@ -17,43 +17,43 @@
       {
         "confidence": 1.0,
         "critical": true,
-        "evidence": "rlm_overview.md lines 58-64 contain 3-row comparison table",
+        "evidence": "rlm_overview.md lines 58-64: 3-row markdown table",
         "evidence_strength": "HIGH",
         "item": "Decision table included and unambiguous",
         "status": "PASS"
       }
     ],
     "loop_result": {
-      "checkpoint": "21.0",
-      "loop": "implement",
-      "next_role_hint": "review",
-      "result": "ready_for_review",
+      "checkpoint": "21.1",
+      "loop": "review",
+      "next_role_hint": "implement",
+      "result": "pass",
       "stage": "21",
-      "status": "IN_REVIEW"
+      "status": "NOT_STARTED"
     },
     "state_transition": {
       "after": {
-        "checkpoint": "21.0",
+        "checkpoint": "21.1",
         "stage": "21",
-        "status": "IN_REVIEW"
+        "status": "NOT_STARTED"
       },
       "before": {
         "checkpoint": "21.0",
         "stage": "21",
-        "status": "NOT_STARTED"
+        "status": "IN_REVIEW"
       }
     },
     "top_findings": [
       {
-        "action": "Verified content matches acceptance; no changes needed",
-        "evidence": "rlm_overview.md (71 lines) and rlm_glossary.md (52 lines) already committed",
+        "action": "Auto-advanced to 21.1",
+        "evidence": "Both docs pre-exist with full content",
         "impact": "MINOR",
-        "title": "Deliverables pre-exist from prior Stage 21"
+        "title": "Deliverables complete from prior Stage 21"
       }
     ]
   },
-  "result": "ready_for_review",
+  "result": "pass",
   "stage": "21",
-  "state_sha256": "b633db55d4724c2d41ddb87b7c9c8fcee4748e760665b33c54a1861264f12862",
-  "status": "IN_REVIEW"
+  "state_sha256": "70bb799d8092ad3cdec62828681e46a4e0e8f2b97e9873df639666895ac83794",
+  "status": "NOT_STARTED"
 }
