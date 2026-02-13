@@ -36,7 +36,7 @@ Define what RLM means in this system, when it should be used, and how it differs
 
 ## Workflow state
 
-- [x] RUN_CONTEXT_CAPTURE
+- [ ] RUN_CONTEXT_CAPTURE
 
 ## Evidence
 

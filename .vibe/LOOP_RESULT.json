@@ -1,0 +1,61 @@
+{
+  "checkpoint": "21.0",
+  "loop": "context_capture",
+  "next_role_hint": "implement",
+  "protocol_version": 1,
+  "recorded_at": "2026-02-13T06:39:58.001521+00:00",
+  "report": {
+    "acceptance_matrix": [
+      {
+        "confidence": 1.0,
+        "critical": true,
+        "evidence": "File updated with current stage 21/21.0 info",
+        "evidence_strength": "HIGH",
+        "item": "CONTEXT.md refreshed",
+        "status": "PASS"
+      },
+      {
+        "confidence": 1.0,
+        "critical": true,
+        "evidence": "Flag changed from [x] to [ ] in STATE.md",
+        "evidence_strength": "HIGH",
+        "item": "RUN_CONTEXT_CAPTURE cleared",
+        "status": "PASS"
+      }
+    ],
+    "loop_result": {
+      "checkpoint": "21.0",
+      "loop": "context_capture",
+      "next_role_hint": "implement",
+      "result": "updated",
+      "stage": "21",
+      "status": "NOT_STARTED"
+    },
+    "state_transition": {
+      "after": {
+        "checkpoint": "21.0",
+        "flag": "RUN_CONTEXT_CAPTURE cleared",
+        "stage": "21",
+        "status": "NOT_STARTED"
+      },
+      "before": {
+        "checkpoint": "21.0",
+        "flag": "RUN_CONTEXT_CAPTURE set",
+        "stage": "21",
+        "status": "NOT_STARTED"
+      }
+    },
+    "top_findings": [
+      {
+        "action": "none",
+        "evidence": "Stage 21A archived; STATE.md points to 21.0",
+        "impact": "MINOR",
+        "title": "Stage transition complete"
+      }
+    ]
+  },
+  "result": "updated",
+  "stage": "21",
+  "state_sha256": "5bd50f71e5c50ba67220776e9fbdc804728f9d53c442fa0c8fcfc3fe06d8fc86",
+  "status": "NOT_STARTED"
+}
