@@ -12,30 +12,29 @@
 ## Current focus
 
 - Stage: 21
-- Checkpoint: 21.3
+- Checkpoint: 21.4
 - Status: NOT_STARTED  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
 
 ## Objective (current checkpoint)
 
-Provide a safe, persistent execution environment for RLM iterations.
+Implement bounded iteration with constant-size metadata and explicit stop semantics.
 
 ## Deliverables (current checkpoint)
 
-- `tools/rlm/runtime.py`
-- Injected helpers: `context`, `list_chunks()`, `get_chunk()`, `grep()`, `peek()`, `FINAL()`
-- Deterministic stdout capture and truncation
-- State serialization (`state.json`)
+- `skills/rlm-tools/executor.py` with `run`, `step`, `resume`
+- Run directory: `.vibe/rlm/runs/<task_id>/` with `state.json`, `trace.jsonl`, final artifacts
 
 ## Acceptance (current checkpoint)
 
-- Runtime resumes from saved state without ambiguity.
+- Baseline mode completes multi-iteration runs and stops only on `FINAL()` or limits.
 
 ## Work log (current session)
 
 - 2026-02-07: Consolidation — transitioned pointer from completed Stage 21A (`21A.5/DONE`) to Stage 21 (`21.0/NOT_STARTED`), archived Stage 21A into HISTORY.md, refreshed objective/deliverables/acceptance to 21.0, and pruned work log.
 - 2026-02-13: Implementation — verified 21.0 deliverables already exist from prior Stage 21 work. All acceptance criteria met. Reviewed and PASSED. Auto-advanced to 21.1.
 - 2026-02-13: 21.1 — deliverables pre-exist, validation demo OK. Reviewed PASS, auto-advanced to 21.2.
-- 2026-02-13: 21.2 — context_bundle.py pre-exists. Demo: builds 29 sources, 3625 chunks. Determinism verified (identical manifest hash on re-run). Reviewed PASS, auto-advanced to 21.3.
+- 2026-02-13: 21.2 — context_bundle.py pre-exists, determinism verified. PASS, advanced to 21.3.
+- 2026-02-13: 21.3 — runtime.py pre-exists. Selftest passes (stdout capture, resume, finalize rejection). PASS, advanced to 21.4.
 
 ## Workflow state
 
@@ -43,7 +42,7 @@ Provide a safe, persistent execution environment for RLM iterations.
 
 ## Evidence
 
-(None yet — checkpoint 21.3 not started.)
+(None yet — checkpoint 21.4 not started.)
 
 ## Active issues
 
