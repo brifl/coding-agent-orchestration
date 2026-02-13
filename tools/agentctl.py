@@ -1620,9 +1620,19 @@ def _consolidation_trigger_reason(repo_root: Path) -> str | None:
     return None
 
 
-def _process_improvements_trigger_reason(repo_root: Path, workflow_flags: dict[str, bool]) -> str | None:
+def _process_improvements_trigger_reason(
+    repo_root: Path,
+    workflow_flags: dict[str, bool],
+    current_checkpoint: str | None = None,
+) -> str | None:
     if workflow_flags.get("RUN_PROCESS_IMPROVEMENTS"):
         return "Workflow flag RUN_PROCESS_IMPROVEMENTS is set."
+
+    # Retrospective trigger: every 5 stages
+    if current_checkpoint:
+        stage_num = _get_stage_number(current_checkpoint.split(".")[0] if "." in current_checkpoint else current_checkpoint)
+        if stage_num is not None and stage_num > 0 and stage_num % 5 == 0:
+            return f"Stage {stage_num} retrospective: stage number is divisible by 5."
 
     state_path = repo_root / ".vibe" / "STATE.md"
     if not state_path.exists():
@@ -1692,6 +1702,99 @@ def _maintenance_cycle_trigger_reason(
     )
 
 
+def _extract_demo_commands(plan_text: str, checkpoint_id: str) -> list[str]:
+    """Extract demo commands for a specific checkpoint from PLAN.md.
+
+    Looks for a checkpoint heading (### X.Y — ...) followed by a
+    ``* **Demo commands:**`` section with backtick-wrapped commands.
+    """
+    # Find the checkpoint heading
+    heading_pat = re.compile(
+        rf"^\s*#{{3,6}}\s+(?:\(\s*(?:DONE|SKIPPED|SKIP)\s*\)\s+)?"
+        + re.escape(checkpoint_id) + r"\b"
+    )
+    lines = plan_text.splitlines()
+    start_idx: int | None = None
+    for idx, line in enumerate(lines):
+        if heading_pat.match(line):
+            start_idx = idx
+            break
+    if start_idx is None:
+        return []
+
+    # Find the next checkpoint heading (end boundary)
+    next_heading_pat = re.compile(
+        rf"^\s*#{{3,6}}\s+(?:\(\s*(?:DONE|SKIPPED|SKIP)\s*\)\s+)?{CHECKPOINT_ID_PATTERN}\b"
+    )
+    end_idx = len(lines)
+    for idx in range(start_idx + 1, len(lines)):
+        if next_heading_pat.match(lines[idx]):
+            end_idx = idx
+            break
+
+    # Find "Demo commands:" within this section
+    section = lines[start_idx:end_idx]
+    in_demo = False
+    commands: list[str] = []
+    for line in section:
+        stripped = line.strip()
+        if stripped.startswith("* **Demo commands:**") or stripped.startswith("- **Demo commands:**"):
+            in_demo = True
+            continue
+        if in_demo:
+            # Stop at next bold field or blank line
+            if stripped.startswith("* **") or stripped.startswith("- **") or stripped == "---":
+                break
+            # Extract backtick-wrapped command
+            m = re.match(r"^\s*[\*\-]\s+`(.+)`\s*$", stripped)
+            if m:
+                commands.append(m.group(1))
+    return commands
+
+
+def _run_smoke_test_gate(
+    repo_root: Path,
+    state: "StateInfo",
+    plan_text: str,
+    timeout: int = 30,
+) -> tuple[bool, str | None]:
+    """Run demo commands for the current checkpoint as a smoke test.
+
+    Returns (passed, failure_reason).  If no demo commands are defined,
+    returns (True, None).
+    """
+    if not state.checkpoint:
+        return (True, None)
+
+    commands = _extract_demo_commands(plan_text, state.checkpoint)
+    if not commands:
+        return (True, None)
+
+    for cmd in commands:
+        try:
+            result = subprocess.run(
+                cmd,
+                shell=True,
+                cwd=str(repo_root),
+                capture_output=True,
+                text=True,
+                timeout=timeout,
+            )
+            if result.returncode != 0:
+                stderr_snippet = (result.stderr or "").strip()[:200]
+                return (
+                    False,
+                    f"Demo command failed (rc={result.returncode}): {cmd}"
+                    + (f"\n{stderr_snippet}" if stderr_snippet else ""),
+                )
+        except subprocess.TimeoutExpired:
+            return (False, f"Demo command timed out after {timeout}s: {cmd}")
+        except OSError as exc:
+            return (False, f"Demo command could not run: {cmd} ({exc})")
+
+    return (True, None)
+
+
 def _recommend_next(state: StateInfo, repo_root: Path) -> tuple[Role, str, str | None]:
     """Select the next dispatcher role.
 
@@ -1709,8 +1812,13 @@ def _recommend_next(state: StateInfo, repo_root: Path) -> tuple[Role, str, str |
     if top == "BLOCKER":
         return ("issues_triage", "BLOCKER issue present.", None)
 
-    # 1) Review always happens if IN_REVIEW
+    # 1) Review if IN_REVIEW — but first run smoke test gate
     if state.status == "IN_REVIEW":
+        plan_path = repo_root / ".vibe" / "PLAN.md"
+        plan_text = _read_text(plan_path) if plan_path.exists() else ""
+        passed, failure_reason = _run_smoke_test_gate(repo_root, state, plan_text)
+        if not passed:
+            return ("issues_triage", f"Smoke test gate failed: {failure_reason}", None)
         return ("review", "Checkpoint status is IN_REVIEW.", None)
 
     # 2) If DONE, either advance to next checkpoint or stop if plan exhausted
@@ -1784,7 +1892,7 @@ def _recommend_next(state: StateInfo, repo_root: Path) -> tuple[Role, str, str |
             if consolidation_reason:
                 return ("consolidation", consolidation_reason, None)
 
-            process_reason = _process_improvements_trigger_reason(repo_root, workflow_flags)
+            process_reason = _process_improvements_trigger_reason(repo_root, workflow_flags, state.checkpoint)
             if process_reason:
                 return ("improvements", process_reason, None)
 

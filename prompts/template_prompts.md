@@ -102,6 +102,7 @@ PREFLIGHT
 1) Read `AGENTS.md` (optional if already read), `.vibe/STATE.md`, `.vibe/PLAN.md`, `README.md` (optional).
 2) Confirm the checkpoint in `.vibe/STATE.md` exists in `.vibe/PLAN.md`.
 3) If deliverables are ambiguous or contradictory, create an issue and stop.
+4) Dependency check: for each deliverable file, run `git log -n 5 --oneline -- <file>`. If recent commits conflict with planned changes (e.g., concurrent modifications by another checkpoint), create an issue and stop rather than overwriting.
 
 ALLOWED FILES
 - Product/code files needed for the active checkpoint
@@ -219,27 +220,39 @@ EXECUTION
    - attempt to falsify at least 2 acceptance claims,
    - run targeted negative/boundary checks,
    - document what breaks, what is unverified, and residual risk.
-3) Build a "Top 5 findings by impact" list from both passes (highest impact first, include evidence line per finding).
-4) Evaluator-Optimizer pass (required):
+3) Pass C: Code review for improvements:
+   - Review the changed/delivered files as a senior code reviewer would.
+   - Identify the top 3 improvements NOT already captured in future checkpoints or active issues.
+   - Tag each improvement: `[MINOR]`, `[MODERATE]`, or `[MAJOR]`.
+     - `[MINOR]`: Style, naming, small refactors, missing comments on tricky logic. Fix these in place during this review pass and note what was fixed.
+     - `[MODERATE]`: Missing error handling, incomplete edge cases, suboptimal algorithms, test gaps that weaken confidence. These require dedicated implementation work.
+     - `[MAJOR]`: Architectural problems, security concerns, correctness bugs not caught by acceptance criteria, missing abstractions that will cause pain in future stages.
+   - `[MODERATE]`/`[MAJOR]` improvements → create issues (using the ACTIVE ISSUE BLOCK format), FAIL the review, and route to implementation.
+   - `[MINOR]` improvements → fix in place during this review, still eligible for PASS.
+   - If no improvements found, explicitly state "No code review improvements identified" (do not invent improvements for the sake of filling the list).
+4) Build a "Top 5 findings by impact" list from all three passes (highest impact first, include evidence line per finding).
+5) Evaluator-Optimizer pass (required):
    - Score `correctness`, `scope_control`, `evidence_quality`, `state_transition_accuracy` from 1-5.
    - If any score < 4, run one targeted repair/retest pass and rescore once.
    - If any score remains < 4, force FAIL and route to `issues_triage`.
-5) Confidence calibration (required):
+6) Confidence calibration (required):
    - For each acceptance claim, record `confidence` (0.0-1.0) and `evidence_strength` (`LOW|MEDIUM|HIGH`).
    - If any `critical: true` claim has `confidence < 0.75` or `evidence_strength == LOW`, do not PASS; route to `IN_PROGRESS|BLOCKED` + `issues_triage`.
-6) Apply FAIL/PASS mutation rules:
+7) Apply FAIL/PASS mutation rules:
    - FAIL if any acceptance item is unmet,
    - FAIL if any unresolved finding is `Impact: MAJOR|BLOCKER`,
-   - PASS only when remaining findings are explicitly accepted as `MINOR|QUESTION`.
-7) On FAIL, capture precise gaps and exact unblock evidence needed.
+   - FAIL if code review identified any `[MODERATE]` or `[MAJOR]` improvements,
+   - PASS only when remaining findings are explicitly accepted as `MINOR|QUESTION` and all code review improvements are `[MINOR]` (and fixed in place).
+8) On FAIL, capture precise gaps and exact unblock evidence needed.
 
 REQUIRED OUTPUT
 A) Verdict: PASS | FAIL
 B) Acceptance evidence matrix (criterion -> command/evidence -> pass/fail)
-C) Top 5 findings by impact (Impact, finding, evidence, required fix)
-D) Issues created/updated
-E) State transition applied (including whether auto-advanced)
-F) Evaluator scores + confidence/evidence-strength table for critical claims.
+C) Code review improvements (top 3, each tagged `[MINOR]`/`[MODERATE]`/`[MAJOR]` with description and action taken)
+D) Top 5 findings by impact (Impact, finding, evidence, required fix)
+E) Issues created/updated
+F) State transition applied (including whether auto-advanced)
+G) Evaluator scores + confidence/evidence-strength table for critical claims.
 
 REPORT SCHEMA (required)
 - LOOP_RESULT payload must include `report` with:
@@ -367,6 +380,7 @@ REQUIRED STATE MUTATIONS
   - Set `Checkpoint` to the next checkpoint.
   - Set `Status` to `NOT_STARTED`.
   - Ensure `## Workflow state` contains `- [x] RUN_CONTEXT_CAPTURE`.
+  - Clear stage-scoped workflow flags: set `STAGE_DESIGNED` → `- [ ] STAGE_DESIGNED`, `MAINTENANCE_CYCLE_DONE` → `- [ ] MAINTENANCE_CYCLE_DONE`.
 
 REQUIRED COMMANDS
 - `python3 .codex/skills/vibe-loop/scripts/agentctl.py --repo-root . validate --format json` before and after edits.

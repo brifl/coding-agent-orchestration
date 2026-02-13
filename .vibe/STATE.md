@@ -12,22 +12,23 @@
 ## Current focus
 
 - Stage: 22
-- Checkpoint: 22.2
+- Checkpoint: 22.5
 - Status: NOT_STARTED  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
 
 ## Objective (current checkpoint)
 
-Make review identify top 3 improvements like a code reviewer.
+End-to-end tests for Stage 22 features and workflow documentation.
 
 ## Deliverables (current checkpoint)
 
-- Updated `prompt.checkpoint_review` in `prompts/template_prompts.md`
+- Tests covering: stage design trigger, maintenance cycle trigger, smoke test gate, retrospective trigger, flag lifecycle
+- `docs/workflow_improvements.md` documenting new behavior
 
 ## Acceptance (current checkpoint)
 
-- Review includes "Pass C: Code review for improvements".
-- Each improvement tagged `[MINOR]`/`[MODERATE]`/`[MAJOR]`.
-- `[MODERATE]`/`[MAJOR]` → FAIL; `[MINOR]` → fix in place + PASS.
+- All tests pass.
+- `agentctl validate --strict` passes.
+- Docs accurately describe the new workflow.
 
 ## Work log (current session)
 
@@ -35,6 +36,12 @@ Make review identify top 3 improvements like a code reviewer.
 - 2026-02-13: 22.0 — dispatcher triggers and workflow flags added. All 3 acceptance criteria verified. PASS.
 - 2026-02-13: 22.1 — stage design prompt rewritten for strategic focus. Includes STAGE_DESIGNED flag, "next 1-3 stages", intentional design decisions. PASS.
 - 2026-02-13: Advanced to 22.2.
+- 2026-02-13: 22.2 — Added Pass C (code review for improvements) to checkpoint_review prompt. Tagging rules [MINOR]/[MODERATE]/[MAJOR], FAIL criteria for [MODERATE]+. PASS.
+- 2026-02-13: Advanced to 22.3.
+- 2026-02-13: 22.3 — Smoke test gate added. `_extract_demo_commands()` and `_run_smoke_test_gate()` in agentctl.py. IN_REVIEW branch runs gate before review. PASS.
+- 2026-02-13: Advanced to 22.4.
+- 2026-02-13: 22.4 — Preflight dependency check added to implementation prompt, consolidation clears STAGE_DESIGNED + MAINTENANCE_CYCLE_DONE, retrospective triggers at stage%5. PASS.
+- 2026-02-13: Advanced to 22.5.
 
 ## Workflow state
 
@@ -44,7 +51,7 @@ Make review identify top 3 improvements like a code reviewer.
 
 ## Evidence
 
-(None yet — checkpoint 22.2 not started.)
+(None yet — checkpoint 22.4 not started.)
 
 ## Active issues
 
