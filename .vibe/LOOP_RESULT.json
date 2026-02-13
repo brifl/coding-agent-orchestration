@@ -1,59 +1,51 @@
 {
-  "checkpoint": "21.1",
+  "checkpoint": "21.11",
   "loop": "review",
-  "next_role_hint": "implement",
+  "next_role_hint": "consolidation",
   "protocol_version": 1,
-  "recorded_at": "2026-02-13T06:42:35.955576+00:00",
+  "recorded_at": "2026-02-13T06:47:35.267535+00:00",
   "report": {
     "acceptance_matrix": [
       {
         "confidence": 1.0,
         "critical": true,
-        "evidence": "rlm_overview.md lines 33-56",
+        "evidence": "baseline_example.json: status=COMPLETED, stop_reason=FINAL, 2 iterations",
         "evidence_strength": "HIGH",
-        "item": "Documentation explains baseline vs subcall mode and human-assisted providers",
-        "status": "PASS"
-      },
-      {
-        "confidence": 1.0,
-        "critical": true,
-        "evidence": "rlm_overview.md lines 58-64: 3-row markdown table",
-        "evidence_strength": "HIGH",
-        "item": "Decision table included and unambiguous",
+        "item": "At least one task demonstrates bundling, multi-iteration runtime reasoning, subcalls, and final artifact creation",
         "status": "PASS"
       }
     ],
     "loop_result": {
-      "checkpoint": "21.1",
+      "checkpoint": "21.11",
       "loop": "review",
-      "next_role_hint": "implement",
+      "next_role_hint": "consolidation",
       "result": "pass",
       "stage": "21",
-      "status": "NOT_STARTED"
+      "status": "DONE"
     },
     "state_transition": {
       "after": {
-        "checkpoint": "21.1",
+        "checkpoint": "21.11",
         "stage": "21",
-        "status": "NOT_STARTED"
+        "status": "DONE"
       },
       "before": {
-        "checkpoint": "21.0",
+        "checkpoint": "21.4",
         "stage": "21",
-        "status": "IN_REVIEW"
+        "status": "NOT_STARTED"
       }
     },
     "top_findings": [
       {
-        "action": "Auto-advanced to 21.1",
-        "evidence": "Both docs pre-exist with full content",
+        "action": "Proceed to consolidation",
+        "evidence": "21.0-21.11 all deliverables pre-exist and pass demos",
         "impact": "MINOR",
-        "title": "Deliverables complete from prior Stage 21"
+        "title": "All Stage 21 checkpoints verified complete"
       }
     ]
   },
   "result": "pass",
   "stage": "21",
-  "state_sha256": "70bb799d8092ad3cdec62828681e46a4e0e8f2b97e9873df639666895ac83794",
-  "status": "NOT_STARTED"
+  "state_sha256": "4d87e61d33060d6a24336ba25723a04fda94958b8d04f2e65a488d5c7b82ac14",
+  "status": "DONE"
 }
