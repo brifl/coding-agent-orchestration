@@ -1,51 +1,51 @@
 {
-  "checkpoint": "21.11",
-  "loop": "review",
-  "next_role_hint": "consolidation",
+  "checkpoint": "22.0",
+  "loop": "implement",
+  "next_role_hint": "implement",
   "protocol_version": 1,
-  "recorded_at": "2026-02-13T06:47:35.267535+00:00",
+  "recorded_at": "2026-02-13T07:56:22.675663+00:00",
   "report": {
     "acceptance_matrix": [
       {
         "confidence": 1.0,
         "critical": true,
-        "evidence": "baseline_example.json: status=COMPLETED, stop_reason=FINAL, 2 iterations",
+        "evidence": "test",
         "evidence_strength": "HIGH",
-        "item": "At least one task demonstrates bundling, multi-iteration runtime reasoning, subcalls, and final artifact creation",
+        "item": "test",
         "status": "PASS"
       }
     ],
     "loop_result": {
-      "checkpoint": "21.11",
-      "loop": "review",
-      "next_role_hint": "consolidation",
-      "result": "pass",
-      "stage": "21",
-      "status": "DONE"
+      "checkpoint": "22.0",
+      "loop": "implement",
+      "next_role_hint": "implement",
+      "result": "ready_for_review",
+      "stage": "22",
+      "status": "NOT_STARTED"
     },
     "state_transition": {
       "after": {
-        "checkpoint": "21.11",
-        "stage": "21",
-        "status": "DONE"
+        "checkpoint": "22.0",
+        "stage": "22",
+        "status": "NOT_STARTED"
       },
       "before": {
-        "checkpoint": "21.4",
-        "stage": "21",
+        "checkpoint": "22.0",
+        "stage": "22",
         "status": "NOT_STARTED"
       }
     },
     "top_findings": [
       {
-        "action": "Proceed to consolidation",
-        "evidence": "21.0-21.11 all deliverables pre-exist and pass demos",
+        "action": "none",
+        "evidence": "test",
         "impact": "MINOR",
-        "title": "All Stage 21 checkpoints verified complete"
+        "title": "test"
       }
     ]
   },
-  "result": "pass",
-  "stage": "21",
-  "state_sha256": "4d87e61d33060d6a24336ba25723a04fda94958b8d04f2e65a488d5c7b82ac14",
-  "status": "DONE"
+  "result": "ready_for_review",
+  "stage": "22",
+  "state_sha256": "0fc14219a55b54d5d0056a30ef91bf2393d379407418d94a95789a4bfeac3357",
+  "status": "NOT_STARTED"
 }

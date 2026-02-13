@@ -13,7 +13,7 @@
 
 - Stage: 22
 - Checkpoint: 22.0
-- Status: NOT_STARTED  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
+- Status: IN_REVIEW  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
 
 ## Objective (current checkpoint)
 
@@ -36,6 +36,7 @@ Add `STAGE_DESIGNED` and `MAINTENANCE_CYCLE_DONE` workflow flags and dispatcher 
 ## Work log (current session)
 
 - 2026-02-13: Consolidated Stage 21 (DONE at 21.11). Transitioned to Stage 22 (22.0/NOT_STARTED). Added Stage 22 checkpoints to PLAN.md.
+- 2026-02-13: 22.0 implementation — added `_get_stage_number()`, `_stage_design_trigger_reason()`, `_maintenance_cycle_trigger_reason()` to agentctl.py. Updated `_recommend_next()` return type to include prompt_id_override. All 3 acceptance criteria verified.
 
 ## Workflow state
 
@@ -45,7 +46,10 @@ Add `STAGE_DESIGNED` and `MAINTENANCE_CYCLE_DONE` workflow flags and dispatcher 
 
 ## Evidence
 
-(None yet — checkpoint 22.0 not started.)
+- `agentctl next` returns `design` when STAGE_DESIGNED unset → confirmed.
+- `agentctl next` returns `implement` + `prompt.test_gap_analysis` when stage%3==1 and MAINTENANCE_CYCLE_DONE unset → confirmed.
+- `agentctl next` returns `implement` + default prompt when both flags set → confirmed.
+- `agentctl validate --strict` → ok: True.
 
 ## Active issues
 

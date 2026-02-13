@@ -300,6 +300,18 @@ def _get_stage_for_checkpoint(plan_text: str, checkpoint_id: str) -> str | None:
     return None
 
 
+def _get_stage_number(stage_id: str) -> int | None:
+    """Extract the numeric prefix from a stage ID for modular arithmetic.
+
+    Examples: "21" -> 21, "21A" -> 21, "22" -> 22, "5B" -> 5.
+    Returns None if the stage ID does not start with digits.
+    """
+    if not stage_id:
+        return None
+    m = re.match(r"(\d+)", stage_id)
+    return int(m.group(1)) if m else None
+
+
 def _detect_stage_transition(
     plan_text: str, current_checkpoint: str, next_checkpoint: str
 ) -> tuple[bool, str | None, str | None]:
@@ -1626,20 +1638,80 @@ def _process_improvements_trigger_reason(repo_root: Path, workflow_flags: dict[s
     return None
 
 
-def _recommend_next(state: StateInfo, repo_root: Path) -> tuple[Role, str]:
+def _stage_design_trigger_reason(workflow_flags: dict[str, bool]) -> str | None:
+    """Check if stage design should run before implementation.
+
+    Stage design runs once per stage when STAGE_DESIGNED flag is not set.
+    The flag is cleared on stage transitions (by consolidation) and set
+    by the stage design loop.
+    """
+    if workflow_flags.get("STAGE_DESIGNED"):
+        return None
+    # Only trigger if the flag key exists in workflow state (backward-compat:
+    # repos without the flag won't get unexpected design loops).
+    if "STAGE_DESIGNED" not in workflow_flags:
+        return None
+    return "New stage entered without design; STAGE_DESIGNED flag not set."
+
+
+_MAINTENANCE_CYCLE_TYPES = {0: "refactor", 1: "test", 2: "docs"}
+_MAINTENANCE_PROMPT_MAP = {
+    "refactor": "prompt.refactor_scan",
+    "test": "prompt.test_gap_analysis",
+    "docs": "prompt.docs_gap_analysis",
+}
+
+
+def _maintenance_cycle_trigger_reason(
+    workflow_flags: dict[str, bool],
+    stage_id: str | None,
+) -> tuple[str | None, str | None]:
+    """Check if a periodic maintenance cycle should run.
+
+    Returns (reason, prompt_id) or (None, None).
+
+    Cycle type is determined by stage_number % 3:
+      0 → refactor, 1 → test backfill, 2 → documentation.
+    """
+    if workflow_flags.get("MAINTENANCE_CYCLE_DONE"):
+        return (None, None)
+    if "MAINTENANCE_CYCLE_DONE" not in workflow_flags:
+        return (None, None)
+    if not stage_id:
+        return (None, None)
+
+    stage_num = _get_stage_number(stage_id)
+    if stage_num is None:
+        return (None, None)
+
+    cycle_type = _MAINTENANCE_CYCLE_TYPES.get(stage_num % 3, "refactor")
+    prompt_id = _MAINTENANCE_PROMPT_MAP[cycle_type]
+    return (
+        f"Stage {stage_num} maintenance cycle: {cycle_type} (stage % 3 == {stage_num % 3}).",
+        prompt_id,
+    )
+
+
+def _recommend_next(state: StateInfo, repo_root: Path) -> tuple[Role, str, str | None]:
+    """Select the next dispatcher role.
+
+    Returns (role, reason, prompt_id_override).
+    prompt_id_override is non-None only for maintenance cycles that need
+    a specific prompt different from the role's default.
+    """
     workflow_flags = _load_workflow_flags(repo_root)
 
     # 0) Hard stop / hard triage conditions
     if state.status == "BLOCKED":
-        return ("issues_triage", "Checkpoint status is BLOCKED.")
+        return ("issues_triage", "Checkpoint status is BLOCKED.", None)
 
     top = _top_issue_impact(state.issues)
     if top == "BLOCKER":
-        return ("issues_triage", "BLOCKER issue present.")
+        return ("issues_triage", "BLOCKER issue present.", None)
 
     # 1) Review always happens if IN_REVIEW
     if state.status == "IN_REVIEW":
-        return ("review", "Checkpoint status is IN_REVIEW.")
+        return ("review", "Checkpoint status is IN_REVIEW.", None)
 
     # 2) If DONE, either advance to next checkpoint or stop if plan exhausted
     if state.status == "DONE":
@@ -1648,14 +1720,14 @@ def _recommend_next(state: StateInfo, repo_root: Path) -> tuple[Role, str]:
         plan_ids = _parse_plan_checkpoint_ids(plan_text)
 
         if not plan_ids:
-            return ("stop", "No checkpoints found in .vibe/PLAN.md (plan exhausted).")
+            return ("stop", "No checkpoints found in .vibe/PLAN.md (plan exhausted).", None)
 
         if not state.checkpoint:
-            return ("advance", "Status DONE but no checkpoint set; advance to first checkpoint in plan.")
+            return ("advance", "Status DONE but no checkpoint set; advance to first checkpoint in plan.", None)
 
         nxt = _next_checkpoint_after(plan_ids, state.checkpoint)
         if not nxt:
-            return ("stop", "Current checkpoint is last checkpoint in .vibe/PLAN.md (plan exhausted).")
+            return ("stop", "Current checkpoint is last checkpoint in .vibe/PLAN.md (plan exhausted).", None)
 
         # If the next one is explicitly marked (DONE) or (SKIP), skip forward
         while nxt and (
@@ -1666,7 +1738,7 @@ def _recommend_next(state: StateInfo, repo_root: Path) -> tuple[Role, str]:
             nxt = _next_checkpoint_after(plan_ids, state_ck)
 
         if not nxt:
-            return ("stop", "All remaining checkpoints are marked (DONE) or (SKIP) in .vibe/PLAN.md (plan exhausted).")
+            return ("stop", "All remaining checkpoints are marked (DONE) or (SKIP) in .vibe/PLAN.md (plan exhausted).", None)
 
         # Check for stage transition - recommend consolidation before advancing to new stage
         is_stage_change, cur_stage, nxt_stage = _detect_stage_transition(
@@ -1679,34 +1751,47 @@ def _recommend_next(state: StateInfo, repo_root: Path) -> tuple[Role, str]:
                     "consolidation",
                     f"Stage transition detected: {cur_stage} → {nxt_stage}. "
                     f"Run consolidation to archive Stage {cur_stage} and update stage pointer before advancing.",
+                    None,
                 )
 
-        return ("advance", f"Checkpoint is DONE; next checkpoint is {nxt}.")
+        return ("advance", f"Checkpoint is DONE; next checkpoint is {nxt}.", None)
 
     # 3) Normal execution states
     if state.status in {"NOT_STARTED", "IN_PROGRESS"}:
         # If there are non-blocking issues, triage can be recommended (your choice)
         if top in {"MAJOR", "QUESTION"}:
-            return ("issues_triage", f"Active issues present (top impact: {top}).")
+            return ("issues_triage", f"Active issues present (top impact: {top}).", None)
 
         # Maintenance loops fire before implementation when NOT_STARTED.
         if state.status == "NOT_STARTED":
+            # Stage design check — highest priority, runs once per stage
+            stage_design_reason = _stage_design_trigger_reason(workflow_flags)
+            if stage_design_reason:
+                return ("design", stage_design_reason, None)
+
+            # Maintenance cycle — refactor/test/docs based on stage%3
+            maint_reason, maint_prompt = _maintenance_cycle_trigger_reason(
+                workflow_flags, state.stage,
+            )
+            if maint_reason and maint_prompt:
+                return ("implement", maint_reason, maint_prompt)
+
             context_reason = _context_capture_trigger_reason(repo_root, workflow_flags)
             if context_reason:
-                return ("context_capture", context_reason)
+                return ("context_capture", context_reason, None)
 
             consolidation_reason = _consolidation_trigger_reason(repo_root)
             if consolidation_reason:
-                return ("consolidation", consolidation_reason)
+                return ("consolidation", consolidation_reason, None)
 
             process_reason = _process_improvements_trigger_reason(repo_root, workflow_flags)
             if process_reason:
-                return ("improvements", process_reason)
+                return ("improvements", process_reason, None)
 
-        return ("implement", f"Checkpoint status is {state.status}.")
+        return ("implement", f"Checkpoint status is {state.status}.", None)
 
     # 4) Default
-    return ("design", "No recognized status; stage design likely required.")
+    return ("design", "No recognized status; stage design likely required.", None)
 
 
 def _render_output(payload: dict[str, Any], fmt: str) -> str:
@@ -1881,8 +1966,8 @@ def _resolve_next_prompt_selection(
     repo_root: Path,
     workflow: str | None,
 ) -> tuple[Role, str, str, str]:
-    base_role, base_reason = _recommend_next(state, repo_root)
-    base_prompt_id = PROMPT_MAP[base_role]["id"]
+    base_role, base_reason, prompt_override = _recommend_next(state, repo_root)
+    base_prompt_id = prompt_override or PROMPT_MAP[base_role]["id"]
     base_prompt_title = PROMPT_MAP[base_role]["title"]
 
     if not workflow or base_role == "stop":
@@ -2066,7 +2151,7 @@ def cmd_status(args: argparse.Namespace) -> int:
     repo_root = Path(args.repo_root)
     state = load_state(repo_root)
 
-    role, reason = _recommend_next(state, repo_root)
+    role, reason, prompt_override = _recommend_next(state, repo_root)
     summary, sections = _context_summary(repo_root)
     prompt_catalog_path = _resolve_prompt_catalog_path(repo_root)
 
@@ -2082,7 +2167,7 @@ def cmd_status(args: argparse.Namespace) -> int:
         "questions": [i.title for i in state.issues if i.impact == "QUESTION"],
         "recommended_next_role": role,
         "recommended_next_reason": reason,
-        "recommended_prompt_id": PROMPT_MAP[role]["id"],
+        "recommended_prompt_id": prompt_override or PROMPT_MAP[role]["id"],
         "recommended_prompt_title": PROMPT_MAP[role]["title"],
         "context_summary": summary,
         "prompt_catalog_path": str(prompt_catalog_path) if prompt_catalog_path else None,
