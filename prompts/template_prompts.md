@@ -3,49 +3,77 @@
 ## prompt.stage_design — Stage Design Prompt
 
 ```md
-ROLE: Primary software architect (design pass)
+ROLE: Strategic architect (stage design)
 
 GOAL
-Make `.vibe/PLAN.md` near-term, deterministic, and aligned with `.vibe/STATE.md`
-without implementing product code.
+Design the next 1-3 stages with intentional architectural decisions. Focus on
+the big picture: what needs to be built, why, and how the pieces fit together.
+Break out stages or checkpoints when scope exceeds one focused loop.
+
+Do NOT implement product code. Do NOT focus on formatting or paperwork — focus
+on making good design decisions.
 
 PREFLIGHT
 1) Read, in order: `AGENTS.md` (optional if already read), `.vibe/STATE.md`, `.vibe/PLAN.md`, `README.md` (optional), `.vibe/HISTORY.md` (optional).
 2) Verify current Stage/Checkpoint in `.vibe/STATE.md` exists in `.vibe/PLAN.md`.
 3) If the pointer is wrong, fix `.vibe/STATE.md` first, then continue.
+4) Review recent work log and completed stages to understand what just finished.
 
 ALLOWED FILES
 - `.vibe/PLAN.md`
-- `.vibe/STATE.md` (only for pointer alignment or status cleanup)
+- `.vibe/STATE.md` (pointer alignment, status cleanup, or workflow flags)
 
 REQUIRED STATE MUTATIONS
+- Set `STAGE_DESIGNED` workflow flag: `- [x] STAGE_DESIGNED`
 - If stage/checkpoint pointer changes, update `Current focus` in `.vibe/STATE.md` and append one work-log line.
 - Do not set status to `IN_REVIEW` or `DONE` in this loop.
 
 REQUIRED COMMANDS
 - Run `python3 .codex/skills/vibe-loop/scripts/agentctl.py --repo-root . validate --format json` after edits.
 
-EXECUTION
-1) Keep detailed planning to the next 1-3 stages only.
-2) Ensure every checkpoint uses this exact shape:
-   - Objective (1 sentence)
-   - Deliverables (concrete files/modules/behaviors)
-   - Acceptance (verifiable)
-   - Demo commands (exact local commands)
-   - Evidence (what to paste into `.vibe/STATE.md`)
-3) Ensure each checkpoint is executable in one focused loop.
-4) Keep edits minimal and mechanical; avoid architecture rewrites.
+STRATEGIC DESIGN PROCESS
+1) **Understand context:**
+   - What stage are we entering? What was just completed?
+   - What are the goals of the next 1-3 stages?
+   - What does the codebase look like right now?
+
+2) **Identify design decisions:**
+   - What are the key architectural choices?
+   - What dependencies exist between stages or checkpoints?
+   - What risks or unknowns need to be addressed first?
+   - Are there integration points that require careful ordering?
+
+3) **Make intentional choices:**
+   - For each decision, document the choice and one-line rationale.
+   - Consider: implementation complexity, testing strategy, rollback safety.
+   - Split large stages into smaller stages if they cross natural boundaries.
+   - Split large checkpoints if they exceed "one focused loop" scope.
+   - It is better to have more small checkpoints than fewer large ones.
+
+4) **Ensure checkpoint quality:**
+   Every checkpoint must have:
+   - Objective (1 sentence with clear success criteria)
+   - Deliverables (concrete files/modules/behaviors, not vague goals)
+   - Acceptance (verifiable, testable claims)
+   - Demo commands (exact local commands that prove it works)
+   - Evidence (specific output to paste into `.vibe/STATE.md`)
+
+   Each checkpoint should be:
+   - Implementable in one focused loop (a few hours of work)
+   - Independently testable and verifiable
+   - Safe to commit and review in isolation
 
 REQUIRED OUTPUT
-- Current stage/checkpoint before and after edits.
-- Files changed.
-- Validation command result (pass/fail).
-- Short summary of plan changes.
+- Key design decisions made (3-5 bullet points)
+- Stages/checkpoints added, removed, or restructured
+- Current stage/checkpoint before and after edits
+- Files changed
+- Validation command result (pass/fail)
 
 REPORT SCHEMA (required)
 - LOOP_RESULT payload must include a `report` object with:
   - `acceptance_matrix`: list of objects (`item`, `status`, `evidence`, `critical`, `confidence`, `evidence_strength`)
-  - `top_findings`: max 5 findings sorted by impact
+  - `top_findings`: max 5 findings sorted by impact (design decisions, risks, dependencies)
   - `state_transition`: `before` + `after` stage/checkpoint/status
   - `loop_result`: mirror of top-level LOOP_RESULT fields
 
@@ -56,7 +84,7 @@ Then record it with:
 `python3 .codex/skills/vibe-loop/scripts/agentctl.py --repo-root . --format json loop-result --line 'LOOP_RESULT: {...,"report":<report_json>}'`
 
 STOP CONDITION
-Stop after updating `.vibe/PLAN.md` (and `.vibe/STATE.md` only if needed), emitting and recording LOOP_RESULT, and returning control to dispatcher.
+Stop after updating `.vibe/PLAN.md`, setting STAGE_DESIGNED flag, emitting and recording LOOP_RESULT, and returning control to dispatcher.
 ```
 
 ---

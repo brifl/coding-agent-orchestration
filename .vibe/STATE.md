@@ -12,31 +12,29 @@
 ## Current focus
 
 - Stage: 22
-- Checkpoint: 22.0
-- Status: IN_REVIEW  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
+- Checkpoint: 22.2
+- Status: NOT_STARTED  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
 
 ## Objective (current checkpoint)
 
-Add `STAGE_DESIGNED` and `MAINTENANCE_CYCLE_DONE` workflow flags and dispatcher logic to route to design/maintenance before implementation.
+Make review identify top 3 improvements like a code reviewer.
 
 ## Deliverables (current checkpoint)
 
-- `_get_stage_number()` helper in `tools/agentctl.py`
-- `_stage_design_trigger_reason()` trigger function
-- `_maintenance_cycle_trigger_reason()` trigger function
-- Updated `_recommend_next()` with new trigger checks and extended return type
-- New workflow flags in `.vibe/STATE.md`
+- Updated `prompt.checkpoint_review` in `prompts/template_prompts.md`
 
 ## Acceptance (current checkpoint)
 
-- `agentctl next` returns `design` when `STAGE_DESIGNED` is unset.
-- `agentctl next` returns maintenance prompt when stage%3 triggers and `MAINTENANCE_CYCLE_DONE` is unset.
-- `agentctl next` returns `implement` when both flags are set.
+- Review includes "Pass C: Code review for improvements".
+- Each improvement tagged `[MINOR]`/`[MODERATE]`/`[MAJOR]`.
+- `[MODERATE]`/`[MAJOR]` → FAIL; `[MINOR]` → fix in place + PASS.
 
 ## Work log (current session)
 
 - 2026-02-13: Consolidated Stage 21 (DONE at 21.11). Transitioned to Stage 22 (22.0/NOT_STARTED). Added Stage 22 checkpoints to PLAN.md.
-- 2026-02-13: 22.0 implementation — added `_get_stage_number()`, `_stage_design_trigger_reason()`, `_maintenance_cycle_trigger_reason()` to agentctl.py. Updated `_recommend_next()` return type to include prompt_id_override. All 3 acceptance criteria verified.
+- 2026-02-13: 22.0 — dispatcher triggers and workflow flags added. All 3 acceptance criteria verified. PASS.
+- 2026-02-13: 22.1 — stage design prompt rewritten for strategic focus. Includes STAGE_DESIGNED flag, "next 1-3 stages", intentional design decisions. PASS.
+- 2026-02-13: Advanced to 22.2.
 
 ## Workflow state
 
@@ -46,10 +44,7 @@ Add `STAGE_DESIGNED` and `MAINTENANCE_CYCLE_DONE` workflow flags and dispatcher 
 
 ## Evidence
 
-- `agentctl next` returns `design` when STAGE_DESIGNED unset → confirmed.
-- `agentctl next` returns `implement` + `prompt.test_gap_analysis` when stage%3==1 and MAINTENANCE_CYCLE_DONE unset → confirmed.
-- `agentctl next` returns `implement` + default prompt when both flags set → confirmed.
-- `agentctl validate --strict` → ok: True.
+(None yet — checkpoint 22.2 not started.)
 
 ## Active issues
 
