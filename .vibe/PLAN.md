@@ -236,4 +236,132 @@ Implement a bounded, auditable Recursive Language Model (RLM) execution harness 
   * `python tools/rlm/eval_smoke.py --task tasks/rlm/repo_comprehension.json`
 * **Evidence:**
   * Example output artifact + trace committed (or redacted).
+
+---
+
+## Stage 22 — Vibe-Run Workflow Improvements
+
+**Stage objective:**
+Improve the vibe-run dispatcher to behave more like a senior engineer: design intentionally before each stage, review code quality (not just falsify claims), run periodic maintenance, and catch failures early with a smoke test gate.
+
+### Stage invariants (apply to all checkpoints)
+
+- **Backward-compatible:** Repos without new workflow flags continue to work unchanged.
+- **No protocol break:** LOOP_RESULT schema is unchanged.
+- **Reuse existing prompts:** Maintenance cycles reuse `prompt.refactor_scan`, `prompt.test_gap_analysis`, `prompt.docs_gap_analysis`.
+
+---
+
+### 22.0 — Stage design trigger and workflow flags
+
+* **Objective:**
+  Add `STAGE_DESIGNED` and `MAINTENANCE_CYCLE_DONE` workflow flags and dispatcher logic to route to design/maintenance before implementation.
+* **Deliverables:**
+  * `_get_stage_number()` helper in `tools/agentctl.py`
+  * `_stage_design_trigger_reason()` trigger function
+  * `_maintenance_cycle_trigger_reason()` trigger function
+  * Updated `_recommend_next()` with new trigger checks
+  * Extended return type: `tuple[Role, str, str | None]` for prompt_id override
+  * Updated call sites (lines 1884, 2069)
+  * New workflow flags in `.vibe/STATE.md`
+* **Acceptance:**
+  * `agentctl next` returns `design` when `STAGE_DESIGNED` is unset.
+  * `agentctl next` returns maintenance prompt when stage%3 triggers and `MAINTENANCE_CYCLE_DONE` is unset.
+  * `agentctl next` returns `implement` when both flags are set.
+* **Demo commands:**
+  * `python3 tools/agentctl.py --repo-root . --format json next`
+  * `python3 tools/agentctl.py --repo-root . validate --strict`
+* **Evidence:**
+  * Dispatcher output shows `design` role with `STAGE_DESIGNED` reason.
+
+---
+
+### 22.1 — Rewrite stage design prompt
+
+* **Objective:**
+  Transform `prompt.stage_design` from a formatting pass to a strategic architect.
+* **Deliverables:**
+  * Rewritten `prompt.stage_design` in `prompts/template_prompts.md`
+* **Acceptance:**
+  * Prompt focuses on next 1-3 imminent stages only.
+  * Prompt requires intentional design decisions.
+  * Prompt requires setting `STAGE_DESIGNED` flag.
+  * `agentctl validate` passes.
+* **Demo commands:**
+  * `python3 tools/agentctl.py --repo-root . validate --strict`
+* **Evidence:**
+  * Prompt text includes "STAGE_DESIGNED", "next 1-3 stages", "intentional design decisions".
+
+---
+
+### 22.2 — Enhanced checkpoint review with code-review behavior
+
+* **Objective:**
+  Make review identify top 3 improvements like a code reviewer.
+* **Deliverables:**
+  * Updated `prompt.checkpoint_review` in `prompts/template_prompts.md`
+* **Acceptance:**
+  * Review includes "Pass C: Code review for improvements".
+  * Each improvement tagged `[MINOR]`/`[MODERATE]`/`[MAJOR]`.
+  * `[MODERATE]`/`[MAJOR]` → FAIL; `[MINOR]` → fix in place + PASS.
+* **Demo commands:**
+  * `python3 tools/agentctl.py --repo-root . validate --strict`
+* **Evidence:**
+  * Prompt text includes Pass C, tagging rules, FAIL/PASS criteria.
+
+---
+
+### 22.3 — Smoke test gate before review
+
+* **Objective:**
+  Auto-run demo commands before review; fail fast if demos break.
+* **Deliverables:**
+  * `_extract_demo_commands()` function in `tools/agentctl.py`
+  * `_run_smoke_test_gate()` function in `tools/agentctl.py`
+  * Updated `_recommend_next()` IN_REVIEW branch
+* **Acceptance:**
+  * Failing demo commands → `issues_triage` instead of `review`.
+  * Passing or absent demo commands → `review` as before.
+* **Demo commands:**
+  * `python3 tools/agentctl.py --repo-root . validate --strict`
+* **Evidence:**
+  * Unit test with failing demo command dispatches to `issues_triage`.
+
+---
+
+### 22.4 — Implementation preflight, retrospective trigger, consolidation flag cleanup
+
+* **Objective:**
+  Add dependency preflight to implementation prompt, extend retrospective to every 5 stages, ensure consolidation clears new flags.
+* **Deliverables:**
+  * Updated `prompt.checkpoint_implementation` with preflight step
+  * Updated `prompt.consolidation` to clear `STAGE_DESIGNED` and `MAINTENANCE_CYCLE_DONE`
+  * Updated `_process_improvements_trigger_reason()` with stage%5 check
+* **Acceptance:**
+  * Implementation prompt includes dependency preflight.
+  * Consolidation prompt clears both new flags.
+  * Retrospective triggers at stage%5.
+* **Demo commands:**
+  * `python3 tools/agentctl.py --repo-root . validate --strict`
+* **Evidence:**
+  * Prompt text changes verified. Trigger function tested.
+
+---
+
+### 22.5 — Integration tests and documentation
+
+* **Objective:**
+  End-to-end test of improved workflow and documentation.
+* **Deliverables:**
+  * Tests covering all new triggers and flag lifecycle
+  * `docs/workflow_improvements.md`
+* **Acceptance:**
+  * All tests pass.
+  * `agentctl validate --strict` passes.
+  * Documentation explains all improvements.
+* **Demo commands:**
+  * `python3 -m pytest tools/ -k "stage_22" -v`
+  * `python3 tools/agentctl.py --repo-root . validate --strict`
+* **Evidence:**
+  * Test output showing all pass. Documentation file exists.
 ---
