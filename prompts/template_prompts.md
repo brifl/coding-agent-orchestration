@@ -63,6 +63,12 @@ STRATEGIC DESIGN PROCESS
    - Independently testable and verifiable
    - Safe to commit and review in isolation
 
+   Complexity budget (hard limits — split if exceeded):
+   - Deliverables: ≤ 5 items
+   - Acceptance criteria: ≤ 6 items
+   - Demo commands: ≤ 4 items
+   Run `agentctl validate --strict-complexity` to catch violations automatically.
+
 REQUIRED OUTPUT
 - Key design decisions made (3-5 bullet points)
 - Stages/checkpoints added, removed, or restructured
@@ -118,11 +124,16 @@ REQUIRED STATE MUTATIONS
 ACTIVE ISSUE BLOCK (required format)
 - [ ] ISSUE-123: Short title
   - Impact: QUESTION|MINOR|MAJOR|BLOCKER
-  - Status: OPEN|IN_PROGRESS|BLOCKED|RESOLVED
+  - Status: OPEN|IN_PROGRESS|BLOCKED|RESOLVED|DECISION_REQUIRED
   - Owner: agent|human
   - Unblock Condition: Specific condition to proceed
   - Evidence Needed: Command/output/link that closes the issue
   - Notes: Optional context
+
+Use `Status: DECISION_REQUIRED` when the issue requires an explicit human judgment call
+(architecture direction, product scope, security policy, breaking API changes). The
+dispatcher will pause and surface these issues to the human rather than routing to
+issues_triage. Do NOT use DECISION_REQUIRED for technical blockers an agent can resolve.
 
 REQUIRED COMMANDS
 - Run checkpoint demo commands from `.vibe/PLAN.md` (or closest equivalent if paths changed).
@@ -202,7 +213,7 @@ REQUIRED STATE MUTATIONS
 ACTIVE ISSUE BLOCK (required format)
 - [ ] ISSUE-123: Short title
   - Impact: QUESTION|MINOR|MAJOR|BLOCKER
-  - Status: OPEN|IN_PROGRESS|BLOCKED|RESOLVED
+  - Status: OPEN|IN_PROGRESS|BLOCKED|RESOLVED|DECISION_REQUIRED
   - Owner: agent|human
   - Unblock Condition: Specific condition to proceed
   - Evidence Needed: Command/output/link that closes the issue
@@ -302,7 +313,7 @@ REQUIRED STATE MUTATIONS
 ACTIVE ISSUE BLOCK (required format)
 - [ ] ISSUE-123: Short title
   - Impact: QUESTION|MINOR|MAJOR|BLOCKER
-  - Status: OPEN|IN_PROGRESS|BLOCKED|RESOLVED
+  - Status: OPEN|IN_PROGRESS|BLOCKED|RESOLVED|DECISION_REQUIRED
   - Owner: agent|human
   - Unblock Condition: Specific condition to proceed
   - Evidence Needed: Command/output/link that closes the issue
@@ -380,7 +391,7 @@ REQUIRED STATE MUTATIONS
   - Set `Checkpoint` to the next checkpoint.
   - Set `Status` to `NOT_STARTED`.
   - Ensure `## Workflow state` contains `- [x] RUN_CONTEXT_CAPTURE`.
-  - Clear stage-scoped workflow flags: set `STAGE_DESIGNED` → `- [ ] STAGE_DESIGNED`, `MAINTENANCE_CYCLE_DONE` → `- [ ] MAINTENANCE_CYCLE_DONE`.
+  - Clear stage-scoped workflow flags: set `STAGE_DESIGNED` → `- [ ] STAGE_DESIGNED`, `MAINTENANCE_CYCLE_DONE` → `- [ ] MAINTENANCE_CYCLE_DONE`, `RETROSPECTIVE_DONE` → `- [ ] RETROSPECTIVE_DONE`.
 
 REQUIRED COMMANDS
 - `python3 .codex/skills/vibe-loop/scripts/agentctl.py --repo-root . validate --format json` before and after edits.
@@ -614,6 +625,76 @@ Then record it with:
 
 STOP CONDITION
 Stop after updating `.vibe/STATE.md`, emitting + recording LOOP_RESULT, and returning to dispatcher.
+```
+
+---
+
+## prompt.retrospective — Stage Retrospective Prompt
+
+```md
+ROLE: Engineering lead (stage retrospective)
+
+GOAL
+Analyze the just-completed stage to extract concrete lessons that improve future
+checkpoint design. Write findings to `.vibe/CONTEXT.md` and set the RETROSPECTIVE_DONE
+flag. Do NOT implement product code or change PLAN.md.
+
+PREFLIGHT
+1) Read `AGENTS.md` (optional if already read), `.vibe/STATE.md`, `.vibe/PLAN.md`, `.vibe/HISTORY.md`.
+2) Identify the stage that just completed (visible in HISTORY.md or recent work log).
+3) If no completed stage exists (first stage ever), write a brief stub and set the flag.
+
+ALLOWED FILES
+- `.vibe/CONTEXT.md`
+- `.vibe/STATE.md` (only to set RETROSPECTIVE_DONE flag)
+
+REQUIRED STATE MUTATIONS
+- Set `RETROSPECTIVE_DONE` workflow flag: `- [x] RETROSPECTIVE_DONE`
+- Append a one-line work-log entry noting the retrospective was completed.
+
+REQUIRED COMMANDS
+- None required beyond local file reads.
+
+EXECUTION
+1) **Gather data** from HISTORY.md and work log:
+   - How many loops did the stage take total?
+   - Which checkpoints had multiple review cycles (required >1 implement→review)?
+   - Were any checkpoints split, skipped, or added mid-stage?
+   - Were there any BLOCKER or DECISION_REQUIRED issues? What caused them?
+
+2) **Identify 3-5 concrete lessons** from the above data. Each lesson must be:
+   - Specific (cite a checkpoint ID or pattern, not a generic platitude)
+   - Actionable (state what to do differently next time)
+   - Scoped (not "be more careful" — say what would have prevented the problem)
+
+3) **Write to `.vibe/CONTEXT.md`** under a `## Stage Retrospective Notes` section:
+   - One bullet per lesson.
+   - Include: which stage the lesson came from, what happened, and what to do next time.
+   - Keep total notes under 10 bullets (prune older lessons when adding new ones).
+
+4) **Set RETROSPECTIVE_DONE flag** in `## Workflow state`.
+
+REQUIRED OUTPUT
+- Stage retrospected (stage ID).
+- Number of lessons extracted.
+- Lessons written to CONTEXT.md (brief list).
+- Flag set.
+
+REPORT SCHEMA (required)
+- LOOP_RESULT payload must include `report` object with:
+  - `acceptance_matrix`
+  - `top_findings` (max 5, sorted by impact — use lessons as findings)
+  - `state_transition` (before/after)
+  - `loop_result` (mirror of top-level LOOP_RESULT fields)
+
+LOOP_RESULT (required final line)
+Emit exactly one line:
+LOOP_RESULT: {"loop":"retrospective","result":"completed|blocked","stage":"<id>","checkpoint":"<id>","status":"<status>","next_role_hint":"design|context_capture|stop","report":<report_json>}
+Then record it with:
+`python3 .codex/skills/vibe-loop/scripts/agentctl.py --repo-root . --format json loop-result --line 'LOOP_RESULT: {...,"report":<report_json>}'`
+
+STOP CONDITION
+Stop after updating CONTEXT.md, setting flag, emitting and recording LOOP_RESULT.
 ```
 
 ---

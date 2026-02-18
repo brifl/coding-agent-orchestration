@@ -61,7 +61,7 @@ def test_recommend_next_skips_skip_marker(temp_repo: Path) -> None:
 """,
     )
     state = StateInfo(stage="1", checkpoint="1.0", status="DONE", evidence_path=None, issues=())
-    role, reason = _recommend_next(state, temp_repo)
+    role, reason, _ = _recommend_next(state, temp_repo)
     assert role == "advance"
     assert "1.2" in reason
 
@@ -81,7 +81,7 @@ def test_removing_skip_reactivates_checkpoint(temp_repo: Path) -> None:
 """,
     )
     state = StateInfo(stage="1", checkpoint="1.0", status="DONE", evidence_path=None, issues=())
-    role, reason = _recommend_next(state, temp_repo)
+    role, reason, _ = _recommend_next(state, temp_repo)
     assert role == "advance"
     assert "1.1" in reason
 

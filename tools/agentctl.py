@@ -54,7 +54,7 @@ ALLOWED_STATUS = {
 # For prioritization (highest -> lowest)
 IMPACT_ORDER = ["BLOCKER", "MAJOR", "MINOR", "QUESTION"]
 IMPACTS = tuple(IMPACT_ORDER)
-ISSUE_STATUS_VALUES = ("OPEN", "IN_PROGRESS", "BLOCKED", "RESOLVED")
+ISSUE_STATUS_VALUES = ("OPEN", "IN_PROGRESS", "BLOCKED", "RESOLVED", "DECISION_REQUIRED")
 LOOP_RESULT_PROTOCOL_VERSION = 1
 LOOP_RESULT_REQUIRED_FIELDS = (
     "loop",
@@ -73,6 +73,7 @@ LOOP_RESULT_LOOPS = {
     "context_capture",
     "improvements",
     "advance",
+    "retrospective",
 }
 LOOP_REPORT_REQUIRED_FIELDS = (
     "acceptance_matrix",
@@ -96,6 +97,7 @@ Role = Literal[
     "consolidation",
     "improvements",
     "advance",
+    "retrospective",
     "stop",
 ]
 
@@ -132,6 +134,7 @@ class PlanCheck:
     has_demo: bool
     has_evidence: bool
     warnings: tuple[str, ...]
+    complexity_warnings: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -628,6 +631,11 @@ def _validate_issue_schema(issues: tuple[Issue, ...]) -> tuple[str, ...]:
         if not issue.checked and issue.status == "RESOLVED":
             messages.append(
                 f"Active issue {issue.issue_id} is unresolved checkbox but Status is RESOLVED."
+            )
+        if issue.checked and issue.status == "DECISION_REQUIRED":
+            messages.append(
+                f"Active issue {issue.issue_id} is checked but Status is DECISION_REQUIRED; "
+                "set Status to RESOLVED or IN_PROGRESS once the decision is made."
             )
 
     return tuple(messages)
@@ -1177,6 +1185,41 @@ def _extract_checkpoint_section(plan_text: str, checkpoint_id: str) -> str | Non
     return "".join(line for _, line, _ in indexed_lines[start_idx:end_idx]).rstrip()
 
 
+# Checkpoint complexity budget: warn when a checkpoint is likely too large for one loop.
+COMPLEXITY_BUDGET: dict[str, int] = {
+    "Deliverables": 5,
+    "Acceptance": 6,
+    "Demo commands": 4,
+}
+
+_CHECKPOINT_FIELD_NAMES = ("Objective", "Deliverables", "Acceptance", "Demo commands", "Evidence")
+_CHECKPOINT_FIELD_HEADING_RE = re.compile(
+    r"(?im)^\s*(?:[-*]+\s*)?(?:\*\*)?\s*(?:"
+    + "|".join(re.escape(f) for f in _CHECKPOINT_FIELD_NAMES)
+    + r")\s*:?\s*(?:\*\*)?\s*:?\s*$"
+)
+
+
+def _count_items_in_subsection(section: str, heading_name: str) -> int:
+    """Count bullet items under a named heading within a checkpoint section."""
+    target_re = re.compile(
+        rf"(?im)^\s*(?:[-*]+\s*)?(?:\*\*)?\s*{re.escape(heading_name)}\s*:?\s*(?:\*\*)?\s*:?\s*$"
+    )
+    m = target_re.search(section)
+    if not m:
+        return 0
+    lines = section[m.end():].splitlines()
+    count = 0
+    for line in lines:
+        if _CHECKPOINT_FIELD_HEADING_RE.match(line):
+            break
+        if re.match(r"^\s*(?:---+|#{3,})\s*$", line):
+            break
+        if re.match(r"^\s*[-*]\s+\S", line):
+            count += 1
+    return count
+
+
 def check_plan_for_checkpoint(repo_root: Path, checkpoint_id: str) -> PlanCheck:
     plan_path = repo_root / ".vibe" / "PLAN.md"
     if not plan_path.exists():
@@ -1238,6 +1281,15 @@ def check_plan_for_checkpoint(repo_root: Path, checkpoint_id: str) -> PlanCheck:
     if not has_evidence:
         warnings.append("Checkpoint section missing 'Evidence'.")
 
+    complexity_warnings: list[str] = []
+    for field_name, budget in COMPLEXITY_BUDGET.items():
+        count = _count_items_in_subsection(section, field_name)
+        if count > budget:
+            complexity_warnings.append(
+                f"Checkpoint {checkpoint_id} '{field_name}' has {count} items "
+                f"(budget: {budget}); consider splitting this checkpoint."
+            )
+
     return PlanCheck(
         found_checkpoint=True,
         has_objective=has_objective,
@@ -1246,10 +1298,11 @@ def check_plan_for_checkpoint(repo_root: Path, checkpoint_id: str) -> PlanCheck:
         has_demo=has_demo,
         has_evidence=has_evidence,
         warnings=tuple(warnings),
+        complexity_warnings=tuple(complexity_warnings),
     )
 
 
-def validate(repo_root: Path, strict: bool) -> ValidationResult:
+def validate(repo_root: Path, strict: bool, strict_complexity: bool = False) -> ValidationResult:
     errors: list[str] = []
     warnings: list[str] = []
 
@@ -1354,6 +1407,8 @@ def validate(repo_root: Path, strict: bool) -> ValidationResult:
         else:
             for w in plan_check.warnings:
                 (errors if strict else warnings).append(f".vibe/PLAN.md: {w}")
+            for w in plan_check.complexity_warnings:
+                (errors if strict_complexity else warnings).append(f".vibe/PLAN.md: {w}")
 
     catalog_index, catalog_path, catalog_error = _load_prompt_catalog_index(repo_root)
     if catalog_error:
@@ -1664,6 +1719,20 @@ def _stage_design_trigger_reason(workflow_flags: dict[str, bool]) -> str | None:
     return "New stage entered without design; STAGE_DESIGNED flag not set."
 
 
+def _retrospective_trigger_reason(workflow_flags: dict[str, bool]) -> str | None:
+    """Check if a stage retrospective should run after a stage transition.
+
+    Retrospective runs once per stage when RETROSPECTIVE_DONE flag is not set.
+    Consolidation clears the flag; the retrospective loop sets it.
+    Backward-compat: repos without the flag in workflow state won't get unexpected loops.
+    """
+    if workflow_flags.get("RETROSPECTIVE_DONE"):
+        return None
+    if "RETROSPECTIVE_DONE" not in workflow_flags:
+        return None
+    return "Stage transition completed without retrospective; RETROSPECTIVE_DONE flag not set."
+
+
 _MAINTENANCE_CYCLE_TYPES = {0: "refactor", 1: "test", 2: "docs"}
 _MAINTENANCE_PROMPT_MAP = {
     "refactor": "prompt.refactor_scan",
@@ -1812,6 +1881,17 @@ def _recommend_next(state: StateInfo, repo_root: Path) -> tuple[Role, str, str |
     if top == "BLOCKER":
         return ("issues_triage", "BLOCKER issue present.", None)
 
+    # 0a) Human approval gate — stop and surface DECISION_REQUIRED issues for human review
+    decision_issues = [i for i in state.issues if i.status == "DECISION_REQUIRED"]
+    if decision_issues:
+        titles = "; ".join(i.issue_id or i.title for i in decision_issues)
+        return (
+            "stop",
+            f"Human decision required before proceeding. "
+            f"Resolve DECISION_REQUIRED issue(s): {titles}",
+            None,
+        )
+
     # 1) Review if IN_REVIEW — but first run smoke test gate
     if state.status == "IN_REVIEW":
         plan_path = repo_root / ".vibe" / "PLAN.md"
@@ -1872,7 +1952,12 @@ def _recommend_next(state: StateInfo, repo_root: Path) -> tuple[Role, str, str |
 
         # Maintenance loops fire before implementation when NOT_STARTED.
         if state.status == "NOT_STARTED":
-            # Stage design check — highest priority, runs once per stage
+            # Retrospective — runs once per stage after a transition, before design
+            retro_reason = _retrospective_trigger_reason(workflow_flags)
+            if retro_reason:
+                return ("retrospective", retro_reason, None)
+
+            # Stage design check — runs once per stage after retrospective
             stage_design_reason = _stage_design_trigger_reason(workflow_flags)
             if stage_design_reason:
                 return ("design", stage_design_reason, None)
@@ -1946,6 +2031,10 @@ PROMPT_MAP: dict[Role, dict[str, str]] = {
     "advance": {
         "id": "prompt.advance_checkpoint",
         "title": "Advance Checkpoint Prompt",
+    },
+    "retrospective": {
+        "id": "prompt.retrospective",
+        "title": "Stage Retrospective Prompt",
     },
     "stop": {
         "id": "stop",
@@ -2217,7 +2306,7 @@ def _resolve_next_prompt_selection(
 
 
 def cmd_validate(args: argparse.Namespace) -> int:
-    res = validate(Path(args.repo_root), strict=args.strict)
+    res = validate(Path(args.repo_root), strict=args.strict, strict_complexity=args.strict_complexity)
 
     payload: dict[str, Any] = {
         "ok": res.ok,
@@ -2249,6 +2338,7 @@ def cmd_validate(args: argparse.Namespace) -> int:
             "has_acceptance": res.plan_check.has_acceptance,
             "has_demo": res.plan_check.has_demo,
             "has_evidence": res.plan_check.has_evidence,
+            "complexity_warnings": list(res.plan_check.complexity_warnings),
         }
 
     print(_render_output(payload, args.format))
@@ -2557,7 +2647,13 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Treat PLAN checkpoint template warnings as errors (recommended for CI).",
     )
-    pv.set_defaults(fn=cmd_validate)
+    pv.add_argument(
+        "--strict-complexity",
+        dest="strict_complexity",
+        action="store_true",
+        help="Treat checkpoint complexity budget violations as errors (fail if a checkpoint exceeds item limits).",
+    )
+    pv.set_defaults(fn=cmd_validate, strict_complexity=False)
 
     ps = sub.add_parser("status", help="Print current state summary.")
     ps.add_argument(

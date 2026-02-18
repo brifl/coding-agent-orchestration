@@ -29,11 +29,18 @@
 <!-- Paste command outputs, links to commits/PRs, screenshots, etc. -->
 <!-- Keep this short and relevant to acceptance. -->
 
+## Workflow state
+<!-- Dispatcher flags. Checked = active/needed. Cleared by the loop that handles each flag. -->
+- [ ] RUN_CONTEXT_CAPTURE
+- [ ] STAGE_DESIGNED
+- [ ] MAINTENANCE_CYCLE_DONE
+- [ ] RETROSPECTIVE_DONE
+
 ## Active issues
 <!-- Keep only active issues here. Move resolved items to HISTORY.md. -->
 - [ ] ISSUE-001: <short title>
   - Impact: QUESTION <!-- QUESTION | MINOR | MAJOR | BLOCKER -->
-  - Status: OPEN <!-- OPEN | IN_PROGRESS | BLOCKED | RESOLVED -->
+  - Status: OPEN <!-- OPEN | IN_PROGRESS | BLOCKED | RESOLVED | DECISION_REQUIRED -->
   - Owner: agent|human
   - Unblock Condition: <what must be true to proceed>
   - Evidence Needed: <command/output/link proving resolution>

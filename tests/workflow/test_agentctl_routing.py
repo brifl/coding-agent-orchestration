@@ -90,7 +90,7 @@ def test_context_capture_flag_routes_to_context_capture(temp_repo: Path) -> None
     )
 
     state = StateInfo(stage="1", checkpoint="1.0", status="NOT_STARTED", evidence_path=None, issues=())
-    role, reason = _recommend_next(state, temp_repo)
+    role, reason, _ = _recommend_next(state, temp_repo)
     assert role == "context_capture"
     assert "RUN_CONTEXT_CAPTURE" in reason
 
@@ -122,7 +122,7 @@ def test_work_log_bloat_routes_to_consolidation(temp_repo: Path) -> None:
     context_path.write_text("# CONTEXT\n", encoding="utf-8")
 
     state = StateInfo(stage="1", checkpoint="1.0", status="NOT_STARTED", evidence_path=None, issues=())
-    role, reason = _recommend_next(state, temp_repo)
+    role, reason, _ = _recommend_next(state, temp_repo)
     assert role == "consolidation"
     assert "consolidation needed" in reason
 
@@ -140,7 +140,7 @@ def test_done_stage_transition_routes_to_consolidation(temp_repo: Path) -> None:
 """,
     )
     state = StateInfo(stage="1", checkpoint="1.0", status="DONE", evidence_path=None, issues=())
-    role, reason = _recommend_next(state, temp_repo)
+    role, reason, _ = _recommend_next(state, temp_repo)
     assert role == "consolidation"
     assert "Stage transition detected" in reason
 
@@ -156,7 +156,7 @@ def test_done_same_stage_routes_to_advance(temp_repo: Path) -> None:
 """,
     )
     state = StateInfo(stage="1", checkpoint="1.0", status="DONE", evidence_path=None, issues=())
-    role, reason = _recommend_next(state, temp_repo)
+    role, reason, _ = _recommend_next(state, temp_repo)
     assert role == "advance"
     assert "1.1" in reason
 
@@ -189,7 +189,7 @@ def test_stale_context_routes_to_context_capture(temp_repo: Path) -> None:
     os.utime(context_path, (stale_time, stale_time))
 
     state = StateInfo(stage="1", checkpoint="1.0", status="NOT_STARTED", evidence_path=None, issues=())
-    role, reason = _recommend_next(state, temp_repo)
+    role, reason, _ = _recommend_next(state, temp_repo)
     assert role == "context_capture"
     assert "stale" in reason.lower()
 
@@ -787,7 +787,7 @@ class TestWorkLogConsolidationRouting:
         # Prevent context_capture from firing first
         (vibe / "CONTEXT.md").write_text("# CONTEXT\n", encoding="utf-8")
         state = StateInfo(stage="1", checkpoint="1.0", status="NOT_STARTED", evidence_path=None, issues=())
-        role, reason = _recommend_next(state, tmp_path)
+        role, reason, _ = _recommend_next(state, tmp_path)
         assert role == "consolidation", f"Expected consolidation, got {role}: {reason}"
         assert "consolidation needed" in reason
 
@@ -811,5 +811,185 @@ class TestWorkLogConsolidationRouting:
         # Prevent context_capture from firing first
         (vibe / "CONTEXT.md").write_text("# CONTEXT\n", encoding="utf-8")
         state = StateInfo(stage="1", checkpoint="1.0", status="NOT_STARTED", evidence_path=None, issues=())
-        role, reason = _recommend_next(state, tmp_path)
+        role, reason, _ = _recommend_next(state, tmp_path)
         assert role == "implement", f"Expected implement, got {role}: {reason}"
+
+
+# ── Improvement 3: DECISION_REQUIRED human approval gate ──────────────────
+
+
+def test_decision_required_issue_routes_to_stop(temp_repo: Path) -> None:
+    from agentctl import Issue  # type: ignore
+
+    _write_state(
+        temp_repo,
+        """# STATE
+
+## Current focus
+- Stage: 1
+- Checkpoint: 1.0
+- Status: NOT_STARTED
+
+## Workflow state
+- [x] STAGE_DESIGNED
+""",
+    )
+    issue = Issue(
+        impact="MAJOR",
+        title="Should we support multi-tenant namespacing?",
+        line="- [ ] ISSUE-007: Should we support multi-tenant namespacing?",
+        issue_id="ISSUE-007",
+        owner="human",
+        status="DECISION_REQUIRED",
+        unblock_condition="Human selects approach A or B",
+        evidence_needed="Explicit decision in STATE.md",
+        checked=False,
+        impact_specified=True,
+    )
+    state = StateInfo(stage="1", checkpoint="1.0", status="NOT_STARTED", evidence_path=None, issues=(issue,))
+    role, reason, _ = _recommend_next(state, temp_repo)
+    assert role == "stop"
+    assert "DECISION_REQUIRED" in reason
+    assert "ISSUE-007" in reason
+
+
+def test_decision_required_takes_precedence_over_implement(temp_repo: Path) -> None:
+    from agentctl import Issue  # type: ignore
+
+    _write_state(
+        temp_repo,
+        """# STATE
+
+## Current focus
+- Stage: 1
+- Checkpoint: 1.0
+- Status: IN_PROGRESS
+
+## Workflow state
+- [x] STAGE_DESIGNED
+""",
+    )
+    issue = Issue(
+        impact="MINOR",
+        title="Which logging format?",
+        line="- [ ] ISSUE-008: Which logging format?",
+        issue_id="ISSUE-008",
+        owner="human",
+        status="DECISION_REQUIRED",
+        unblock_condition="Human picks format",
+        evidence_needed="Decision recorded",
+        checked=False,
+        impact_specified=True,
+    )
+    state = StateInfo(stage="1", checkpoint="1.0", status="IN_PROGRESS", evidence_path=None, issues=(issue,))
+    role, reason, _ = _recommend_next(state, temp_repo)
+    assert role == "stop"
+    assert "DECISION_REQUIRED" in reason
+
+
+def test_no_decision_required_does_not_stop(temp_repo: Path) -> None:
+    _write_state(
+        temp_repo,
+        """# STATE
+
+## Current focus
+- Stage: 1
+- Checkpoint: 1.0
+- Status: NOT_STARTED
+
+## Workflow state
+- [x] STAGE_DESIGNED
+""",
+    )
+    # Prevent context_capture trigger
+    (temp_repo / ".vibe" / "CONTEXT.md").write_text("# CONTEXT\n", encoding="utf-8")
+    state = StateInfo(stage="1", checkpoint="1.0", status="NOT_STARTED", evidence_path=None, issues=())
+    role, reason, _ = _recommend_next(state, temp_repo)
+    assert role != "stop"
+
+
+# ── Improvement 4: Retrospective trigger ──────────────────────────────────
+
+
+def test_retrospective_flag_routes_to_retrospective(temp_repo: Path) -> None:
+    _write_state(
+        temp_repo,
+        """# STATE
+
+## Current focus
+- Stage: 2
+- Checkpoint: 2.0
+- Status: NOT_STARTED
+
+## Workflow state
+- [ ] RETROSPECTIVE_DONE
+- [ ] STAGE_DESIGNED
+""",
+    )
+    state = StateInfo(stage="2", checkpoint="2.0", status="NOT_STARTED", evidence_path=None, issues=())
+    role, reason, _ = _recommend_next(state, temp_repo)
+    assert role == "retrospective"
+    assert "RETROSPECTIVE_DONE" in reason
+
+
+def test_retrospective_done_flag_skips_retrospective(temp_repo: Path) -> None:
+    _write_state(
+        temp_repo,
+        """# STATE
+
+## Current focus
+- Stage: 2
+- Checkpoint: 2.0
+- Status: NOT_STARTED
+
+## Workflow state
+- [x] RETROSPECTIVE_DONE
+- [ ] STAGE_DESIGNED
+""",
+    )
+    state = StateInfo(stage="2", checkpoint="2.0", status="NOT_STARTED", evidence_path=None, issues=())
+    role, reason, _ = _recommend_next(state, temp_repo)
+    assert role == "design"  # advances to stage_design since STAGE_DESIGNED is not set
+
+
+def test_retrospective_fires_before_stage_design(temp_repo: Path) -> None:
+    """Retrospective should run first so lessons can inform stage design."""
+    _write_state(
+        temp_repo,
+        """# STATE
+
+## Current focus
+- Stage: 2
+- Checkpoint: 2.0
+- Status: NOT_STARTED
+
+## Workflow state
+- [ ] RETROSPECTIVE_DONE
+- [ ] STAGE_DESIGNED
+""",
+    )
+    state = StateInfo(stage="2", checkpoint="2.0", status="NOT_STARTED", evidence_path=None, issues=())
+    role, reason, _ = _recommend_next(state, temp_repo)
+    assert role == "retrospective"
+
+
+def test_retrospective_absent_flag_does_not_trigger(temp_repo: Path) -> None:
+    """Repos without RETROSPECTIVE_DONE in workflow state are not affected (backward compat)."""
+    _write_state(
+        temp_repo,
+        """# STATE
+
+## Current focus
+- Stage: 1
+- Checkpoint: 1.0
+- Status: NOT_STARTED
+
+## Workflow state
+- [x] STAGE_DESIGNED
+""",
+    )
+    # Prevent context_capture trigger
+    (temp_repo / ".vibe" / "CONTEXT.md").write_text("# CONTEXT\n", encoding="utf-8")
+    state = StateInfo(stage="1", checkpoint="1.0", status="NOT_STARTED", evidence_path=None, issues=())
+    role, reason, _ = _recommend_next(state, temp_repo)
+    assert role == "implement"  # no retrospective trigger; STAGE_DESIGNED already set

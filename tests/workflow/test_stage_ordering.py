@@ -72,7 +72,7 @@ def test_agentctl_next_prefers_inserted_stage(tmp_path: Path) -> None:
     )
 
     state = load_state(tmp_path)
-    role, reason = _recommend_next(state, tmp_path)
+    role, reason, _ = _recommend_next(state, tmp_path)
     assert role == "consolidation"
     assert "12A" in reason
 
@@ -99,5 +99,5 @@ def test_blocker_issue_overrides_ordering(tmp_path: Path) -> None:
     )
 
     state = load_state(tmp_path)
-    role, _ = _recommend_next(state, tmp_path)
+    role, _, __ = _recommend_next(state, tmp_path)
     assert role == "issues_triage"

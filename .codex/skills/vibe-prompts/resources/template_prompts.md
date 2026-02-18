@@ -3,49 +3,83 @@
 ## prompt.stage_design — Stage Design Prompt
 
 ```md
-ROLE: Primary software architect (design pass)
+ROLE: Strategic architect (stage design)
 
 GOAL
-Make `.vibe/PLAN.md` near-term, deterministic, and aligned with `.vibe/STATE.md`
-without implementing product code.
+Design the next 1-3 stages with intentional architectural decisions. Focus on
+the big picture: what needs to be built, why, and how the pieces fit together.
+Break out stages or checkpoints when scope exceeds one focused loop.
+
+Do NOT implement product code. Do NOT focus on formatting or paperwork — focus
+on making good design decisions.
 
 PREFLIGHT
 1) Read, in order: `AGENTS.md` (optional if already read), `.vibe/STATE.md`, `.vibe/PLAN.md`, `README.md` (optional), `.vibe/HISTORY.md` (optional).
 2) Verify current Stage/Checkpoint in `.vibe/STATE.md` exists in `.vibe/PLAN.md`.
 3) If the pointer is wrong, fix `.vibe/STATE.md` first, then continue.
+4) Review recent work log and completed stages to understand what just finished.
 
 ALLOWED FILES
 - `.vibe/PLAN.md`
-- `.vibe/STATE.md` (only for pointer alignment or status cleanup)
+- `.vibe/STATE.md` (pointer alignment, status cleanup, or workflow flags)
 
 REQUIRED STATE MUTATIONS
+- Set `STAGE_DESIGNED` workflow flag: `- [x] STAGE_DESIGNED`
 - If stage/checkpoint pointer changes, update `Current focus` in `.vibe/STATE.md` and append one work-log line.
 - Do not set status to `IN_REVIEW` or `DONE` in this loop.
 
 REQUIRED COMMANDS
 - Run `python3 .codex/skills/vibe-loop/scripts/agentctl.py --repo-root . validate --format json` after edits.
 
-EXECUTION
-1) Keep detailed planning to the next 1-3 stages only.
-2) Ensure every checkpoint uses this exact shape:
-   - Objective (1 sentence)
-   - Deliverables (concrete files/modules/behaviors)
-   - Acceptance (verifiable)
-   - Demo commands (exact local commands)
-   - Evidence (what to paste into `.vibe/STATE.md`)
-3) Ensure each checkpoint is executable in one focused loop.
-4) Keep edits minimal and mechanical; avoid architecture rewrites.
+STRATEGIC DESIGN PROCESS
+1) **Understand context:**
+   - What stage are we entering? What was just completed?
+   - What are the goals of the next 1-3 stages?
+   - What does the codebase look like right now?
+
+2) **Identify design decisions:**
+   - What are the key architectural choices?
+   - What dependencies exist between stages or checkpoints?
+   - What risks or unknowns need to be addressed first?
+   - Are there integration points that require careful ordering?
+
+3) **Make intentional choices:**
+   - For each decision, document the choice and one-line rationale.
+   - Consider: implementation complexity, testing strategy, rollback safety.
+   - Split large stages into smaller stages if they cross natural boundaries.
+   - Split large checkpoints if they exceed "one focused loop" scope.
+   - It is better to have more small checkpoints than fewer large ones.
+
+4) **Ensure checkpoint quality:**
+   Every checkpoint must have:
+   - Objective (1 sentence with clear success criteria)
+   - Deliverables (concrete files/modules/behaviors, not vague goals)
+   - Acceptance (verifiable, testable claims)
+   - Demo commands (exact local commands that prove it works)
+   - Evidence (specific output to paste into `.vibe/STATE.md`)
+
+   Each checkpoint should be:
+   - Implementable in one focused loop (a few hours of work)
+   - Independently testable and verifiable
+   - Safe to commit and review in isolation
+
+   Complexity budget (hard limits — split if exceeded):
+   - Deliverables: ≤ 5 items
+   - Acceptance criteria: ≤ 6 items
+   - Demo commands: ≤ 4 items
+   Run `agentctl validate --strict-complexity` to catch violations automatically.
 
 REQUIRED OUTPUT
-- Current stage/checkpoint before and after edits.
-- Files changed.
-- Validation command result (pass/fail).
-- Short summary of plan changes.
+- Key design decisions made (3-5 bullet points)
+- Stages/checkpoints added, removed, or restructured
+- Current stage/checkpoint before and after edits
+- Files changed
+- Validation command result (pass/fail)
 
 REPORT SCHEMA (required)
 - LOOP_RESULT payload must include a `report` object with:
   - `acceptance_matrix`: list of objects (`item`, `status`, `evidence`, `critical`, `confidence`, `evidence_strength`)
-  - `top_findings`: max 5 findings sorted by impact
+  - `top_findings`: max 5 findings sorted by impact (design decisions, risks, dependencies)
   - `state_transition`: `before` + `after` stage/checkpoint/status
   - `loop_result`: mirror of top-level LOOP_RESULT fields
 
@@ -56,7 +90,7 @@ Then record it with:
 `python3 .codex/skills/vibe-loop/scripts/agentctl.py --repo-root . --format json loop-result --line 'LOOP_RESULT: {...,"report":<report_json>}'`
 
 STOP CONDITION
-Stop after updating `.vibe/PLAN.md` (and `.vibe/STATE.md` only if needed), emitting and recording LOOP_RESULT, and returning control to dispatcher.
+Stop after updating `.vibe/PLAN.md`, setting STAGE_DESIGNED flag, emitting and recording LOOP_RESULT, and returning control to dispatcher.
 ```
 
 ---
@@ -74,6 +108,7 @@ PREFLIGHT
 1) Read `AGENTS.md` (optional if already read), `.vibe/STATE.md`, `.vibe/PLAN.md`, `README.md` (optional).
 2) Confirm the checkpoint in `.vibe/STATE.md` exists in `.vibe/PLAN.md`.
 3) If deliverables are ambiguous or contradictory, create an issue and stop.
+4) Dependency check: for each deliverable file, run `git log -n 5 --oneline -- <file>`. If recent commits conflict with planned changes (e.g., concurrent modifications by another checkpoint), create an issue and stop rather than overwriting.
 
 ALLOWED FILES
 - Product/code files needed for the active checkpoint
@@ -89,11 +124,16 @@ REQUIRED STATE MUTATIONS
 ACTIVE ISSUE BLOCK (required format)
 - [ ] ISSUE-123: Short title
   - Impact: QUESTION|MINOR|MAJOR|BLOCKER
-  - Status: OPEN|IN_PROGRESS|BLOCKED|RESOLVED
+  - Status: OPEN|IN_PROGRESS|BLOCKED|RESOLVED|DECISION_REQUIRED
   - Owner: agent|human
   - Unblock Condition: Specific condition to proceed
   - Evidence Needed: Command/output/link that closes the issue
   - Notes: Optional context
+
+Use `Status: DECISION_REQUIRED` when the issue requires an explicit human judgment call
+(architecture direction, product scope, security policy, breaking API changes). The
+dispatcher will pause and surface these issues to the human rather than routing to
+issues_triage. Do NOT use DECISION_REQUIRED for technical blockers an agent can resolve.
 
 REQUIRED COMMANDS
 - Run checkpoint demo commands from `.vibe/PLAN.md` (or closest equivalent if paths changed).
@@ -173,7 +213,7 @@ REQUIRED STATE MUTATIONS
 ACTIVE ISSUE BLOCK (required format)
 - [ ] ISSUE-123: Short title
   - Impact: QUESTION|MINOR|MAJOR|BLOCKER
-  - Status: OPEN|IN_PROGRESS|BLOCKED|RESOLVED
+  - Status: OPEN|IN_PROGRESS|BLOCKED|RESOLVED|DECISION_REQUIRED
   - Owner: agent|human
   - Unblock Condition: Specific condition to proceed
   - Evidence Needed: Command/output/link that closes the issue
@@ -191,27 +231,39 @@ EXECUTION
    - attempt to falsify at least 2 acceptance claims,
    - run targeted negative/boundary checks,
    - document what breaks, what is unverified, and residual risk.
-3) Build a "Top 5 findings by impact" list from both passes (highest impact first, include evidence line per finding).
-4) Evaluator-Optimizer pass (required):
+3) Pass C: Code review for improvements:
+   - Review the changed/delivered files as a senior code reviewer would.
+   - Identify the top 3 improvements NOT already captured in future checkpoints or active issues.
+   - Tag each improvement: `[MINOR]`, `[MODERATE]`, or `[MAJOR]`.
+     - `[MINOR]`: Style, naming, small refactors, missing comments on tricky logic. Fix these in place during this review pass and note what was fixed.
+     - `[MODERATE]`: Missing error handling, incomplete edge cases, suboptimal algorithms, test gaps that weaken confidence. These require dedicated implementation work.
+     - `[MAJOR]`: Architectural problems, security concerns, correctness bugs not caught by acceptance criteria, missing abstractions that will cause pain in future stages.
+   - `[MODERATE]`/`[MAJOR]` improvements → create issues (using the ACTIVE ISSUE BLOCK format), FAIL the review, and route to implementation.
+   - `[MINOR]` improvements → fix in place during this review, still eligible for PASS.
+   - If no improvements found, explicitly state "No code review improvements identified" (do not invent improvements for the sake of filling the list).
+4) Build a "Top 5 findings by impact" list from all three passes (highest impact first, include evidence line per finding).
+5) Evaluator-Optimizer pass (required):
    - Score `correctness`, `scope_control`, `evidence_quality`, `state_transition_accuracy` from 1-5.
    - If any score < 4, run one targeted repair/retest pass and rescore once.
    - If any score remains < 4, force FAIL and route to `issues_triage`.
-5) Confidence calibration (required):
+6) Confidence calibration (required):
    - For each acceptance claim, record `confidence` (0.0-1.0) and `evidence_strength` (`LOW|MEDIUM|HIGH`).
    - If any `critical: true` claim has `confidence < 0.75` or `evidence_strength == LOW`, do not PASS; route to `IN_PROGRESS|BLOCKED` + `issues_triage`.
-6) Apply FAIL/PASS mutation rules:
+7) Apply FAIL/PASS mutation rules:
    - FAIL if any acceptance item is unmet,
    - FAIL if any unresolved finding is `Impact: MAJOR|BLOCKER`,
-   - PASS only when remaining findings are explicitly accepted as `MINOR|QUESTION`.
-7) On FAIL, capture precise gaps and exact unblock evidence needed.
+   - FAIL if code review identified any `[MODERATE]` or `[MAJOR]` improvements,
+   - PASS only when remaining findings are explicitly accepted as `MINOR|QUESTION` and all code review improvements are `[MINOR]` (and fixed in place).
+8) On FAIL, capture precise gaps and exact unblock evidence needed.
 
 REQUIRED OUTPUT
 A) Verdict: PASS | FAIL
 B) Acceptance evidence matrix (criterion -> command/evidence -> pass/fail)
-C) Top 5 findings by impact (Impact, finding, evidence, required fix)
-D) Issues created/updated
-E) State transition applied (including whether auto-advanced)
-F) Evaluator scores + confidence/evidence-strength table for critical claims.
+C) Code review improvements (top 3, each tagged `[MINOR]`/`[MODERATE]`/`[MAJOR]` with description and action taken)
+D) Top 5 findings by impact (Impact, finding, evidence, required fix)
+E) Issues created/updated
+F) State transition applied (including whether auto-advanced)
+G) Evaluator scores + confidence/evidence-strength table for critical claims.
 
 REPORT SCHEMA (required)
 - LOOP_RESULT payload must include `report` with:
@@ -261,7 +313,7 @@ REQUIRED STATE MUTATIONS
 ACTIVE ISSUE BLOCK (required format)
 - [ ] ISSUE-123: Short title
   - Impact: QUESTION|MINOR|MAJOR|BLOCKER
-  - Status: OPEN|IN_PROGRESS|BLOCKED|RESOLVED
+  - Status: OPEN|IN_PROGRESS|BLOCKED|RESOLVED|DECISION_REQUIRED
   - Owner: agent|human
   - Unblock Condition: Specific condition to proceed
   - Evidence Needed: Command/output/link that closes the issue
@@ -339,6 +391,7 @@ REQUIRED STATE MUTATIONS
   - Set `Checkpoint` to the next checkpoint.
   - Set `Status` to `NOT_STARTED`.
   - Ensure `## Workflow state` contains `- [x] RUN_CONTEXT_CAPTURE`.
+  - Clear stage-scoped workflow flags: set `STAGE_DESIGNED` → `- [ ] STAGE_DESIGNED`, `MAINTENANCE_CYCLE_DONE` → `- [ ] MAINTENANCE_CYCLE_DONE`, `RETROSPECTIVE_DONE` → `- [ ] RETROSPECTIVE_DONE`.
 
 REQUIRED COMMANDS
 - `python3 .codex/skills/vibe-loop/scripts/agentctl.py --repo-root . validate --format json` before and after edits.
@@ -346,7 +399,7 @@ REQUIRED COMMANDS
 EXECUTION
 1) Archive completed stages into `.vibe/HISTORY.md` with concise stage summaries.
 2) Prune `.vibe/STATE.md`:
-   - keep recent work log entries only
+   - keep at most 10 work log entries (remove oldest first)
    - clear evidence for old checkpoints
    - sync objective/deliverables/acceptance to active checkpoint
 3) Prune `.vibe/PLAN.md`:
@@ -572,6 +625,76 @@ Then record it with:
 
 STOP CONDITION
 Stop after updating `.vibe/STATE.md`, emitting + recording LOOP_RESULT, and returning to dispatcher.
+```
+
+---
+
+## prompt.retrospective — Stage Retrospective Prompt
+
+```md
+ROLE: Engineering lead (stage retrospective)
+
+GOAL
+Analyze the just-completed stage to extract concrete lessons that improve future
+checkpoint design. Write findings to `.vibe/CONTEXT.md` and set the RETROSPECTIVE_DONE
+flag. Do NOT implement product code or change PLAN.md.
+
+PREFLIGHT
+1) Read `AGENTS.md` (optional if already read), `.vibe/STATE.md`, `.vibe/PLAN.md`, `.vibe/HISTORY.md`.
+2) Identify the stage that just completed (visible in HISTORY.md or recent work log).
+3) If no completed stage exists (first stage ever), write a brief stub and set the flag.
+
+ALLOWED FILES
+- `.vibe/CONTEXT.md`
+- `.vibe/STATE.md` (only to set RETROSPECTIVE_DONE flag)
+
+REQUIRED STATE MUTATIONS
+- Set `RETROSPECTIVE_DONE` workflow flag: `- [x] RETROSPECTIVE_DONE`
+- Append a one-line work-log entry noting the retrospective was completed.
+
+REQUIRED COMMANDS
+- None required beyond local file reads.
+
+EXECUTION
+1) **Gather data** from HISTORY.md and work log:
+   - How many loops did the stage take total?
+   - Which checkpoints had multiple review cycles (required >1 implement→review)?
+   - Were any checkpoints split, skipped, or added mid-stage?
+   - Were there any BLOCKER or DECISION_REQUIRED issues? What caused them?
+
+2) **Identify 3-5 concrete lessons** from the above data. Each lesson must be:
+   - Specific (cite a checkpoint ID or pattern, not a generic platitude)
+   - Actionable (state what to do differently next time)
+   - Scoped (not "be more careful" — say what would have prevented the problem)
+
+3) **Write to `.vibe/CONTEXT.md`** under a `## Stage Retrospective Notes` section:
+   - One bullet per lesson.
+   - Include: which stage the lesson came from, what happened, and what to do next time.
+   - Keep total notes under 10 bullets (prune older lessons when adding new ones).
+
+4) **Set RETROSPECTIVE_DONE flag** in `## Workflow state`.
+
+REQUIRED OUTPUT
+- Stage retrospected (stage ID).
+- Number of lessons extracted.
+- Lessons written to CONTEXT.md (brief list).
+- Flag set.
+
+REPORT SCHEMA (required)
+- LOOP_RESULT payload must include `report` object with:
+  - `acceptance_matrix`
+  - `top_findings` (max 5, sorted by impact — use lessons as findings)
+  - `state_transition` (before/after)
+  - `loop_result` (mirror of top-level LOOP_RESULT fields)
+
+LOOP_RESULT (required final line)
+Emit exactly one line:
+LOOP_RESULT: {"loop":"retrospective","result":"completed|blocked","stage":"<id>","checkpoint":"<id>","status":"<status>","next_role_hint":"design|context_capture|stop","report":<report_json>}
+Then record it with:
+`python3 .codex/skills/vibe-loop/scripts/agentctl.py --repo-root . --format json loop-result --line 'LOOP_RESULT: {...,"report":<report_json>}'`
+
+STOP CONDITION
+Stop after updating CONTEXT.md, setting flag, emitting and recording LOOP_RESULT.
 ```
 
 ---
@@ -1498,4 +1621,203 @@ DISPATCHER CONTRACT (when selected by `agentctl` workflow)
   `LOOP_RESULT: {"loop":"issues_triage","result":"resolved|partial|blocked","stage":"<id>","checkpoint":"<id>","status":"<status>","next_role_hint":"implement|review|issues_triage|stop","report":<report_json>}`
 - Record it with:
   `python3 .codex/skills/vibe-loop/scripts/agentctl.py --repo-root . --format json loop-result --line 'LOOP_RESULT: {...,"report":<report_json>}'`
+```
+
+---
+
+## prompt.docs_gap_analysis — Documentation Gap Analysis Prompt
+
+```md
+ROLE: Documentation analyst (gap phase)
+
+TASK
+Detect missing documentation and missing documentation sections across README,
+docs, and embedded guides, then produce deterministic fix recommendations.
+
+INPUTS
+- Repository root path
+- Severity rubric (`docs/documentation_severity_rubric.md`)
+- Scope contract (`docs/continuous_documentation_overview.md`)
+- Optional prior gap report for comparison
+
+OUTPUT FORMAT
+## Goal
+- One-sentence summary of the gap scan scope.
+
+## Findings
+- Deterministic list ordered by severity (`MAJOR`, `MODERATE`, `MINOR`) then id.
+- Each finding must include:
+  - `finding_id`
+  - `phase` (`gap`)
+  - `category`
+  - `severity`
+  - `location`
+  - `recommendation`
+
+## Recommended Actions
+- Action items using only:
+  - `edit_section`
+  - `create_doc`
+  - `create_wiki_page`
+- Include target path and one-line summary per action.
+
+## Evidence
+- Commands run and key scan outputs (or note if none).
+
+## Next Safe Step
+- Single next action: apply gap fixes or triage unresolved blockers.
+
+RULES
+- Use deterministic IDs and stable ordering on unchanged repository input.
+- Prefer concrete, minimal fixes over broad rewrites.
+- `create_doc`/`create_wiki_page` recommendations must include explicit target paths.
+- Do not create or switch branches.
+```
+
+---
+
+## prompt.docs_gap_fix — Documentation Gap Fix Prompt
+
+```md
+ROLE: Documentation engineer (gap remediation)
+
+TASK
+Apply scoped fixes for gap findings by editing existing docs and creating
+missing docs/wiki targets with explicit traceability back to finding IDs.
+
+INPUTS
+- Gap report JSON (findings with recommendations)
+- Severity rubric (`docs/documentation_severity_rubric.md`)
+- Scope contract (`docs/continuous_documentation_overview.md`)
+
+OUTPUT FORMAT
+## Goal
+- One-sentence remediation objective tied to selected findings.
+
+## Planned Changes
+- Finding-by-finding plan with:
+  - `finding_id`
+  - action (`edit_section|create_doc|create_wiki_page`)
+  - target path
+
+## Applied Changes
+- Files created/updated grouped by finding ID.
+- Any skipped/no-op findings with reason.
+
+## Validation
+- Before/after counts for `MAJOR` and `MODERATE` findings.
+- Command outputs for remediation and re-analysis runs.
+
+## Evidence
+- Fix log path (`.vibe/docs/gap_fix_log.jsonl`) and representative rows.
+
+## Next Safe Step
+- Single next action: move to refactor analysis or triage unresolved blockers.
+
+RULES
+- Preserve deterministic ordering from the input report.
+- Keep fixes minimal and directly tied to recommendation intent.
+- Do not mutate unrelated docs or code.
+- Every applied change must map back to one `finding_id`.
+- Do not create or switch branches.
+```
+
+---
+
+## prompt.docs_refactor_analysis — Documentation Refactor Analysis Prompt
+
+```md
+ROLE: Documentation architect (refactor analysis phase)
+
+TASK
+Analyze existing documentation quality for `accuracy`, `bloat`, and
+`structure`, then emit deterministic findings with refactor recommendations.
+
+INPUTS
+- Repository docs corpus (README/docs/embedded guides)
+- Severity rubric (`docs/documentation_severity_rubric.md`)
+- Optional previous refactor report for diffing
+
+OUTPUT FORMAT
+## Goal
+- One-sentence refactor analysis scope.
+
+## Findings by Category
+- Sections for `accuracy`, `bloat`, and `structure`.
+- Each finding includes:
+  - `finding_id`
+  - `phase` (`refactor`)
+  - `category`
+  - `severity`
+  - `location`
+  - `recommendation`
+
+## Recommended Refactors
+- Include concrete recommendations with one of:
+  - `migrate_to_wiki`
+  - `split_to_code_specific_doc`
+  - `merge_duplicates`
+
+## Evidence
+- Commands run and key indicators used for classification.
+
+## Next Safe Step
+- Single next action: apply refactor fixes or triage unresolved blockers.
+
+RULES
+- Keep finding IDs and ordering deterministic for unchanged input.
+- Prefer evidence-backed quality issues over stylistic preferences.
+- Recommendations must include target paths and concise summaries.
+- Do not create or switch branches.
+```
+
+---
+
+## prompt.docs_refactor_fix — Documentation Refactor Fix Prompt
+
+```md
+ROLE: Documentation engineer (refactor remediation phase)
+
+TASK
+Execute refactor recommendations from the refactor report to improve
+documentation accuracy, reduce bloat, and improve structure.
+
+INPUTS
+- Refactor report JSON (`.vibe/docs/refactor_report.json`)
+- Severity rubric (`docs/documentation_severity_rubric.md`)
+- Optional previous refactor-fix log for idempotence checks
+
+OUTPUT FORMAT
+## Goal
+- One-sentence remediation target for selected refactor findings.
+
+## Planned Remediations
+- Per finding:
+  - `finding_id`
+  - action (`migrate_to_wiki|split_to_code_specific_doc|merge_duplicates`)
+  - target path
+
+## Applied Changes
+- Files updated/created grouped by finding ID.
+- Any no-op findings with reason.
+
+## Validation
+- Re-analysis summary showing before/after `MAJOR|MODERATE` counts.
+- Post-fix consistency checks (headings and links) result.
+
+## Migration Artifacts
+- Generated `docs/wiki-export/*` paths.
+- Mapping manifest updates in `docs/wiki-export/map.json`.
+
+## Evidence
+- Refactor fix log path and representative rows.
+
+## Next Safe Step
+- Single next action: package workflow skill or triage unresolved blockers.
+
+RULES
+- Keep fixes deterministic and idempotent.
+- Every file change must map back to one refactor finding.
+- Preserve source-to-target mappings for wiki migrations.
+- Do not create or switch branches.
 ```

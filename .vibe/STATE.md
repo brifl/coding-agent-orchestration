@@ -48,6 +48,7 @@ End-to-end tests for Stage 22 features and workflow documentation.
 - [ ] RUN_CONTEXT_CAPTURE
 - [ ] STAGE_DESIGNED
 - [ ] MAINTENANCE_CYCLE_DONE
+- [ ] RETROSPECTIVE_DONE
 
 ## Evidence
 
