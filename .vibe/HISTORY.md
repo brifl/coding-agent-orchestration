@@ -13,6 +13,10 @@
 
 ## Completed stages
 
+### 2026-02-18 — Stage 22: Vibe-Run Workflow Improvements (completed)
+
+Improved the vibe-run dispatcher with stage design, retrospective, and maintenance cycle triggers (flag-based); added a smoke test gate to the review path; enhanced checkpoint review with Pass C code quality scan; added 20 E2E tests and `docs/workflow_improvements.md` (checkpoints 22.0–22.5).
+
 ### 2026-02-06 — Stage 21A: Continuous Documentation Skill (completed)
 
 Designed and packaged a continuous documentation workflow (gap analysis, gap fix, refactor analysis, refactor fix) as a first-class skill with workflow YAML, SKILL.md manifest, runner script, and updated skill docs (checkpoints 21A.0–21A.5).
