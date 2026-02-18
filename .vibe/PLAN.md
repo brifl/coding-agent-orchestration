@@ -3,7 +3,7 @@
 ## Stage 21 — RLM (Recursive Language Model) Tools Skill
 
 **Stage objective:**  
-Implement a bounded, auditable Recursive Language Model (RLM) execution harness that allows agents to reason over arbitrarily large contexts by offloading prompt data into a persistent runtime environment and iterating under explicit limits. The system must support real provider-backed subcalls (OpenAI, Anthropic, Google) and a human-assisted Kilo provider, while remaining deterministic, replayable, and safe.
+Implement a bounded, auditable Recursive Language Model (RLM) execution harness that allows agents to reason over arbitrarily large contexts by offloading prompt data into a persistent runtime environment and iterating under explicit limits. The system must support real provider-backed subcalls (OpenAI, Anthropic, Google) while remaining deterministic, replayable, and safe.
 
 ### Stage invariants (apply to all checkpoints)
 
@@ -46,7 +46,7 @@ Implement a bounded, auditable Recursive Language Model (RLM) execution harness 
   * `context_sources` (files/dirs/snapshots, include/exclude)
   * `bundle` (chunking strategy, max chars)
   * `mode`: `baseline` | `subcalls`
-  * `provider_policy`: primary, allowed[], fallback[], `kilo_requires_human`
+  * `provider_policy`: primary, allowed[], fallback[]
   * `limits`: max_root_iters, max_depth, max_subcalls_total, max_subcalls_per_iter, timeout_s, max_stdout_chars
   * `outputs`: final_path, artifact_paths[]
   * `trace`: trace_path, redaction_mode
@@ -155,29 +155,6 @@ Implement a bounded, auditable Recursive Language Model (RLM) execution harness 
   * `python skills/rlm-tools/executor.py run --task tasks/rlm/subcalls_example.json --cache readonly`
 * **Evidence:**
   * Trace shows cache hits and identical hashes.
-
----
-
-### (DEFERRED) 21.7 — Kilo provider (human-assisted via external queue)
-* **Important:**  This is deferred. Mark it as complete/skipped for now. We are not going to support Kilo until much later on.
-* **Objective:**  
-  Support Kilo (VS Code extension) as a human-assisted provider with full auditability.
-* **Deliverables:**
-  * `tools/rlm/providers/kilo_provider.py` (mode: external_queue)
-  * Queue directories:
-    - `.vibe/rlm/queue/<run_id>/requests.jsonl`
-    - `.vibe/rlm/queue/<run_id>/responses.jsonl`
-  * Queue CLI helpers:
-    - `queue status`
-    - `queue export`
-    - `queue import`
-  * Docs: `docs/rlm_kilo.md`
-* **Acceptance:**
-  * Executor pauses with `AWAITING_EXTERNAL`, resumes after response import, and completes run.
-* **Demo commands:**
-  * `python skills/rlm-tools/executor.py queue status --run <run_dir>`
-* **Evidence:**
-  * Trace shows external request/response hashes.
 
 ---
 
