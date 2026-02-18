@@ -51,8 +51,20 @@ simple so they can be updated incrementally.
 - 2026-02-18: Current checkpoint is `23.0` (`NOT_STARTED`): `PipelineConfig` schema
   and `agentctl plan` CLI skeleton with dry-run stub and config resolution.
   Stage invariants: dry-run first, validate before write, no silent overwrites,
-  no RLM hard dependency.
-- Next expected dispatcher role: `design` (STAGE_DESIGNED flag not yet set).
+  no RLM hard dependency. All stage flags set; next role is `implement`.
+
+## Loop Execution Checklist
+
+After **every** loop (implement, review, consolidation, design, retrospective, etc.):
+
+1. Set the correct STATUS in STATE.md (NOT_STARTED → IN_PROGRESS → IN_REVIEW → DONE).
+2. Update the Work log entry in STATE.md for this loop.
+3. Run `python3 tools/agentctl.py --repo-root . --format json validate --strict` and confirm `ok: true`.
+4. Submit LOOP_RESULT via `agentctl loop-result --line 'LOOP_RESULT: {...}'`.
+5. **Commit and push:** `git add -u && git commit -m "<stage>.<checkpoint>: <description>"` then `git push origin main`.
+6. Check `agentctl next` for the next role before starting it.
+
+Skipping any step — especially 3, 4, or 5 — breaks the vibe-run protocol. Do not batch steps across loops.
 
 ## Stage Retrospective Notes
 
