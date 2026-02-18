@@ -9,9 +9,10 @@ simple so they can be updated incrementally.
   strict validation, and `LOOP_RESULT` protocol state transitions.
 - Prompt contracts live in `prompts/template_prompts.md`; loop selection and
   orchestration are driven by `.codex/skills/vibe-run/scripts/vibe_run.py`.
-- Stage 22 (Vibe-Run Workflow Improvements) is active at checkpoint 22.5.
-- Stages 23-25 (Plan Authoring, Feedback Channel, Dependency Graph) have been
-  added to PLAN.md and are queued for implementation.
+- Stage 22 (Vibe-Run Workflow Improvements) complete. Stage 23 (Plan Authoring
+  Pipeline) is active at checkpoint 23.0.
+- Stages 23-25 (Plan Authoring, Feedback Channel, Dependency Graph) are queued
+  in PLAN.md.
 
 ## Key Decisions
 
@@ -23,6 +24,7 @@ simple so they can be updated incrementally.
   design, enhanced review, smoke gate, preflight, and retrospective triggers.
 - 2026-02-18: Added 4 dispatcher improvements (human BLOCKER → stop, resolved
   issue warning, stop → LOOP_RESULT.json, checkpoint minor ordering validation).
+- 2026-02-18: Stage 22 complete (22.0–22.5). 20 E2E tests added; docs/workflow_improvements.md created.
 
 ## Gotchas
 
@@ -46,10 +48,10 @@ simple so they can be updated incrementally.
 
 ## Agent Notes
 
-- 2026-02-18: Current checkpoint is `22.5` (`NOT_STARTED`): E2E tests for Stage 22
-  features and workflow documentation. Deliverables: tests covering stage design
-  trigger, maintenance cycle trigger, smoke test gate, retrospective trigger, flag
-  lifecycle; plus `docs/workflow_improvements.md`.
+- 2026-02-18: Current checkpoint is `23.0` (`NOT_STARTED`): `PipelineConfig` schema
+  and `agentctl plan` CLI skeleton with dry-run stub and config resolution.
+  Stage invariants: dry-run first, validate before write, no silent overwrites,
+  no RLM hard dependency.
 - Next expected dispatcher role: `design` (STAGE_DESIGNED flag not yet set).
 
 ## Stage Retrospective Notes
@@ -84,3 +86,10 @@ simple so they can be updated incrementally.
   multiple test files as a pre-existing error. Adding tests in the same checkpoint as
   the dispatcher change would have caught this immediately. Rule: any change to
   `_recommend_next()` must include a routing test in the same checkpoint.
+
+- **[Stage 22.5] Demo commands must be subprocess-portable:** The smoke gate runs
+  commands via `subprocess.run(shell=True)` which on Windows uses cmd.exe, not the
+  activated venv. `python3 -m pytest` resolved to the Windows Store Python (no pytest).
+  Rule: PLAN.md demo commands should only use tools reliably on PATH in the subprocess
+  environment — prefer `python3 tools/agentctl.py` (known-working) over bare
+  `python3 -m <module>` for smoke gate validation.

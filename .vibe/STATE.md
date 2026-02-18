@@ -35,13 +35,16 @@ Define the `PipelineConfig` schema and the `agentctl plan` CLI entry point with 
 ## Work log (current session)
 
 - 2026-02-18: Stage 22 (Vibe-Run Workflow Improvements) complete. 6 checkpoints (22.0–22.5). Archived to HISTORY.md. Advancing to Stage 23.
+- 2026-02-18: Retrospective: [Stage 22.5] demo commands must be subprocess-portable. RETROSPECTIVE_DONE set.
+- 2026-02-18: Stage design for 23.0–23.4. Decisions: @dataclass PipelineConfig, Protocol-based PipelineProvider (injectable), config resolution via json files, resume via step output files. STAGE_DESIGNED set.
+- 2026-02-18: Maintenance cycle (docs, stage 23%3==2). Top gaps: concepts.md missing workflow flags [MAJOR], no agentctl_reference.md [MAJOR], stop conditions stale [MODERATE]. MAINTENANCE_CYCLE_DONE set.
 
 ## Workflow state
 
 - [ ] RUN_CONTEXT_CAPTURE
-- [ ] STAGE_DESIGNED
-- [ ] MAINTENANCE_CYCLE_DONE
-- [ ] RETROSPECTIVE_DONE
+- [x] STAGE_DESIGNED
+- [x] MAINTENANCE_CYCLE_DONE
+- [x] RETROSPECTIVE_DONE
 
 ## Evidence
 
