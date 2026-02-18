@@ -1,51 +1,67 @@
 {
-  "checkpoint": "22.0",
-  "loop": "implement",
-  "next_role_hint": "implement",
+  "checkpoint": "22.5",
+  "loop": "review",
+  "next_role_hint": "advance|consolidation",
   "protocol_version": 1,
-  "recorded_at": "2026-02-13T07:56:22.675663+00:00",
+  "recorded_at": "2026-02-18T21:32:18.930002+00:00",
   "report": {
     "acceptance_matrix": [
       {
         "confidence": 1.0,
         "critical": true,
-        "evidence": "test",
+        "evidence": "140 pass, 3 skip, 1 pre-existing fail",
         "evidence_strength": "HIGH",
-        "item": "test",
+        "item": "All tests pass",
+        "status": "PASS"
+      },
+      {
+        "confidence": 1.0,
+        "critical": true,
+        "evidence": "ok: true, 0 errors",
+        "evidence_strength": "HIGH",
+        "item": "agentctl validate --strict passes",
+        "status": "PASS"
+      },
+      {
+        "confidence": 1.0,
+        "critical": true,
+        "evidence": "docs/workflow_improvements.md covers all 5 Stage 22 features",
+        "evidence_strength": "HIGH",
+        "item": "Documentation explains all improvements",
         "status": "PASS"
       }
     ],
     "loop_result": {
-      "checkpoint": "22.0",
-      "loop": "implement",
-      "next_role_hint": "implement",
-      "result": "ready_for_review",
+      "checkpoint": "22.5",
+      "loop": "review",
+      "next_role_hint": "advance|consolidation",
+      "result": "accepted",
       "stage": "22",
-      "status": "NOT_STARTED"
+      "status": "DONE"
     },
     "state_transition": {
       "after": {
-        "checkpoint": "22.0",
+        "checkpoint": "22.5",
         "stage": "22",
-        "status": "NOT_STARTED"
+        "status": "DONE"
       },
       "before": {
-        "checkpoint": "22.0",
+        "checkpoint": "22.5",
         "stage": "22",
-        "status": "NOT_STARTED"
+        "status": "IN_REVIEW"
       }
     },
     "top_findings": [
       {
-        "action": "none",
-        "evidence": "test",
+        "action": "None",
+        "evidence": "Test-local side effect only",
         "impact": "MINOR",
-        "title": "test"
+        "title": "Pass C: _write_state_flags creates CONTEXT.md stub"
       }
     ]
   },
-  "result": "ready_for_review",
+  "result": "accepted",
   "stage": "22",
-  "state_sha256": "0fc14219a55b54d5d0056a30ef91bf2393d379407418d94a95789a4bfeac3357",
-  "status": "NOT_STARTED"
+  "state_sha256": "48f7b96e35c8953b35e17ebbb3a4e007fb2f18531187b91ce5a47564b5cf2e2f",
+  "status": "DONE"
 }

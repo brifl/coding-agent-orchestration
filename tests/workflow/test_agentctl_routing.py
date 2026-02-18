@@ -993,3 +993,448 @@ def test_retrospective_absent_flag_does_not_trigger(temp_repo: Path) -> None:
     state = StateInfo(stage="1", checkpoint="1.0", status="NOT_STARTED", evidence_path=None, issues=())
     role, reason, _ = _recommend_next(state, temp_repo)
     assert role == "implement"  # no retrospective trigger; STAGE_DESIGNED already set
+
+
+# ── Improvement 1: Human-owned BLOCKERs route to stop ─────────────────────
+
+
+def test_all_human_owned_blockers_route_to_stop(temp_repo: Path) -> None:
+    from agentctl import Issue  # type: ignore
+
+    _write_state(
+        temp_repo,
+        """# STATE
+
+## Current focus
+- Stage: 1
+- Checkpoint: 1.0
+- Status: IN_PROGRESS
+""",
+    )
+    issue = Issue(
+        impact="BLOCKER",
+        title="Need prod credentials from human",
+        line="- [ ] ISSUE-300: Need prod credentials from human",
+        issue_id="ISSUE-300",
+        owner="human",
+        status="BLOCKED",
+        unblock_condition="Human provides credentials",
+        evidence_needed="Credentials supplied",
+        checked=False,
+        impact_specified=True,
+    )
+    state = StateInfo(stage="1", checkpoint="1.0", status="IN_PROGRESS", evidence_path=None, issues=(issue,))
+    role, reason, _ = _recommend_next(state, temp_repo)
+    assert role == "stop"
+    assert "human" in reason.lower()
+    assert "ISSUE-300" in reason
+
+
+def test_agent_owned_blocker_routes_to_issues_triage(temp_repo: Path) -> None:
+    from agentctl import Issue  # type: ignore
+
+    _write_state(
+        temp_repo,
+        """# STATE
+
+## Current focus
+- Stage: 1
+- Checkpoint: 1.0
+- Status: IN_PROGRESS
+""",
+    )
+    issue = Issue(
+        impact="BLOCKER",
+        title="Test suite crashes on import",
+        line="- [ ] ISSUE-301: Test suite crashes on import",
+        issue_id="ISSUE-301",
+        owner="agent",
+        status="OPEN",
+        unblock_condition="Fix the import error",
+        evidence_needed="Tests pass",
+        checked=False,
+        impact_specified=True,
+    )
+    state = StateInfo(stage="1", checkpoint="1.0", status="IN_PROGRESS", evidence_path=None, issues=(issue,))
+    role, reason, _ = _recommend_next(state, temp_repo)
+    assert role == "issues_triage"
+
+
+def test_mixed_blocker_ownership_routes_to_issues_triage(temp_repo: Path) -> None:
+    """If any BLOCKER is agent-owned, triage (not stop) so agent can work on it."""
+    from agentctl import Issue  # type: ignore
+
+    _write_state(
+        temp_repo,
+        """# STATE
+
+## Current focus
+- Stage: 1
+- Checkpoint: 1.0
+- Status: IN_PROGRESS
+""",
+    )
+    human_issue = Issue(
+        impact="BLOCKER",
+        title="Need human approval",
+        line="- [ ] ISSUE-302: Need human approval",
+        issue_id="ISSUE-302",
+        owner="human",
+        status="BLOCKED",
+        unblock_condition="Human approves",
+        evidence_needed="Approval in STATE.md",
+        checked=False,
+        impact_specified=True,
+    )
+    agent_issue = Issue(
+        impact="BLOCKER",
+        title="Agent must fix build",
+        line="- [ ] ISSUE-303: Agent must fix build",
+        issue_id="ISSUE-303",
+        owner="agent",
+        status="OPEN",
+        unblock_condition="Build passes",
+        evidence_needed="CI green",
+        checked=False,
+        impact_specified=True,
+    )
+    state = StateInfo(
+        stage="1", checkpoint="1.0", status="IN_PROGRESS", evidence_path=None,
+        issues=(human_issue, agent_issue),
+    )
+    role, reason, _ = _recommend_next(state, temp_repo)
+    assert role == "issues_triage"
+
+
+# ── Improvement 3: Stop decisions recorded in LOOP_RESULT.json ────────────
+
+
+def test_stop_route_writes_loop_result_json(temp_repo: Path) -> None:
+    from agentctl import _write_stop_loop_result  # type: ignore
+
+    _write_state(
+        temp_repo,
+        """# STATE
+
+## Current focus
+- Stage: 1
+- Checkpoint: 1.0
+- Status: NOT_STARTED
+""",
+    )
+    state = StateInfo(stage="1", checkpoint="1.0", status="NOT_STARTED", evidence_path=None, issues=())
+    _write_stop_loop_result(temp_repo, state, "plan exhausted")
+    path = temp_repo / ".vibe" / "LOOP_RESULT.json"
+    assert path.exists()
+    data = json.loads(path.read_text(encoding="utf-8"))
+    assert data["loop"] == "stop"
+    assert data["result"] == "stop"
+    assert data["reason"] == "plan exhausted"
+    assert data["next_role_hint"] == "stop"
+    assert data["stage"] == "1"
+    assert data["checkpoint"] == "1.0"
+
+
+def test_stop_loop_result_overwrites_existing(temp_repo: Path) -> None:
+    from agentctl import _write_stop_loop_result  # type: ignore
+
+    _write_state(
+        temp_repo,
+        """# STATE
+
+## Current focus
+- Stage: 2
+- Checkpoint: 2.1
+- Status: DONE
+""",
+    )
+    path = temp_repo / ".vibe" / "LOOP_RESULT.json"
+    path.write_text('{"loop": "implement", "result": "old"}', encoding="utf-8")
+    state = StateInfo(stage="2", checkpoint="2.1", status="DONE", evidence_path=None, issues=())
+    _write_stop_loop_result(temp_repo, state, "last checkpoint reached")
+    data = json.loads(path.read_text(encoding="utf-8"))
+    assert data["loop"] == "stop"
+    assert data["reason"] == "last checkpoint reached"
+
+
+# ── Stage 22 E2E: _extract_demo_commands ─────────────────────────────────────
+
+
+def test_extract_demo_commands_checkpoint_not_found() -> None:
+    from agentctl import _extract_demo_commands  # type: ignore
+
+    plan_text = "### 1.0 — First\n\n* **Demo commands:**\n  * `echo first`\n"
+    result = _extract_demo_commands(plan_text, "2.0")
+    assert result == []
+
+
+def test_extract_demo_commands_single_command() -> None:
+    from agentctl import _extract_demo_commands  # type: ignore
+
+    plan_text = "### 1.0 — First\n\n* **Demo commands:**\n  * `echo hello`\n"
+    result = _extract_demo_commands(plan_text, "1.0")
+    assert result == ["echo hello"]
+
+
+def test_extract_demo_commands_multiple_commands() -> None:
+    from agentctl import _extract_demo_commands  # type: ignore
+
+    plan_text = (
+        "### 1.0 — First\n\n* **Demo commands:**\n  * `echo one`\n  * `echo two`\n"
+        "\n### 1.1 — Second\n"
+    )
+    result = _extract_demo_commands(plan_text, "1.0")
+    assert result == ["echo one", "echo two"]
+
+
+def test_extract_demo_commands_stops_at_next_checkpoint() -> None:
+    from agentctl import _extract_demo_commands  # type: ignore
+
+    plan_text = (
+        "### 1.0 — First\n\n* **Demo commands:**\n  * `echo first`\n\n"
+        "### 1.1 — Second\n\n* **Demo commands:**\n  * `echo second`\n"
+    )
+    assert _extract_demo_commands(plan_text, "1.0") == ["echo first"]
+    assert _extract_demo_commands(plan_text, "1.1") == ["echo second"]
+
+
+# ── Stage 22 E2E: _run_smoke_test_gate ───────────────────────────────────────
+
+
+def test_smoke_gate_no_checkpoint(temp_repo: Path) -> None:
+    from agentctl import _run_smoke_test_gate  # type: ignore
+
+    plan_text = "### 1.0 — First\n\n* **Demo commands:**\n  * `echo ok`\n"
+    state = StateInfo(stage="1", checkpoint=None, status="NOT_STARTED", evidence_path=None, issues=())
+    passed, reason = _run_smoke_test_gate(temp_repo, state, plan_text)
+    assert passed is True
+    assert reason is None
+
+
+def test_smoke_gate_no_demo_commands(temp_repo: Path) -> None:
+    from agentctl import _run_smoke_test_gate  # type: ignore
+
+    plan_text = "### 1.0 — First\n\n* **Objective:**\n  No commands.\n"
+    state = StateInfo(stage="1", checkpoint="1.0", status="NOT_STARTED", evidence_path=None, issues=())
+    passed, reason = _run_smoke_test_gate(temp_repo, state, plan_text)
+    assert passed is True
+    assert reason is None
+
+
+def test_smoke_gate_success(temp_repo: Path) -> None:
+    from agentctl import _run_smoke_test_gate  # type: ignore
+    from unittest.mock import MagicMock, patch
+
+    plan_text = "### 1.0 — First\n\n* **Demo commands:**\n  * `echo ok`\n"
+    mock_result = MagicMock()
+    mock_result.returncode = 0
+    mock_result.stderr = ""
+    state = StateInfo(stage="1", checkpoint="1.0", status="NOT_STARTED", evidence_path=None, issues=())
+    with patch("agentctl.subprocess.run", return_value=mock_result):
+        passed, reason = _run_smoke_test_gate(temp_repo, state, plan_text)
+    assert passed is True
+    assert reason is None
+
+
+def test_smoke_gate_nonzero_exit(temp_repo: Path) -> None:
+    from agentctl import _run_smoke_test_gate  # type: ignore
+    from unittest.mock import MagicMock, patch
+
+    plan_text = "### 1.0 — First\n\n* **Demo commands:**\n  * `bad-command`\n"
+    mock_result = MagicMock()
+    mock_result.returncode = 1
+    mock_result.stderr = "command not found"
+    state = StateInfo(stage="1", checkpoint="1.0", status="NOT_STARTED", evidence_path=None, issues=())
+    with patch("agentctl.subprocess.run", return_value=mock_result):
+        passed, reason = _run_smoke_test_gate(temp_repo, state, plan_text)
+    assert passed is False
+    assert reason is not None
+    assert "rc=1" in reason
+    assert "bad-command" in reason
+
+
+def test_smoke_gate_timeout(temp_repo: Path) -> None:
+    from agentctl import _run_smoke_test_gate  # type: ignore
+    from unittest.mock import patch
+    import subprocess as _subprocess
+
+    plan_text = "### 1.0 — First\n\n* **Demo commands:**\n  * `sleep 999`\n"
+    state = StateInfo(stage="1", checkpoint="1.0", status="NOT_STARTED", evidence_path=None, issues=())
+    with patch(
+        "agentctl.subprocess.run",
+        side_effect=_subprocess.TimeoutExpired("sleep 999", 5),
+    ):
+        passed, reason = _run_smoke_test_gate(temp_repo, state, plan_text, timeout=5)
+    assert passed is False
+    assert reason is not None
+    assert "timed out" in reason
+    assert "sleep 999" in reason
+
+
+def test_smoke_gate_oserror(temp_repo: Path) -> None:
+    from agentctl import _run_smoke_test_gate  # type: ignore
+    from unittest.mock import patch
+
+    plan_text = "### 1.0 — First\n\n* **Demo commands:**\n  * `nonexistent-binary`\n"
+    state = StateInfo(stage="1", checkpoint="1.0", status="NOT_STARTED", evidence_path=None, issues=())
+    with patch("agentctl.subprocess.run", side_effect=OSError("No such file")):
+        passed, reason = _run_smoke_test_gate(temp_repo, state, plan_text)
+    assert passed is False
+    assert reason is not None
+    assert "could not run" in reason
+
+
+# ── Stage 22 E2E: _maintenance_cycle_trigger_reason ──────────────────────────
+
+
+def test_maintenance_cycle_flag_absent_returns_none() -> None:
+    from agentctl import _maintenance_cycle_trigger_reason  # type: ignore
+
+    reason, prompt = _maintenance_cycle_trigger_reason({}, "3")
+    assert reason is None
+    assert prompt is None
+
+
+def test_maintenance_cycle_flag_done_returns_none() -> None:
+    from agentctl import _maintenance_cycle_trigger_reason  # type: ignore
+
+    reason, prompt = _maintenance_cycle_trigger_reason({"MAINTENANCE_CYCLE_DONE": True}, "3")
+    assert reason is None
+    assert prompt is None
+
+
+def test_maintenance_cycle_no_stage_returns_none() -> None:
+    from agentctl import _maintenance_cycle_trigger_reason  # type: ignore
+
+    reason, prompt = _maintenance_cycle_trigger_reason({"MAINTENANCE_CYCLE_DONE": False}, None)
+    assert reason is None
+    assert prompt is None
+
+
+def test_maintenance_cycle_stage_mod_0_refactor() -> None:
+    from agentctl import _maintenance_cycle_trigger_reason  # type: ignore
+
+    reason, prompt = _maintenance_cycle_trigger_reason({"MAINTENANCE_CYCLE_DONE": False}, "3")  # 3 % 3 == 0
+    assert reason is not None
+    assert "refactor" in reason
+    assert prompt == "prompt.refactor_scan"
+
+
+def test_maintenance_cycle_stage_mod_1_test() -> None:
+    from agentctl import _maintenance_cycle_trigger_reason  # type: ignore
+
+    reason, prompt = _maintenance_cycle_trigger_reason({"MAINTENANCE_CYCLE_DONE": False}, "22")  # 22 % 3 == 1
+    assert reason is not None
+    assert "test" in reason
+    assert prompt == "prompt.test_gap_analysis"
+
+
+def test_maintenance_cycle_stage_mod_2_docs() -> None:
+    from agentctl import _maintenance_cycle_trigger_reason  # type: ignore
+
+    reason, prompt = _maintenance_cycle_trigger_reason({"MAINTENANCE_CYCLE_DONE": False}, "5")  # 5 % 3 == 2
+    assert reason is not None
+    assert "docs" in reason
+    assert prompt == "prompt.docs_gap_analysis"
+
+
+# ── Stage 22 E2E: Flag lifecycle integration ──────────────────────────────────
+
+
+def _write_state_flags(repo_root: Path, flags: dict[str, bool], *, stage: str = "3") -> None:
+    """Write STATE.md (and stub CONTEXT.md) with given workflow flags for flag lifecycle tests."""
+    flag_lines = "\n".join(
+        f"- [{'x' if v else ' '}] {k}" for k, v in flags.items()
+    )
+    _write_state(
+        repo_root,
+        f"""# STATE
+
+## Current focus
+- Stage: {stage}
+- Checkpoint: {stage}.0
+- Status: NOT_STARTED
+
+## Workflow state
+{flag_lines}
+
+## Work log (current session)
+- 2026-01-01: entry
+""",
+    )
+    # Ensure CONTEXT.md exists so the context-capture fallback doesn't interfere.
+    context_path = repo_root / ".vibe" / "CONTEXT.md"
+    if not context_path.exists():
+        context_path.write_text("# Context\n", encoding="utf-8")
+
+
+def test_flag_lifecycle_retro_unset_triggers_retrospective(temp_repo: Path) -> None:
+    """RETROSPECTIVE_DONE unset → retrospective loop selected."""
+    _write_state_flags(
+        temp_repo,
+        {
+            "RUN_CONTEXT_CAPTURE": False,
+            "RETROSPECTIVE_DONE": False,
+            "STAGE_DESIGNED": False,
+            "MAINTENANCE_CYCLE_DONE": False,
+        },
+    )
+    state = StateInfo(stage="3", checkpoint="3.0", status="NOT_STARTED", evidence_path=None, issues=())
+    role, reason, _ = _recommend_next(state, temp_repo)
+    assert role == "retrospective"
+    assert "RETROSPECTIVE_DONE" in reason
+
+
+def test_flag_lifecycle_retro_done_design_unset_triggers_design(temp_repo: Path) -> None:
+    """RETROSPECTIVE_DONE set, STAGE_DESIGNED unset → design loop selected."""
+    _write_state_flags(
+        temp_repo,
+        {
+            "RUN_CONTEXT_CAPTURE": False,
+            "RETROSPECTIVE_DONE": True,
+            "STAGE_DESIGNED": False,
+            "MAINTENANCE_CYCLE_DONE": False,
+        },
+    )
+    state = StateInfo(stage="3", checkpoint="3.0", status="NOT_STARTED", evidence_path=None, issues=())
+    role, reason, _ = _recommend_next(state, temp_repo)
+    assert role == "design"
+    assert "STAGE_DESIGNED" in reason
+
+
+def test_flag_lifecycle_design_done_maint_unset_triggers_maintenance(temp_repo: Path) -> None:
+    """RETROSPECTIVE_DONE + STAGE_DESIGNED set, MAINTENANCE_CYCLE_DONE unset → implement (maintenance)."""
+    _write_state_flags(
+        temp_repo,
+        {
+            "RUN_CONTEXT_CAPTURE": False,
+            "RETROSPECTIVE_DONE": True,
+            "STAGE_DESIGNED": True,
+            "MAINTENANCE_CYCLE_DONE": False,
+        },
+        stage="3",  # 3 % 3 == 0 → refactor
+    )
+    state = StateInfo(stage="3", checkpoint="3.0", status="NOT_STARTED", evidence_path=None, issues=())
+    role, reason, prompt = _recommend_next(state, temp_repo)
+    assert role == "implement"
+    assert prompt == "prompt.refactor_scan"
+
+
+def test_flag_lifecycle_all_flags_set_triggers_implement(temp_repo: Path) -> None:
+    """All maintenance flags set → normal implement route."""
+    _write_state_flags(
+        temp_repo,
+        {
+            "RUN_CONTEXT_CAPTURE": False,
+            "RETROSPECTIVE_DONE": True,
+            "STAGE_DESIGNED": True,
+            "MAINTENANCE_CYCLE_DONE": True,
+        },
+    )
+    _write_plan(
+        temp_repo,
+        "# PLAN\n\n## Stage 3 — Demo\n\n### 3.0 — First\n",
+    )
+    state = StateInfo(stage="3", checkpoint="3.0", status="NOT_STARTED", evidence_path=None, issues=())
+    role, reason, _ = _recommend_next(state, temp_repo)
+    assert role == "implement"

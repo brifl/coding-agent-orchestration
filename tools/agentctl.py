@@ -209,6 +209,33 @@ def _parse_plan_checkpoint_ids(plan_text: str) -> list[str]:
     return ids
 
 
+def _check_checkpoint_minor_ordering(checkpoint_ids: list[str]) -> list[str]:
+    """Warn when minor IDs within a stage are not in non-decreasing numeric order."""
+    warnings: list[str] = []
+    # Group minor numbers by stage in document order.
+    from collections import defaultdict as _defaultdict
+    stage_minors: dict[str, list[tuple[int, str]]] = _defaultdict(list)
+    for cid in checkpoint_ids:
+        if "." not in cid:
+            continue
+        stage_part, minor_part = cid.rsplit(".", 1)
+        try:
+            minor_int = int(minor_part)
+        except ValueError:
+            continue
+        stage_minors[stage_part].append((minor_int, cid))
+    for stage, entries in stage_minors.items():
+        for i in range(1, len(entries)):
+            prev_minor, prev_cid = entries[i - 1]
+            curr_minor, curr_cid = entries[i]
+            if curr_minor < prev_minor:
+                warnings.append(
+                    f"Checkpoint minor IDs out of order in Stage {stage}: "
+                    f"{prev_cid} followed by {curr_cid}."
+                )
+    return warnings
+
+
 def _parse_stage_headings(plan_text: str) -> list[tuple[str, int, str]]:
     """
     Return (stage_id, line_no, line_text) for each stage heading.
@@ -632,6 +659,11 @@ def _validate_issue_schema(issues: tuple[Issue, ...]) -> tuple[str, ...]:
             messages.append(
                 f"Active issue {issue.issue_id} is unresolved checkbox but Status is RESOLVED."
             )
+        if issue.checked and issue.status == "RESOLVED":
+            messages.append(
+                f"Active issue {issue.issue_id} is resolved; "
+                "move it to HISTORY.md to keep Active issues clean."
+            )
         if issue.checked and issue.status == "DECISION_REQUIRED":
             messages.append(
                 f"Active issue {issue.issue_id} is checked but Status is DECISION_REQUIRED; "
@@ -704,6 +736,25 @@ def _bootstrap_loop_result_record(repo_root: Path, state: StateInfo) -> None:
         "recorded_at": datetime.now(timezone.utc).isoformat(),
     }
     record_path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+
+
+def _write_stop_loop_result(repo_root: Path, state: StateInfo, reason: str) -> None:
+    """Persist a stop sentinel to LOOP_RESULT.json when the dispatcher halts."""
+    path = _loop_result_path(repo_root)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    payload = {
+        "protocol_version": LOOP_RESULT_PROTOCOL_VERSION,
+        "loop": "stop",
+        "result": "stop",
+        "stage": state.stage,
+        "checkpoint": state.checkpoint,
+        "status": state.status,
+        "next_role_hint": "stop",
+        "reason": reason,
+        "state_sha256": _state_sha256(repo_root),
+        "recorded_at": datetime.now(timezone.utc).isoformat(),
+    }
+    path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 
 
 def _load_loop_result_record(repo_root: Path) -> tuple[dict[str, Any] | None, str | None]:
@@ -1383,6 +1434,11 @@ def validate(repo_root: Path, strict: bool, strict_complexity: bool = False) -> 
                     f".vibe/PLAN.md: missing stage section for Stage {state.stage}."
                 )
 
+            # Check checkpoint minor ID ordering within each stage
+            checkpoint_ids = _parse_plan_checkpoint_ids(plan_text)
+            for w in _check_checkpoint_minor_ordering(checkpoint_ids):
+                warnings.append(f".vibe/PLAN.md: {w}")
+
         # Check for stage drift: STATE.md stage doesn't match checkpoint's actual stage in PLAN.md
         if plan_text and state.stage:
             actual_stage = _get_stage_for_checkpoint(plan_text, state.checkpoint)
@@ -1879,6 +1935,18 @@ def _recommend_next(state: StateInfo, repo_root: Path) -> tuple[Role, str, str |
 
     top = _top_issue_impact(state.issues)
     if top == "BLOCKER":
+        blocker_issues = [i for i in state.issues if i.impact == "BLOCKER"]
+        all_human_owned = all(
+            i.owner and i.owner.lower() == "human" for i in blocker_issues
+        )
+        if all_human_owned:
+            titles = "; ".join(i.issue_id or i.title for i in blocker_issues)
+            return (
+                "stop",
+                f"All BLOCKER issues are owner: human — agent cannot proceed unilaterally. "
+                f"Resolve: {titles}",
+                None,
+            )
         return ("issues_triage", "BLOCKER issue present.", None)
 
     # 0a) Human approval gate — stop and surface DECISION_REQUIRED issues for human review
@@ -2447,6 +2515,9 @@ def cmd_next(args: argparse.Namespace) -> int:
         }
         print(_render_output(payload, args.format))
         return 2
+
+    if role == "stop":
+        _write_stop_loop_result(repo_root, state, reason)
 
     payload: dict[str, Any] = {
         "recommended_role": role,

@@ -242,3 +242,84 @@ def test_strict_complexity_passes_within_budget(temp_repo: Path) -> None:
     assert result.ok is True
     assert result.plan_check is not None
     assert result.plan_check.complexity_warnings == ()
+
+
+# ── Improvement 2: Resolved issues lingering in Active issues ─────────────
+
+
+def test_resolved_checked_issue_produces_warning(temp_repo: Path) -> None:
+    _write_plan(temp_repo)
+    _write_state(
+        temp_repo,
+        """
+- [x] ISSUE-400: Fixed and forgotten
+  - Impact: MINOR
+  - Status: RESOLVED
+  - Owner: agent
+  - Unblock Condition: Already fixed.
+  - Evidence Needed: Tests pass.
+""",
+    )
+    result = validate(temp_repo, strict=False)
+    assert result.ok is True
+    assert any("ISSUE-400" in w and "HISTORY.md" in w for w in result.warnings)
+
+
+def test_resolved_checked_issue_strict_produces_error(temp_repo: Path) -> None:
+    _write_plan(temp_repo)
+    _write_state(
+        temp_repo,
+        """
+- [x] ISSUE-401: Fixed but still here
+  - Impact: MINOR
+  - Status: RESOLVED
+  - Owner: agent
+  - Unblock Condition: Already fixed.
+  - Evidence Needed: Tests pass.
+""",
+    )
+    result = validate(temp_repo, strict=True)
+    assert result.ok is False
+    assert any("ISSUE-401" in e and "HISTORY.md" in e for e in result.errors)
+
+
+# ── Improvement 4: Checkpoint minor ID ordering ────────────────────────────
+
+
+def _write_plan_with_checkpoint_ids(repo_root: Path, checkpoint_ids: list[str]) -> None:
+    """Write a PLAN.md with the given checkpoint IDs in the given order."""
+    sections = ""
+    for i, cid in enumerate(checkpoint_ids):
+        parts = cid.split(".", 1)
+        stage = parts[0]
+        sections += f"\n## Stage {stage} — Stage {stage}\n\n### {cid} — Checkpoint {i}\n\n"
+        sections += "* **Objective:**\n  Objective.\n\n"
+        sections += "* **Deliverables:**\n  * Deliverable.\n\n"
+        sections += "* **Acceptance:**\n  * Acceptance.\n\n"
+        sections += "* **Demo commands:**\n  * `echo ok`\n\n"
+        sections += "* **Evidence:**\n  * Evidence.\n\n---\n"
+    (repo_root / ".vibe" / "PLAN.md").write_text(
+        f"# PLAN\n{sections}", encoding="utf-8"
+    )
+
+
+def test_checkpoint_minor_ids_in_order_no_warning(temp_repo: Path) -> None:
+    _write_plan_with_checkpoint_ids(temp_repo, ["1.0", "1.1", "1.2"])
+    _write_basic_state(temp_repo)
+    result = validate(temp_repo, strict=False)
+    assert not any("out of order" in w for w in result.warnings)
+
+
+def test_checkpoint_minor_ids_out_of_order_warns(temp_repo: Path) -> None:
+    _write_plan_with_checkpoint_ids(temp_repo, ["1.0", "1.2", "1.1"])
+    _write_basic_state(temp_repo)
+    result = validate(temp_repo, strict=False)
+    assert any("out of order" in w for w in result.warnings), f"warnings: {result.warnings}"
+
+
+def test_checkpoint_minor_ids_across_stages_no_warning(temp_repo: Path) -> None:
+    """Stage boundaries reset minor numbering; 2.0 after 1.5 should not warn."""
+    _write_plan_with_checkpoint_ids(temp_repo, ["1.0", "1.5", "2.0", "2.1"])
+    _write_basic_state(temp_repo)
+    result = validate(temp_repo, strict=False)
+    assert not any("out of order" in w for w in result.warnings)
