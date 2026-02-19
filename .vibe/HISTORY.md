@@ -13,6 +13,14 @@
 
 ## Completed stages
 
+### 2026-02-19 — Stage 23: Interactive Plan Authoring Pipeline (completed)
+
+Implemented `agentctl plan` end-to-end: `PipelineConfig`/`resolve_config` with layered config, `_run_pipeline_step` with `PipelineProvider` Protocol and `PipelineStepError`, `run_plan_pipeline` 6-step orchestrator with resume support, `render_plan_md` PLAN.md writer with complexity budget validation, and full integration test suite (31 tests) with `docs/plan_authoring.md` user guide (checkpoints 23.0–23.4).
+
+### 2026-02-18 — Stage 21: RLM (Recursive Language Model) Tools Skill (completed)
+
+Implemented bounded, auditable RLM execution harness with context bundling, persistent runtime sandbox, provider-backed subcalls (OpenAI, Anthropic, Google), determinism backbone (budgets, caching, replay), and skill packaging. Triton provider support deferred (see Decisions). Checkpoints 21.0–21.11.
+
 ### 2026-02-18 — Stage 22: Vibe-Run Workflow Improvements (completed)
 
 Improved the vibe-run dispatcher with stage design, retrospective, and maintenance cycle triggers (flag-based); added a smoke test gate to the review path; enhanced checkpoint review with Pass C code quality scan; added 20 E2E tests and `docs/workflow_improvements.md` (checkpoints 22.0–22.5).

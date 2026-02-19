@@ -9,10 +9,10 @@ simple so they can be updated incrementally.
   strict validation, and `LOOP_RESULT` protocol state transitions.
 - Prompt contracts live in `prompts/template_prompts.md`; loop selection and
   orchestration are driven by `.codex/skills/vibe-run/scripts/vibe_run.py`.
-- Stage 22 (Vibe-Run Workflow Improvements) complete. Stage 23 (Plan Authoring
-  Pipeline) is active at checkpoint 23.0.
-- Stages 23-25 (Plan Authoring, Feedback Channel, Dependency Graph) are queued
-  in PLAN.md.
+- Stage 23 (Interactive Plan Authoring Pipeline) complete. Stage 24 (Structured
+  Human Feedback Channel) is active at checkpoint 24.0.
+- `tools/plan_pipeline.py` implements the full plan pipeline (PipelineConfig, PipelineProvider,
+  _run_pipeline_step, run_plan_pipeline, render_plan_md); `agentctl plan` is the CLI entry point.
 
 ## Key Decisions
 
@@ -48,10 +48,9 @@ simple so they can be updated incrementally.
 
 ## Agent Notes
 
-- 2026-02-18: Current checkpoint is `23.0` (`NOT_STARTED`): `PipelineConfig` schema
-  and `agentctl plan` CLI skeleton with dry-run stub and config resolution.
-  Stage invariants: dry-run first, validate before write, no silent overwrites,
-  no RLM hard dependency. All stage flags set; next role is `implement`.
+- 2026-02-19: Stage 23 complete (23.0–23.4). Current checkpoint is `24.0` (`NOT_STARTED`):
+  FEEDBACK.md schema, `FeedbackEntry` dataclass, and `agentctl feedback validate` subcommand.
+  Stage flags reset; retrospective pending. Next role after retrospective is `implement`.
 
 ## Loop Execution Checklist
 
@@ -105,3 +104,19 @@ Skipping any step — especially 3, 4, or 5 — breaks the vibe-run protocol. Do
   Rule: PLAN.md demo commands should only use tools reliably on PATH in the subprocess
   environment — prefer `python3 tools/agentctl.py` (known-working) over bare
   `python3 -m <module>` for smoke gate validation.
+
+- **[Stage 23] Long stages guarantee mid-stage work log overflow:** 5 checkpoints × 2
+  entries (implement + review) = 10 entries, which overflows any prior work log entries.
+  For stages with 4+ checkpoints, plan for ≥1 mid-stage consolidation. The dispatcher
+  handles it gracefully, but budgeting for it avoids surprise context pressure.
+
+- **[Stage 23] Circular import order constrains shared constants:** `plan_pipeline.py`
+  is imported by `agentctl.py`, so complexity budget constants had to be duplicated
+  rather than shared. When introducing a utility module imported by `agentctl.py`,
+  extract shared constants to a third file (`tools/vibe_constants.py`) before the stage
+  starts to avoid duplication.
+
+- **[Stage 23] Sub-module test docstrings drift as new classes are added:** The module
+  docstring in `test_plan_pipeline.py` still said "checkpoint 23.1" after 23.4 tests
+  were added. Rule: when adding test classes to an existing file, update the module
+  docstring before submitting to review.

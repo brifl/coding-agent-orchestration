@@ -11,72 +11,51 @@
 
 ## Current focus
 
-- Stage: 23
-- Checkpoint: 23.0
-- Status: IN_REVIEW  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
+- Stage: 24
+- Checkpoint: 24.0
+- Status: NOT_STARTED  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
 
 ## Objective (current checkpoint)
 
-Define the `PipelineConfig` schema and the `agentctl plan` CLI entry point with argument parsing, config resolution, and dry-run stub.
+Define the `.vibe/FEEDBACK.md` format and implement `agentctl feedback validate` with entry-level parsing and diagnostics.
 
 ## Deliverables (current checkpoint)
 
-- `tools/plan_pipeline.py` — `PipelineConfig` dataclass (problem_statement, provider, dry_run, output_path, overwrite)
-- `agentctl plan` subcommand wired into `tools/agentctl.py`
-- Config resolution: repo-local `.vibe/plan_pipeline.json` overrides global `~/.vibe/plan_pipeline.json`
-- Fail-fast validation: missing problem statement, output-path conflict (exists + no --overwrite), missing provider config
+- Feedback entry format in `.vibe/FEEDBACK.md`
+- `_parse_feedback_file(text) -> tuple[FeedbackEntry, ...]` in `tools/agentctl.py`
+- `FeedbackEntry` dataclass (feedback_id, impact, type, description, expected, proposed_action, checked, processed)
+- `agentctl feedback validate` subcommand — prints errors/warnings with line numbers
+- Validate: required fields, valid Impact values, valid Type values, no duplicate FEEDBACK-IDs
 
 ## Acceptance (current checkpoint)
 
-- `agentctl plan --help` shows all flags.
-- Running without `--problem-statement` exits with a clear error.
-- Running with `--dry-run` prints "(dry run — no files written)" without touching disk.
+- Valid FEEDBACK.md → exit 0 with "Feedback file OK" message.
+- Missing required field → exit 2 with line number and field name.
+- Duplicate FEEDBACK-ID → exit 2 with diagnostic.
 
 ## Work log (current session)
 
-- 2026-02-18: Stage 22 (Vibe-Run Workflow Improvements) complete. 6 checkpoints (22.0–22.5). Archived to HISTORY.md. Advancing to Stage 23.
-- 2026-02-18: Retrospective: [Stage 22.5] demo commands must be subprocess-portable. RETROSPECTIVE_DONE set.
-- 2026-02-18: Stage design for 23.0–23.4. Decisions: @dataclass PipelineConfig, Protocol-based PipelineProvider (injectable), config resolution via json files, resume via step output files. STAGE_DESIGNED set.
-- 2026-02-18: Maintenance cycle (docs, stage 23%3==2). Top gaps: concepts.md missing workflow flags [MAJOR], no agentctl_reference.md [MAJOR], stop conditions stale [MODERATE]. MAINTENANCE_CYCLE_DONE set.
-- 2026-02-19: continuous-refactor scan. Top candidates: (1) [MAJOR] skillset helpers duplicated across bootstrap.py/skillctl.py/skill_registry.py ~270 lines; (2) [MAJOR] `_validate_loop_report_schema` 56 branches — decompose into per-field validators; (3) [MAJOR] `_recommend_next` mixes IO with decision logic (untestable); (4) [MODERATE] pre-existing failing test test_issue_schema_language_uses_impact — fixed (assertion narrowed from "Severity " to regex Severity [A-Z]); (5) [MODERATE] `validate()` 38 branches. Fix R1 applied: test green, 141 passed.
-- 2026-02-19: R2 applied — extracted 7 shared helpers into `tools/skillset_utils.py`; removed ~270 lines of duplication from bootstrap.py, skillctl.py, skill_registry.py. 141 passed, 3 skipped.
-- 2026-02-19: R3 applied — decomposed `_validate_loop_report_schema` (56 branches) into 4 sub-validators: `_validate_acceptance_matrix_items`, `_validate_top_findings`, `_validate_state_transition`, `_validate_report_loop_result_mirror`. 141 passed.
-- 2026-02-19: R4 applied — extracted `_decide_role` pure function and `_gather_decision_context` IO shell from `_recommend_next`; `_decide_role` now testable without mocking IO. 141 passed.
-- 2026-02-19: Post-R4 scan — remaining candidates are MODERATE (`validate` CC=40, `_resolve_next_prompt_selection` CC=29) and MINOR (parsers, bootstrap steps). No MAJOR items remain. Continuous-refactor goal met.
-- 2026-02-19: R5 applied — decomposed `validate` (CC=40) into `_validate_state_section` + `_validate_plan_section` + `_validate_catalog_section`. validate now 14 lines. 141 passed.
-- 2026-02-19: Final scan — highest remaining: `_decide_role` CC=31 (inherent dispatch, testable), `_resolve_next_prompt_selection` CC=29 (structural integration), parsers/setup code all MINOR. No actionable MODERATE or MAJOR items. Stopping continuous-refactor.
-- 2026-02-19: 23.0 implemented — `tools/plan_pipeline.py` (PipelineConfig, resolve_config, config resolution), `agentctl plan` subcommand (--problem-statement, --provider, --dry-run, --output, --overwrite). All acceptance criteria met; 141 tests pass.
+- 2026-02-19: Consolidation — pruned work log 13→10 entries; archived Stage 21 (RLM) to HISTORY.md; removed Stages 21 and 22 from PLAN.md.
+- 2026-02-19: 23.1 implemented — `PipelineStepError`, `PipelineProvider` Protocol, `_run_pipeline_step(prompt_id, inputs, config, *, provider)` in plan_pipeline.py; 11 tests in tests/workflow/test_plan_pipeline.py; 152 total passed.
+- 2026-02-19: 23.1 review PASS — all 3 acceptance criteria met, 4 adversarial probes green, no MODERATE/MAJOR findings. Advanced to 23.2 NOT_STARTED.
+- 2026-02-19: 23.2 implemented — `PipelineResult`, `run_plan_pipeline(config, repo_root, *, provider, run_id, resume_run_id)`, `--resume` flag in agentctl plan; 5 orchestration tests; 157 total passed.
+- 2026-02-19: 23.2 review PASS — all 3 acceptance criteria met, 4 adversarial probes green, no MODERATE/MAJOR findings. Advanced to 23.3 NOT_STARTED.
+- 2026-02-19: 23.3 implemented — `render_plan_md(result) -> (str, list[str])`, `_render_checkpoint_section`, `_PLAN_WRITER_COMPLEXITY_BUDGET`; `cmd_plan` writes PLAN.md with summary; 8 plan_writer tests; 165 total passed.
+- 2026-02-19: 23.3 review PASS — all 3 acceptance criteria met, 4 adversarial probes green, no MODERATE/MAJOR findings. Advanced to 23.4 NOT_STARTED.
+- 2026-02-19: 23.4 implemented — `TestConfigValidation` (6 tests), `TestDocsExist`; `docs/plan_authoring.md` created; 31 pipeline tests pass; 172 total passed.
+- 2026-02-19: 23.4 review PASS — 31/31 tests pass; 3 adversarial probes green; MINOR: stale docstring fixed; DONE; Stage 23 complete.
+- 2026-02-19: Consolidation — archived Stage 23 to HISTORY.md; removed Stage 23 from PLAN.md; advanced to Stage 24, Checkpoint 24.0 NOT_STARTED.
 
 ## Workflow state
 
 - [ ] RUN_CONTEXT_CAPTURE
-- [x] STAGE_DESIGNED
-- [x] MAINTENANCE_CYCLE_DONE
-- [x] RETROSPECTIVE_DONE
+- [ ] STAGE_DESIGNED
+- [ ] MAINTENANCE_CYCLE_DONE
+- [ ] RETROSPECTIVE_DONE
 
 ## Evidence
 
-```
-$ python3 tools/agentctl.py --repo-root . plan --help
-usage: agentctl plan [-h] [--problem-statement PROBLEM_STATEMENT]
-                     [--provider PROVIDER] [--dry-run] [--output OUTPUT]
-                     [--overwrite]
-...
-
-$ python3 tools/agentctl.py --repo-root . plan
-ERROR: Missing --problem-statement. Provide it via CLI or ...
-exit: 1
-
-$ python3 tools/agentctl.py --repo-root . plan --dry-run --problem-statement "Build a todo app" --provider anthropic
-(dry run — no files written)
-  problem_statement : Build a todo app
-  provider          : anthropic
-  output_path       : .vibe/PLAN.md
-exit: 0
-
-$ python -m pytest tests/ -q
-141 passed, 3 skipped in 2.66s
-```
+(None — checkpoint 24.0 not yet started)
 
 ## Active issues
 

@@ -2834,9 +2834,40 @@ def cmd_plan(args: argparse.Namespace) -> int:
         print(f"  output_path       : {config.output_path}")
         return 0
 
-    # Full pipeline execution is implemented in Stage 23.2+; stub for now.
-    print(f"plan: provider={config.provider} output={config.output_path}")
-    print("(pipeline execution not yet implemented — implement in checkpoint 23.2)")
+    # Full pipeline execution (checkpoints 23.2–23.3)
+    from plan_pipeline import render_plan_md, run_plan_pipeline
+
+    resume_run_id = getattr(args, "resume_run_id", None)
+    try:
+        result = run_plan_pipeline(
+            config,
+            repo_root,
+            resume_run_id=resume_run_id,
+        )
+    except Exception as exc:
+        print(f"ERROR: Pipeline failed: {exc}", file=sys.stderr)
+        return 1
+
+    plan_text, warnings = render_plan_md(result)
+    for w in warnings:
+        print(f"WARNING: {w}", file=sys.stderr)
+
+    n_stages = len(result.stages)
+    n_checkpoints = len(result.checkpoints)
+    n_warnings = len(warnings)
+    summary = (
+        f"Generated {n_stages} stage{'s' if n_stages != 1 else ''}, "
+        f"{n_checkpoints} checkpoint{'s' if n_checkpoints != 1 else ''}."
+        + (f" {n_warnings} complexity warning{'s' if n_warnings != 1 else ''}." if n_warnings else "")
+    )
+    print(summary)
+
+    out_path = Path(config.output_path)
+    if not out_path.is_absolute():
+        out_path = repo_root / out_path
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    out_path.write_text(plan_text, encoding="utf-8")
+    print(f"Written to {out_path}")
     return 0
 
 
@@ -2918,6 +2949,13 @@ def build_parser() -> argparse.ArgumentParser:
         "--overwrite",
         action="store_true",
         help="Overwrite the output file if it already exists.",
+    )
+    pp.add_argument(
+        "--resume",
+        dest="resume_run_id",
+        default=None,
+        metavar="RUN_ID",
+        help="Resume a previous pipeline run by run ID, reusing completed step outputs.",
     )
     pp.set_defaults(fn=cmd_plan)
 
