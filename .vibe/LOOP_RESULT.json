@@ -1,49 +1,49 @@
 {
   "checkpoint": "25.5",
-  "loop": "consolidation",
-  "next_role_hint": "implement",
+  "loop": "implement",
+  "next_role_hint": "review",
   "protocol_version": 1,
-  "recorded_at": "2026-02-19T09:43:00.922490+00:00",
+  "recorded_at": "2026-02-19T09:50:33.624883+00:00",
   "report": {
     "acceptance_matrix": [
       {
         "confidence": 1.0,
         "critical": true,
-        "evidence": "python3 .codex/skills/vibe-loop/scripts/agentctl.py --repo-root . --format json validate returned ok true before and after edits.",
+        "evidence": "python3 -m pytest tests/workflow/test_checkpoint_dag.py -v --capture=sys -> 11 passed.",
         "evidence_strength": "HIGH",
-        "item": "Pre and post validation executed",
+        "item": "All tests pass",
+        "status": "PASS"
+      },
+      {
+        "confidence": 0.98,
+        "critical": true,
+        "evidence": "python3 tools/agentctl.py --repo-root . validate --strict -> ok: True.",
+        "evidence_strength": "HIGH",
+        "item": "agentctl validate --strict passes",
         "status": "PASS"
       },
       {
         "confidence": 1.0,
         "critical": true,
-        "evidence": ".vibe/STATE.md work log now has 10 entries after removing the two oldest notes.",
+        "evidence": "docs/checkpoint_dependencies.md has Worked example: diamond dependency with 1.0 -> [1.1, 1.2] -> 1.3.",
         "evidence_strength": "HIGH",
-        "item": "STATE work log pruned to cap",
-        "status": "PASS"
-      },
-      {
-        "confidence": 0.95,
-        "critical": false,
-        "evidence": "Added a 2026-02-19 consolidation entry under .vibe/HISTORY.md archived work log section.",
-        "evidence_strength": "MEDIUM",
-        "item": "Archival note recorded",
+        "item": "Docs include a diamond dependency example",
         "status": "PASS"
       }
     ],
     "loop_result": {
       "checkpoint": "25.5",
-      "loop": "consolidation",
-      "next_role_hint": "implement",
-      "result": "aligned",
+      "loop": "implement",
+      "next_role_hint": "review",
+      "result": "ready_for_review",
       "stage": "25",
-      "status": "NOT_STARTED"
+      "status": "IN_REVIEW"
     },
     "state_transition": {
       "after": {
         "checkpoint": "25.5",
         "stage": "25",
-        "status": "NOT_STARTED"
+        "status": "IN_REVIEW"
       },
       "before": {
         "checkpoint": "25.5",
@@ -53,15 +53,21 @@
     },
     "top_findings": [
       {
-        "action": "Address catalog role mappings in a later checkpoint; consolidation can proceed.",
-        "evidence": "validate still reports optional evidence path and continuous-documentation role-mapping warnings.",
+        "action": "Track ISSUE-255 and align prompt-role mapping behavior in a separate checkpoint.",
+        "evidence": "python3 .codex/skills/vibe-loop/scripts/agentctl.py --repo-root . validate --strict fails on continuous-documentation prompt role mappings.",
+        "impact": "MINOR",
+        "title": "Skill-packaged strict validate mismatch remains"
+      },
+      {
+        "action": "Run consolidation loop after review/advance if dispatcher requests pruning.",
+        "evidence": "tools/agentctl.py validate warns that STATE work log has 11 entries (>10).",
         "impact": "QUESTION",
-        "title": "Non blocking workflow warnings persist"
+        "title": "Work log exceeded consolidation cap during implementation"
       }
     ]
   },
-  "result": "aligned",
+  "result": "ready_for_review",
   "stage": "25",
-  "state_sha256": "e084eee671ac6841500fe59c41f54e0b6524ba6151f862b1a95ff143a8504e2f",
-  "status": "NOT_STARTED"
+  "state_sha256": "8c264a941aeda31acb52ca062ed5706154bd0774bb6c274c8f06050c2981ffbf",
+  "status": "IN_REVIEW"
 }

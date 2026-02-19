@@ -50,3 +50,17 @@ Stop conditions:
 
 This definition prevents self-looping prompts and keeps control in `agentctl` rather than
 inside individual prompt bodies.
+
+## Checkpoint dependency DAG
+
+`PLAN.md` checkpoints can declare dependencies via `depends_on: [X.Y, ...]`, which
+turns linear checkpoint ordering into a dependency graph.
+
+Core rules:
+- Dependencies are satisfied only when referenced checkpoints are marked `(DONE)` or `(SKIP)` in `PLAN.md`.
+- `STATE.md` status does not satisfy dependencies by itself.
+- `agentctl validate` enforces graph correctness (self-deps, dangling refs, cycles).
+- `agentctl dag` renders graph structure and per-node readiness.
+- `agentctl next --parallel N` can return multiple dependency-satisfied checkpoints.
+
+See `docs/checkpoint_dependencies.md` for syntax, commands, and worked examples.
