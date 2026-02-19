@@ -1,13 +1,14 @@
 """Regression tests for continuous-refactor workflow override behavior."""
 from __future__ import annotations
 
+import json
 import sys
 from pathlib import Path
 
 # Add tools directory to path for imports.
 sys.path.insert(0, str(Path(__file__).parent.parent.parent / "tools"))
 
-from agentctl import StateInfo, _resolve_next_prompt_selection  # type: ignore
+from agentctl import StateInfo, _resolve_next_prompt_selection, build_parser  # type: ignore
 
 
 def _write_state(repo_root: Path, body: str) -> None:
@@ -66,6 +67,14 @@ steps:
   - prompt_id: prompt.refactor_verify
 """,
     )
+
+
+def _run_json_command(capsys, argv: list[str]) -> tuple[int, dict[str, object]]:
+    parser = build_parser()
+    args = parser.parse_args(argv)
+    exit_code = int(args.fn(args))
+    payload = json.loads(capsys.readouterr().out)
+    return exit_code, payload
 
 
 def test_continuous_refactor_ignores_plan_exhaustion_stop(temp_repo: Path) -> None:
@@ -176,3 +185,41 @@ def test_continuous_refactor_routes_blocker_to_triage(temp_repo: Path) -> None:
     assert role == "issues_triage"
     assert prompt_id == "prompt.issues_triage"
     assert "BLOCKER issue present" in reason
+
+
+def test_cmd_next_continuous_refactor_recommended_roles_not_plan_coupled(temp_repo: Path, capsys) -> None:
+    _write_state(
+        temp_repo,
+        """# STATE
+
+## Current focus
+- Stage: 1
+- Checkpoint: 1.0
+- Status: DONE
+""",
+    )
+    _write_plan(
+        temp_repo,
+        """# PLAN
+
+## Stage 1 — Demo
+### 1.0 — First
+""",
+    )
+    _seed_continuous_refactor_workflow(temp_repo)
+
+    exit_code, payload = _run_json_command(
+        capsys,
+        ["--repo-root", str(temp_repo), "--format", "json", "next", "--workflow", "continuous-refactor"],
+    )
+
+    assert exit_code == 0
+    assert payload["recommended_prompt_id"] in {
+        "prompt.refactor_scan",
+        "prompt.refactor_execute",
+        "prompt.refactor_verify",
+    }
+    recommended_roles = payload["recommended_roles"]  # type: ignore[index]
+    assert len(recommended_roles) == 1
+    assert recommended_roles[0]["checkpoint"] == "1.0"
+    assert recommended_roles[0]["prompt_id"] == payload["recommended_prompt_id"]

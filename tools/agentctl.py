@@ -3102,21 +3102,34 @@ def cmd_next(args: argparse.Namespace) -> int:
         ]
 
     # Parallel dispatch: add recommended_roles list (always present; N=1 is backward compat)
-    parallel_n = getattr(args, "parallel", 1) or 1
-    plan_path = repo_root / ".vibe" / "PLAN.md"
-    plan_text = _read_text(plan_path) if plan_path.exists() else ""
-    ready_cps = _get_ready_checkpoints(plan_text, state)[:parallel_n]
-    implement_prompt = PROMPT_MAP.get("implement", {})
-    recommended_roles = [
-        {
-            "checkpoint": cp_id,
-            "role": "implement",
-            "prompt_id": implement_prompt.get("id", "prompt.checkpoint_implementation"),
-            "reason": f"Checkpoint {cp_id} is ready (deps satisfied).",
-        }
-        for cp_id in ready_cps
-    ]
-    payload["recommended_roles"] = recommended_roles
+    if args.workflow == "continuous-refactor":
+        if role == "stop":
+            payload["recommended_roles"] = []
+        else:
+            payload["recommended_roles"] = [
+                {
+                    "checkpoint": state.checkpoint,
+                    "role": role,
+                    "prompt_id": prompt_id,
+                    "reason": reason,
+                }
+            ]
+    else:
+        parallel_n = getattr(args, "parallel", 1) or 1
+        plan_path = repo_root / ".vibe" / "PLAN.md"
+        plan_text = _read_text(plan_path) if plan_path.exists() else ""
+        ready_cps = _get_ready_checkpoints(plan_text, state)[:parallel_n]
+        implement_prompt = PROMPT_MAP.get("implement", {})
+        recommended_roles = [
+            {
+                "checkpoint": cp_id,
+                "role": "implement",
+                "prompt_id": implement_prompt.get("id", "prompt.checkpoint_implementation"),
+                "reason": f"Checkpoint {cp_id} is ready (deps satisfied).",
+            }
+            for cp_id in ready_cps
+        ]
+        payload["recommended_roles"] = recommended_roles
 
     print(_render_output(payload, args.format))
     return 0
