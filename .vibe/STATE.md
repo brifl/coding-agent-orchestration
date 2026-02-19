@@ -50,6 +50,8 @@ Full test suite for dependency graph features and end-user documentation.
 - 2026-02-19: continuous-refactor execute loop (approved ideas 1-5) — narrowed skillset loader exception handling, improved prompt-catalog fallback diagnostics, added shared CLI error formatting helper, tightened provider call exception branching, and centralized workflow test tools-path bootstrap in `tests/workflow/conftest.py`.
 - 2026-02-19: continuous-refactor verify loop (post-execute) — reran workflow regression matrix (108 tests passed), confirmed repo-local strict validation still passes, and re-confirmed skill-packaged strict-validate failure remains unchanged under known ISSUE-255.
 - 2026-02-19: continuous-refactor scan loop (post-approved 1-5) — generated the next minor-only tail set (remaining broad catches and duplicated workflow-test `sys.path` bootstraps), preserving ISSUE-255 parity note as out-of-scope for this loop.
+- 2026-02-19: continuous-refactor execute loop (approved idea 5) — aligned `.codex/skills/vibe-loop/scripts/agentctl.py` workflow prompt-role mappings for all continuous-documentation prompts and added regression coverage in `tests/workflow/test_continuous_aux_workflow_overrides.py`.
+- 2026-02-19: continuous-refactor verify loop (post-approved idea 5) — `tests/workflow/test_continuous_aux_workflow_overrides.py` passed (10 tests) and both strict validation entrypoints now return `ok: True`, resolving ISSUE-255 mismatch evidence.
 
 ## Workflow state
 
@@ -78,16 +80,12 @@ Full test suite for dependency graph features and end-user documentation.
 - `python3 .codex/skills/vibe-loop/scripts/agentctl.py --repo-root . validate --strict` -> still fails on known ISSUE-255 prompt-role mapping mismatch (unchanged).
 - `python3 tools/agentctl.py --repo-root . validate --strict` -> `ok: True` (warnings only: work-log length + optional evidence path).
 - `rg -n "except Exception|sys.path.insert\\(0, str\\(Path\\(__file__\\)\\.parent\\.parent\\.parent / \"tools\"\\)\\)" tools tests/workflow -S` -> remaining minor candidates found in `tools/skillctl.py`, `tools/plan_pipeline.py`, `tools/bootstrap.py`, and multiple `tests/workflow/test_*.py` modules.
+- `python3 -m pytest tests/workflow/test_continuous_aux_workflow_overrides.py -v --capture=sys` -> 10 passed.
+- `python3 .codex/skills/vibe-loop/scripts/agentctl.py --repo-root . validate --strict` -> `ok: True` (errors cleared for continuous-documentation prompt-role mappings).
 
 ## Active issues
 
-- [ ] ISSUE-255: Skill-packaged strict validate mismatch
-  - Impact: MINOR
-  - Status: OPEN
-  - Owner: agent
-  - Unblock Condition: Align prompt-role mapping behavior between `tools/agentctl.py` and `.codex/skills/vibe-loop/scripts/agentctl.py`.
-  - Evidence Needed: Both strict validation commands pass with identical role-mapping behavior.
-  - Notes: Checkpoint 25.5 acceptance uses `tools/agentctl.py` and passes; mismatch is outside this checkpoint scope.
+- None.
 
 ## Decisions
 

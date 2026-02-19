@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 import json
+import subprocess
+import sys
 from pathlib import Path
 
 from agentctl import Issue, StateInfo, _resolve_next_prompt_selection, build_parser  # type: ignore
@@ -452,3 +454,133 @@ def test_cmd_next_continuous_documentation_recommended_roles_not_plan_coupled(te
     assert len(recommended_roles) == 1
     assert recommended_roles[0]["checkpoint"] == "1.0"
     assert recommended_roles[0]["prompt_id"] == payload["recommended_prompt_id"]
+
+
+def test_skill_packaged_validate_strict_accepts_continuous_documentation_prompts(temp_repo: Path) -> None:
+    _write_state(
+        temp_repo,
+        """# STATE
+
+## Current focus
+- Stage: 1
+- Checkpoint: 1.0
+- Status: DONE
+""",
+    )
+    _write_plan(
+        temp_repo,
+        """# PLAN
+
+## Stage 1 — Demo
+### 1.0 — First
+- Objective:
+  - Keep docs workflow validation coverage scoped to prompt-role mapping parity.
+- Deliverables:
+  - Continuous documentation workflow fixture.
+- Acceptance:
+  - Skill-packaged strict validate reports no errors.
+- Demo commands:
+  - `python3 .codex/skills/vibe-loop/scripts/agentctl.py --repo-root . --format json validate --strict`
+- Evidence:
+  - Strict validate JSON output.
+""",
+    )
+    _write_prompt_catalog(
+        temp_repo,
+        """## prompt.issues_triage - Issues Triage
+```md
+triage
+```
+
+## prompt.checkpoint_review - Checkpoint Review
+```md
+review
+```
+
+## prompt.checkpoint_implementation - Checkpoint Implementation
+```md
+implement
+```
+
+## prompt.stage_design - Stage Design
+```md
+design
+```
+
+## prompt.context_capture - Context Capture
+```md
+context
+```
+
+## prompt.consolidation - Consolidation
+```md
+consolidate
+```
+
+## prompt.process_improvements - Process Improvements
+```md
+improve
+```
+
+## prompt.advance_checkpoint - Advance Checkpoint
+```md
+advance
+```
+
+## prompt.docs_gap_analysis - Docs Gap Analysis
+```md
+gap
+```
+
+## prompt.docs_gap_fix - Docs Gap Fix
+```md
+fix
+```
+
+## prompt.docs_refactor_analysis - Docs Refactor Analysis
+```md
+analyze
+```
+
+## prompt.docs_refactor_fix - Docs Refactor Fix
+```md
+refactor-fix
+```
+""",
+    )
+    _write_workflow(
+        temp_repo,
+        "continuous-documentation",
+        """name: continuous-documentation
+description: docs
+triggers:
+  - type: manual
+steps:
+  - prompt_id: prompt.docs_gap_analysis
+  - prompt_id: prompt.docs_gap_fix
+  - prompt_id: prompt.docs_refactor_analysis
+  - prompt_id: prompt.docs_refactor_fix
+""",
+    )
+
+    skill_agentctl = Path(__file__).resolve().parents[2] / ".codex" / "skills" / "vibe-loop" / "scripts" / "agentctl.py"
+    proc = subprocess.run(
+        [
+            sys.executable,
+            str(skill_agentctl),
+            "--repo-root",
+            str(temp_repo),
+            "--format",
+            "json",
+            "validate",
+            "--strict",
+        ],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+        check=False,
+    )
+
+    assert proc.returncode == 0, proc.stderr or proc.stdout
+    payload = json.loads(proc.stdout)
+    assert payload["ok"] is True
