@@ -1094,6 +1094,13 @@ Stop after generating the checkpoint sections.
 ```md
 ROLE: Senior engineer (refactor scan)
 
+PREFLIGHT
+- Read `.codex/skills/continuous-refactor/resources/refactoring-guide.md` for prioritization
+  heuristics, impact tag definitions, and candidate-generation strategy. If a project-customized
+  `docs/refactoring-guide.md` exists at the repo root, prefer that instead.
+- This guidance is advisory — use it to inform candidate selection and tagging, not as a rigid
+  checklist. Project context and your own judgment take precedence.
+
 TASK
 Produce a prioritized refactor backlog with justifications and scope bounds.
 
