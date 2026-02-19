@@ -52,6 +52,7 @@ Full test suite for dependency graph features and end-user documentation.
 - 2026-02-19: continuous-refactor scan loop (post-approved 1-5) — generated the next minor-only tail set (remaining broad catches and duplicated workflow-test `sys.path` bootstraps), preserving ISSUE-255 parity note as out-of-scope for this loop.
 - 2026-02-19: continuous-refactor execute loop (approved idea 5) — aligned `.codex/skills/vibe-loop/scripts/agentctl.py` workflow prompt-role mappings for all continuous-documentation prompts and added regression coverage in `tests/workflow/test_continuous_aux_workflow_overrides.py`.
 - 2026-02-19: continuous-refactor verify loop (post-approved idea 5) — `tests/workflow/test_continuous_aux_workflow_overrides.py` passed (10 tests) and both strict validation entrypoints now return `ok: True`, resolving ISSUE-255 mismatch evidence.
+- 2026-02-19: continuous-refactor scan loop (post-approved idea 5) — generated next minor-only backlog focusing on remaining broad exception branches and repeated workflow-test `sys.path` bootstraps now that ISSUE-255 parity is fixed.
 
 ## Workflow state
 
@@ -82,6 +83,7 @@ Full test suite for dependency graph features and end-user documentation.
 - `rg -n "except Exception|sys.path.insert\\(0, str\\(Path\\(__file__\\)\\.parent\\.parent\\.parent / \"tools\"\\)\\)" tools tests/workflow -S` -> remaining minor candidates found in `tools/skillctl.py`, `tools/plan_pipeline.py`, `tools/bootstrap.py`, and multiple `tests/workflow/test_*.py` modules.
 - `python3 -m pytest tests/workflow/test_continuous_aux_workflow_overrides.py -v --capture=sys` -> 10 passed.
 - `python3 .codex/skills/vibe-loop/scripts/agentctl.py --repo-root . validate --strict` -> `ok: True` (errors cleared for continuous-documentation prompt-role mappings).
+- `rg -n "except Exception|sys.path.insert\\(0, str\\(Path\\(__file__\\)\\.parent\\.parent\\.parent / \\\"tools\\\"\\)\\)|TODO|FIXME" tools tests/workflow -S` -> remaining minor hotspots concentrated in `tools/skillctl.py`, `tools/plan_pipeline.py`, `tools/bootstrap.py`, `tools/agentctl.py`, and legacy workflow test modules.
 
 ## Active issues
 
