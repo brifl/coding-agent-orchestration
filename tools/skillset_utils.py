@@ -13,6 +13,14 @@ from pathlib import Path
 from typing import Any
 
 
+_MANIFEST_LOAD_EXCEPTIONS = (
+    json.JSONDecodeError,
+    OSError,
+    UnicodeDecodeError,
+    ValueError,
+)
+
+
 def parse_skillset_yaml(text: str) -> dict[str, Any]:
     """Parse a skillset YAML definition (name/description/extends/skills) without PyYAML."""
     data: dict[str, Any] = {"extends": [], "skills": []}
@@ -68,7 +76,7 @@ def load_skillset(path: Path) -> dict[str, Any] | None:
             return json.loads(path.read_text(encoding="utf-8"))
         if path.suffix in {".yaml", ".yml"}:
             return parse_skillset_yaml(path.read_text(encoding="utf-8"))
-    except Exception:
+    except _MANIFEST_LOAD_EXCEPTIONS:
         return None
     return None
 
@@ -148,6 +156,6 @@ def load_manifest(path: Path) -> dict[str, Any] | None:
             if fm is None:
                 return None
             return parse_yaml_minimal(fm)
-    except Exception:
+    except _MANIFEST_LOAD_EXCEPTIONS:
         return None
     return None

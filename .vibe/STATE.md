@@ -47,6 +47,9 @@ Full test suite for dependency graph features and end-user documentation.
 - 2026-02-19: 25.5 review PASS — acceptance met with adversarial probes; no follow-up checkpoint in PLAN order, so checkpoint remains 25.5 and status set to DONE (plan exhausted).
 - 2026-02-19: continuous-refactor review loop — verified working-tree refactor diff is line-ending-only (`git diff --ignore-cr-at-eol` empty); workflow regression suite (57 tests) passed; skill-packaged strict validate still fails on known ISSUE-255 while repo-local strict validate passes.
 - 2026-02-19: continuous-refactor scan loop — generated 10 refactor candidates across maintainability/safety/testability families; all surfaced as [MINOR] cleanup opportunities (exception narrowing, duplication cleanup, docs/prompt catalog line-ending normalization) with no justified [MAJOR]/[MODERATE] candidate in current DONE-state scope.
+- 2026-02-19: continuous-refactor execute loop (approved ideas 1-5) — narrowed skillset loader exception handling, improved prompt-catalog fallback diagnostics, added shared CLI error formatting helper, tightened provider call exception branching, and centralized workflow test tools-path bootstrap in `tests/workflow/conftest.py`.
+- 2026-02-19: continuous-refactor verify loop (post-execute) — reran workflow regression matrix (108 tests passed), confirmed repo-local strict validation still passes, and re-confirmed skill-packaged strict-validate failure remains unchanged under known ISSUE-255.
+- 2026-02-19: continuous-refactor scan loop (post-approved 1-5) — generated the next minor-only tail set (remaining broad catches and duplicated workflow-test `sys.path` bootstraps), preserving ISSUE-255 parity note as out-of-scope for this loop.
 
 ## Workflow state
 
@@ -71,6 +74,10 @@ Full test suite for dependency graph features and end-user documentation.
 - `python3 tools/agentctl.py --repo-root . validate --strict` -> `ok: True` (no errors).
 - `rg -n "TODO|FIXME|type: ignore|except Exception|pass  #|pragma: no cover" tools tests docs -S` -> scan hotspots found (for example `tools/skillset_utils.py:71`, `tools/skillset_utils.py:151`, `tools/plan_pipeline.py:164`, `tools/agentctl.py:2722`).
 - `python3 .codex/skills/vibe-loop/scripts/agentctl.py --repo-root . validate --strict` (scan loop rerun) -> unchanged failure on known ISSUE-255 mapping mismatch.
+- `python3 -m pytest tests/workflow/test_continuous_minor_approval.py tests/workflow/test_continuous_refactor_workflow_override.py tests/workflow/test_continuous_aux_workflow_overrides.py tests/workflow/test_vibe_run.py tests/workflow/test_skill_tooling.py tests/workflow/test_bootstrap.py tests/workflow/test_plan_pipeline.py tests/workflow/test_agentctl_routing.py -v --capture=sys` -> 108 passed.
+- `python3 .codex/skills/vibe-loop/scripts/agentctl.py --repo-root . validate --strict` -> still fails on known ISSUE-255 prompt-role mapping mismatch (unchanged).
+- `python3 tools/agentctl.py --repo-root . validate --strict` -> `ok: True` (warnings only: work-log length + optional evidence path).
+- `rg -n "except Exception|sys.path.insert\\(0, str\\(Path\\(__file__\\)\\.parent\\.parent\\.parent / \"tools\"\\)\\)" tools tests/workflow -S` -> remaining minor candidates found in `tools/skillctl.py`, `tools/plan_pipeline.py`, `tools/bootstrap.py`, and multiple `tests/workflow/test_*.py` modules.
 
 ## Active issues
 

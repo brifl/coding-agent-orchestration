@@ -574,19 +574,24 @@ def _load_prompt_catalog_index(
     catalog_path = _resolve_prompt_catalog_path(repo_root)
     if catalog_path is None:
         return ({}, None, "Prompt catalog not found (expected prompts/template_prompts.md).")
+    fallback_reason: str | None = None
     try:
         from prompt_catalog import load_catalog  # type: ignore
 
         entries = load_catalog(catalog_path)
         index = {entry.key: entry.title for entry in entries}
         return (index, catalog_path, None)
-    except Exception:
+    except Exception as exc:
         # Fallback for environments where prompt_catalog.py is not importable
         # from the current script location (for example copied skill scripts).
+        fallback_reason = f"{type(exc).__name__}: {exc}"
         try:
             raw = _read_text(catalog_path)
         except OSError as exc:
-            return ({}, catalog_path, f"Failed to read prompt catalog at {catalog_path}: {exc}")
+            detail = f"Failed to read prompt catalog at {catalog_path}: {exc}"
+            if fallback_reason:
+                detail += f" (fallback after {fallback_reason})"
+            return ({}, catalog_path, detail)
 
         index: dict[str, str] = {}
         header_pat = re.compile(r"(?im)^##\s+(?P<id>[a-z0-9_.-]+)\s+[—–-]\s+(?P<title>.+?)\s*$")
@@ -596,7 +601,10 @@ def _load_prompt_catalog_index(
                 index[prompt_id] = match.group("title").strip()
 
         if not index:
-            return ({}, catalog_path, f"Failed to parse prompt catalog at {catalog_path}: no prompt headers found.")
+            detail = f"Failed to parse prompt catalog at {catalog_path}: no prompt headers found."
+            if fallback_reason:
+                detail += f" (fallback after {fallback_reason})"
+            return ({}, catalog_path, detail)
 
     return (index, catalog_path, None)
 

@@ -14,6 +14,7 @@ import shutil
 from pathlib import Path
 from typing import Any
 
+from cli_error_utils import format_cli_error
 from path_utils import resolve_codex_home
 from resource_resolver import find_resource
 from skill_registry import DEFAULT_AGENT, discover_skills
@@ -274,7 +275,7 @@ def cmd_resolve_set(name: str, fmt: str, agent: str) -> int:
     try:
         payload = resolve_skillset(name, agent)
     except Exception as exc:
-        print(f"ERROR: {exc}")
+        print(f"ERROR: {format_cli_error(exc)}")
         return 1
 
     if fmt == "json":

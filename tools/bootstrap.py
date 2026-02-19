@@ -42,6 +42,7 @@ if str(_tools_dir) not in sys.path:
 
 from path_utils import normalize_home_path, resolve_codex_home
 from resource_resolver import find_resource
+from cli_error_utils import format_cli_error
 from skillset_utils import find_skillset, load_skillset, parse_skillset_yaml  # noqa: F401
 
 # All supported agents for bulk installation
@@ -499,8 +500,8 @@ def _install_skills_all(global_install: bool, repo_install: bool, force: bool) -
                 result = install_skills_agent_repo(agent=agent, target_repo=Path.cwd().resolve(), force=force)
             if result != 0:
                 errors.append((agent, f"Return code: {result}"))
-        except Exception as e:
-            errors.append((agent, str(e)))
+        except Exception as exc:
+            errors.append((agent, format_cli_error(exc)))
     
     print(f"\n{'='*60}")
     print("Bulk installation complete")
@@ -534,8 +535,8 @@ def main(argv: list[str]) -> int:
             return install_skills_agent_repo(agent=args.agent, target_repo=Path.cwd().resolve(), force=args.force)
 
         raise ValueError(f"Unknown command: {args.cmd}")
-    except Exception as e:
-        print(f"ERROR: {e}", file=sys.stderr)
+    except Exception as exc:
+        print(f"ERROR: {format_cli_error(exc)}", file=sys.stderr)
         return 2
 
 

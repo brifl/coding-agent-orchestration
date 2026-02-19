@@ -3,11 +3,7 @@ from __future__ import annotations
 
 import hashlib
 import json
-import sys
 from pathlib import Path
-
-# Ensure tools/ is importable for direct function imports.
-sys.path.insert(0, str(Path(__file__).parent.parent.parent / "tools"))
 
 from agentctl import StateInfo, _resolve_next_prompt_selection, build_parser  # type: ignore
 

@@ -119,6 +119,14 @@ _STEP_REQUIRED_KEYS: dict[str, list[str]] = {
     "prompt.checkpoints_from_stage": ["checkpoints"],
 }
 
+_PROVIDER_CALL_EXCEPTIONS = (
+    TimeoutError,
+    OSError,
+    ValueError,
+    TypeError,
+    RuntimeError,
+)
+
 
 def _run_pipeline_step(
     prompt_id: str,
@@ -161,7 +169,15 @@ def _run_pipeline_step(
     # --- call provider ---
     try:
         raw = provider.call(prompt_id, inputs)
+    except _PROVIDER_CALL_EXCEPTIONS as exc:
+        raise PipelineStepError(
+            step_name,
+            prompt_id,
+            f"Provider call raised {type(exc).__name__}: {exc}",
+        ) from exc
     except Exception as exc:
+        # Keep a final catch for unknown provider-side failures while preserving
+        # existing PipelineStepError behavior and diagnostics.
         raise PipelineStepError(
             step_name,
             prompt_id,

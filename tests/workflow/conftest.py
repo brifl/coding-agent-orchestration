@@ -1,9 +1,14 @@
 """Pytest fixtures for workflow tests."""
 from __future__ import annotations
 
+import sys
 import pytest
 from pathlib import Path
 from typing import Generator
+
+_tools_dir = Path(__file__).resolve().parents[2] / "tools"
+if str(_tools_dir) not in sys.path:
+    sys.path.insert(0, str(_tools_dir))
 
 
 @pytest.fixture
