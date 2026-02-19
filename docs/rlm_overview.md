@@ -46,8 +46,8 @@ RLM addresses those cases with bounded execution and replayable traces.
 
 ## Human-Assisted Providers
 
-Some providers are human-assisted, not fully programmatic. In this project, the
-Kilo provider is expected to run via an external queue:
+Some providers are human-assisted, not fully programmatic. A human-assisted
+provider runs via an external queue:
 - Executor writes request records.
 - Human-assisted system returns response records.
 - Runtime pauses as `AWAITING_EXTERNAL` and resumes after import.

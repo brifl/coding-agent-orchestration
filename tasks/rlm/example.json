@@ -26,8 +26,7 @@
     "allowed": [
       "openai"
     ],
-    "fallback": [],
-    "kilo_requires_human": true
+    "fallback": []
   },
   "limits": {
     "max_root_iters": 6,

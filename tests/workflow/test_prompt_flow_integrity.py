@@ -79,7 +79,6 @@ def test_bootstrap_and_docs_use_issues_triage_role_name() -> None:
         repo_root / "prompts" / "init" / "claude_bootstrap.md",
         repo_root / "prompts" / "init" / "gemini_bootstrap.md",
         repo_root / "prompts" / "init" / "copilot_bootstrap.md",
-        repo_root / "prompts" / "init" / "kilo_bootstrap.md",
         repo_root / "prompts" / "init" / "generic_bootstrap.md",
         repo_root / "docs" / "concepts.md",
     ]

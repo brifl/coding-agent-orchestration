@@ -51,15 +51,6 @@ All agents use the same prompt catalog and bootstraps:
   2) Execute exactly one loop manually.
   3) Re-run the bootstrap for pseudo-continuous progress.
 
-## Kilo
-
-- **Instructions**: paste `prompts/init/kilo_bootstrap.md` into a new chat.
-- **Prompt pack**: `prompts/template_prompts.md` (loop prompts).
-- **Invocation pattern**:
-  1) Use the bootstrap to select the next loop.
-  2) Execute exactly one loop manually.
-  3) Re-run the bootstrap for pseudo-continuous progress.
-
 ## Differences (explicit)
 
 - Codex supports continuous mode with `$vibe-run`, `$continuous-refactor`,

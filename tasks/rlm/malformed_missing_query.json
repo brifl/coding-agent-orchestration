@@ -18,8 +18,7 @@
     ],
     "fallback": [
       "anthropic"
-    ],
-    "kilo_requires_human": true
+    ]
   },
   "limits": {
     "max_root_iters": 0,

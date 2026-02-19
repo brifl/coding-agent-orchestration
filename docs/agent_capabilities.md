@@ -11,7 +11,6 @@ and scripts do not assume abilities that an agent cannot reliably provide.
 | Claude Code CLI | Yes | Yes | Yes | Yes | Full capabilities via Read/Write/Edit/Bash tools. Invoke agentctl directly. |
 | Gemini Code | Yes | Yes | Yes | Yes | Full capabilities in code assistant mode. |
 | Copilot | Yes | Yes | Yes | Partial | VS Code/CLI mode has full edit/exec; continuous requires manual re-invocation. |
-| Kilo | Yes | Yes | Yes | Yes | Self-hosted; full capabilities when tool-enabled. |
 | Claude (web chat) | No | No | Yes (advisory) | No | No file/command access; produces instructions only. |
 | Gemini (web chat) | No | No | Yes (advisory) | No | No file/command access; produces instructions only. |
 
@@ -85,69 +84,6 @@ Then trigger the task between loops with `Ctrl+Shift+P` → "Run Task" → "vibe
 - Advancing to next loop (must re-invoke agentctl)
 - Crossing stage boundaries (must run consolidation manually)
 - Context continuity (re-read AGENTS.md/STATE.md each session)
-
-### Kilo / Self-hosted
-
-- Capabilities depend on tool configuration
-- When tool-enabled: full file/command/continuous support
-- Can run overnight on long tasks if properly configured
-
-#### Self-Hosted Agent Configuration Guide
-
-To use a self-hosted agent with the Vibe workflow:
-
-**1. Tool Requirements**
-
-Your agent must have access to:
-- **File operations**: Read, write, edit files (especially `.vibe/STATE.md`)
-- **Command execution**: Run Python scripts (`agentctl.py`, `prompt_catalog.py`)
-- **UTF-8 handling**: All workflow files are UTF-8 encoded
-
-**2. Bootstrap Setup**
-
-Use the generic bootstrap prompt:
-```bash
-cat prompts/init/generic_bootstrap.md
-```
-
-Paste this into your agent at the start of each session.
-
-**3. Skill Installation (optional)**
-
-If your agent supports a skill/plugin system:
-```bash
-python tools/bootstrap.py install-skills --global --agent kilo
-# or: --agent <your-agent-name>
-```
-
-This installs to `$CODEX_HOME/skills` for Codex (defaults to `~/.codex/skills`) and `~/.<agent>/skills/` for other agents.
-
-**4. Continuous Mode**
-
-For overnight or long-running execution:
-```bash
-# Your agent should loop:
-while true:
-    result = run("python tools/agentctl.py --repo-root . --format json next")
-    if result.recommended_role == "stop":
-        break
-    prompt = run(f"python tools/prompt_catalog.py prompts/template_prompts.md get {result.recommended_prompt_id}")
-    execute(prompt)
-```
-
-**5. Error Handling**
-
-Configure your agent to:
-- Stop on BLOCKED status or BLOCKER issues
-- Commit changes after each checkpoint (optional)
-- Log progress to a file for later review
-
-**6. Resource Limits**
-
-Consider setting:
-- Maximum loops per session (e.g., 20)
-- Context window management (re-read STATE.md periodically)
-- Timeout per loop (e.g., 30 minutes)
 
 ## Guidance
 

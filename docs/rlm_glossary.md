@@ -38,7 +38,6 @@
   (`primary`, `allowed`, `fallback`).
 - **Human-assisted provider:** Provider path that requires external human/tool
   response handling before runtime can continue.
-- **Kilo provider:** Human-assisted provider integrated via external queue files.
 - **AWAITING_EXTERNAL:** Runtime status when execution pauses pending imported
   external response.
 

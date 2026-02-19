@@ -44,7 +44,7 @@ from path_utils import normalize_home_path, resolve_codex_home
 from resource_resolver import find_resource
 
 # All supported agents for bulk installation
-ALL_AGENTS = ["codex", "claude", "gemini", "copilot", "kilo"]
+ALL_AGENTS = ["codex", "claude", "gemini", "copilot"]
 
 
 # Canonical doc templates for init-repo
@@ -545,7 +545,7 @@ def _build_parser() -> argparse.ArgumentParser:
     isp = sub.add_parser("install-skills", help="Install skills for a given agent/tool")
     isp.add_argument("--global", dest="global_install", action="store_true", help="Install to user/global location")
     isp.add_argument("--repo", dest="repo_install", action="store_true", help="Install into .codex/skills in the repo")
-    isp.add_argument("--agent", choices=("all", "codex", "claude", "gemini", "copilot", "kilo"), required=True, help="Which agent to install for (use 'all' to install for all agents)")
+    isp.add_argument("--agent", choices=("all", "codex", "claude", "gemini", "copilot"), required=True, help="Which agent to install for (use 'all' to install for all agents)")
     isp.add_argument("--force", action="store_true", help="Force overwrite of SKILL.md and other files")
     return p
 

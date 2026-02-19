@@ -7,7 +7,6 @@ agents:
   - claude
   - gemini
   - copilot
-  - kilo
 dependencies:
   - vibe-run
 ---

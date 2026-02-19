@@ -211,14 +211,6 @@ def _validate_provider_policy(value: Any, errors: list[Diagnostic], line_index: 
                     line_index,
                 )
 
-    kilo_requires_human = value.get("kilo_requires_human")
-    if not isinstance(kilo_requires_human, bool):
-        _add_error(
-            errors,
-            "provider_policy.kilo_requires_human",
-            "Field 'provider_policy.kilo_requires_human' must be true or false.",
-            line_index,
-        )
 
 
 def _validate_limits(value: Any, errors: list[Diagnostic], line_index: dict[str, int]) -> None:

@@ -39,7 +39,6 @@ Optional fields:
 - `primary` (string)
 - `allowed` (non-empty array of strings)
 - `fallback` (array of strings)
-- `kilo_requires_human` (boolean)
 
 ### `limits`
 

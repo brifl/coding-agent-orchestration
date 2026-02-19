@@ -6,7 +6,6 @@ agents:
   - claude
   - gemini
   - copilot
-  - kilo
 entrypoints:
   - rlm validate
   - rlm bundle

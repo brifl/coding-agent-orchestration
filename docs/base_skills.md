@@ -24,7 +24,6 @@ All future skills must layer on top of this foundation without breaking it.
 | Claude Code | Manual/Tool-dependent | Manual/Tool-dependent | Manual/Tool-dependent | Manual/Tool-dependent | Manual/Tool-dependent | Manual/Tool-dependent | Manual/Tool-dependent | Use installed skill scripts or manual prompts. |
 | Gemini | Manual/Tool-dependent | Manual/Tool-dependent | Manual/Tool-dependent | Manual/Tool-dependent | Manual/Tool-dependent | Manual/Tool-dependent | Manual/Tool-dependent | Use installed skill scripts or manual prompts. |
 | Copilot | Manual/Tool-dependent | Manual/Tool-dependent | Manual/Tool-dependent | Manual/Tool-dependent | Manual/Tool-dependent | Manual/Tool-dependent | Manual/Tool-dependent | Use installed skill scripts or manual prompts. |
-| Kilo | Full | Full | Full | Full | Full | Full | Full | Self-hosted; full capabilities when tool-enabled. |
 
 ## Non-goals
 
