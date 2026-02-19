@@ -1,7 +1,0 @@
-{
-  "permissions": {
-    "allow": [
-      "Read(//c/Users/brian/.claude/skills/vibe-run/scripts/**)"
-    ]
-  }
-}
