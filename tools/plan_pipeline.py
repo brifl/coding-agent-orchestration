@@ -119,8 +119,8 @@ def resolve_config(
             ".vibe/plan_pipeline.json or ~/.vibe/plan_pipeline.json."
         )
 
-    # Fail-fast: provider is mandatory
-    if not resolved_provider or not str(resolved_provider).strip():
+    # Fail-fast: provider is mandatory unless dry-run (no LLM calls in dry-run)
+    if not resolved_dry_run and (not resolved_provider or not str(resolved_provider).strip()):
         raise PipelineConfigError(
             "Missing provider. "
             "Provide it via --provider or set 'provider' in "
@@ -140,7 +140,7 @@ def resolve_config(
 
     return PipelineConfig(
         problem_statement=str(resolved_problem).strip(),
-        provider=str(resolved_provider).strip(),
+        provider=str(resolved_provider).strip() if resolved_provider else "",
         dry_run=resolved_dry_run,
         output_path=resolved_output,
         overwrite=resolved_overwrite,

@@ -2828,9 +2828,9 @@ def cmd_plan(args: argparse.Namespace) -> int:
         return 1
 
     if config.dry_run:
-        print(f"(dry run — no files written)")
+        print(f"(dry run \u2014 no files written)")
         print(f"  problem_statement : {config.problem_statement}")
-        print(f"  provider          : {config.provider}")
+        print(f"  provider          : {config.provider if config.provider else '(not set)'}")
         print(f"  output_path       : {config.output_path}")
         return 0
 
