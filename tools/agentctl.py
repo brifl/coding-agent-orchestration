@@ -2809,6 +2809,37 @@ def cmd_add_checkpoint(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_plan(args: argparse.Namespace) -> int:
+    """Handle `agentctl plan` — resolve config, validate, and run (or dry-run) the plan pipeline."""
+    from plan_pipeline import PipelineConfigError, resolve_config
+
+    repo_root = Path(args.repo_root)
+    try:
+        config = resolve_config(
+            repo_root,
+            problem_statement=getattr(args, "problem_statement", None),
+            provider=getattr(args, "provider", None),
+            dry_run=getattr(args, "dry_run", False),
+            output_path=getattr(args, "output", None),
+            overwrite=getattr(args, "overwrite", False),
+        )
+    except PipelineConfigError as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
+        return 1
+
+    if config.dry_run:
+        print(f"(dry run — no files written)")
+        print(f"  problem_statement : {config.problem_statement}")
+        print(f"  provider          : {config.provider}")
+        print(f"  output_path       : {config.output_path}")
+        return 0
+
+    # Full pipeline execution is implemented in Stage 23.2+; stub for now.
+    print(f"plan: provider={config.provider} output={config.output_path}")
+    print("(pipeline execution not yet implemented — implement in checkpoint 23.2)")
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="agentctl", description="Control-plane helper for vibecoding loops.")
     p.add_argument("--repo-root", default=".", help="Path to repository root (default: .)")
@@ -2861,6 +2892,34 @@ def build_parser() -> argparse.ArgumentParser:
     pc.add_argument("--template", required=True, help="Template name (file stem).")
     pc.add_argument("params", nargs=argparse.REMAINDER, help="Template parameters.")
     pc.set_defaults(fn=cmd_add_checkpoint)
+
+    pp = sub.add_parser("plan", help="Generate a PLAN.md from a problem statement using the plan pipeline.")
+    pp.add_argument(
+        "--problem-statement",
+        dest="problem_statement",
+        help="High-level description of what to build (required unless set in config).",
+    )
+    pp.add_argument(
+        "--provider",
+        help="LLM provider to use (e.g. anthropic, openai). Overrides config file.",
+    )
+    pp.add_argument(
+        "--dry-run",
+        dest="dry_run",
+        action="store_true",
+        help="Validate config and print resolved settings without writing any files.",
+    )
+    pp.add_argument(
+        "--output",
+        default=None,
+        help="Path to write the generated PLAN.md (default: .vibe/PLAN.md).",
+    )
+    pp.add_argument(
+        "--overwrite",
+        action="store_true",
+        help="Overwrite the output file if it already exists.",
+    )
+    pp.set_defaults(fn=cmd_plan)
 
     return p
 

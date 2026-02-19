@@ -13,7 +13,7 @@
 
 - Stage: 23
 - Checkpoint: 23.0
-- Status: IN_PROGRESS  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
+- Status: IN_REVIEW  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
 
 ## Objective (current checkpoint)
 
@@ -45,6 +45,7 @@ Define the `PipelineConfig` schema and the `agentctl plan` CLI entry point with 
 - 2026-02-19: Post-R4 scan — remaining candidates are MODERATE (`validate` CC=40, `_resolve_next_prompt_selection` CC=29) and MINOR (parsers, bootstrap steps). No MAJOR items remain. Continuous-refactor goal met.
 - 2026-02-19: R5 applied — decomposed `validate` (CC=40) into `_validate_state_section` + `_validate_plan_section` + `_validate_catalog_section`. validate now 14 lines. 141 passed.
 - 2026-02-19: Final scan — highest remaining: `_decide_role` CC=31 (inherent dispatch, testable), `_resolve_next_prompt_selection` CC=29 (structural integration), parsers/setup code all MINOR. No actionable MODERATE or MAJOR items. Stopping continuous-refactor.
+- 2026-02-19: 23.0 implemented — `tools/plan_pipeline.py` (PipelineConfig, resolve_config, config resolution), `agentctl plan` subcommand (--problem-statement, --provider, --dry-run, --output, --overwrite). All acceptance criteria met; 141 tests pass.
 
 ## Workflow state
 
@@ -55,7 +56,27 @@ Define the `PipelineConfig` schema and the `agentctl plan` CLI entry point with 
 
 ## Evidence
 
-(None yet — checkpoint 23.0 not started.)
+```
+$ python3 tools/agentctl.py --repo-root . plan --help
+usage: agentctl plan [-h] [--problem-statement PROBLEM_STATEMENT]
+                     [--provider PROVIDER] [--dry-run] [--output OUTPUT]
+                     [--overwrite]
+...
+
+$ python3 tools/agentctl.py --repo-root . plan
+ERROR: Missing --problem-statement. Provide it via CLI or ...
+exit: 1
+
+$ python3 tools/agentctl.py --repo-root . plan --dry-run --problem-statement "Build a todo app" --provider anthropic
+(dry run — no files written)
+  problem_statement : Build a todo app
+  provider          : anthropic
+  output_path       : .vibe/PLAN.md
+exit: 0
+
+$ python -m pytest tests/ -q
+141 passed, 3 skipped in 2.66s
+```
 
 ## Active issues
 
