@@ -1,72 +1,11 @@
 {
   "checkpoint": "25.5",
-  "loop": "review",
+  "loop": "stop",
   "next_role_hint": "stop",
   "protocol_version": 1,
-  "recorded_at": "2026-02-19T09:54:28.739871+00:00",
-  "report": {
-    "acceptance_matrix": [
-      {
-        "confidence": 1.0,
-        "critical": true,
-        "evidence": "python3 -m pytest tests/workflow/test_checkpoint_dag.py -v --capture=sys -> 11 passed.",
-        "evidence_strength": "HIGH",
-        "item": "All tests pass",
-        "status": "PASS"
-      },
-      {
-        "confidence": 0.98,
-        "critical": true,
-        "evidence": "python3 tools/agentctl.py --repo-root . validate --strict -> ok: True.",
-        "evidence_strength": "HIGH",
-        "item": "agentctl validate --strict passes",
-        "status": "PASS"
-      },
-      {
-        "confidence": 1.0,
-        "critical": true,
-        "evidence": "docs/checkpoint_dependencies.md includes Worked example: diamond dependency.",
-        "evidence_strength": "HIGH",
-        "item": "Docs include a worked diamond dependency example",
-        "status": "PASS"
-      }
-    ],
-    "loop_result": {
-      "checkpoint": "25.5",
-      "loop": "review",
-      "next_role_hint": "stop",
-      "result": "pass",
-      "stage": "25",
-      "status": "DONE"
-    },
-    "state_transition": {
-      "after": {
-        "checkpoint": "25.5",
-        "stage": "25",
-        "status": "DONE"
-      },
-      "before": {
-        "checkpoint": "25.5",
-        "stage": "25",
-        "status": "IN_REVIEW"
-      }
-    },
-    "top_findings": [
-      {
-        "action": "Track ISSUE-255 outside checkpoint 25.5 scope.",
-        "evidence": "python3 .codex/skills/vibe-loop/scripts/agentctl.py --repo-root . validate --strict fails on continuous-documentation role mapping checks.",
-        "impact": "MINOR",
-        "title": "Skill-packaged strict validate mismatch persists"
-      },
-      {
-        "action": "Allow dispatcher to route consolidation for pruning on next loop.",
-        "evidence": "tools/agentctl.py validate warns work log has 12 entries (>10).",
-        "impact": "QUESTION",
-        "title": "Work log exceeds consolidation cap"
-      }
-    ]
-  },
-  "result": "pass",
+  "reason": "Current checkpoint is last checkpoint in .vibe/PLAN.md (plan exhausted).",
+  "recorded_at": "2026-02-19T09:54:57.662130+00:00",
+  "result": "stop",
   "stage": "25",
   "state_sha256": "b597842422f1e10e751924e939818a48aeda6206fc725aaa631a45c6ec203771",
   "status": "DONE"
