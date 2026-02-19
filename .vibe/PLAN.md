@@ -132,7 +132,7 @@ Extend PLAN.md with optional `depends_on: [X.Y, ...]` annotations per checkpoint
   * `agentctl validate --strict` passes.
   * Docs include a worked example of a diamond dependency (1.0 → 1.1 and 1.0 → 1.2 → 1.3, where 1.3 depends_on [1.1, 1.2]).
 * **Demo commands:**
-  * `python -m pytest tests/workflow/test_checkpoint_dag.py -v`
-  * `python tools/agentctl.py --repo-root . validate --strict`
+  * `python3 -m pytest tests/workflow/test_checkpoint_dag.py -v --capture=sys`
+  * `python3 tools/agentctl.py --repo-root . validate --strict`
 * **Evidence:**
   * Test output showing all pass. `docs/checkpoint_dependencies.md` exists with diamond example.
