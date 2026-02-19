@@ -832,65 +832,27 @@ def _next_role_hint_values(raw: Any) -> set[str]:
     return {part.strip() for part in raw.split("|") if part.strip()}
 
 
-def _validate_loop_report_schema(payload: dict[str, Any]) -> tuple[str, ...]:
+def _validate_acceptance_matrix_items(
+    report: dict[str, Any], loop_name: str
+) -> tuple[list[str], bool]:
+    """Validate acceptance_matrix entries. Returns (errors, has_low_confidence_critical)."""
     errors: list[str] = []
-    loop_name = str(payload.get("loop", "")).strip()
-    report = payload.get("report")
-    if not isinstance(report, dict):
-        return ("Missing or invalid LOOP_RESULT field 'report' (object required).",)
-
-    for field in LOOP_REPORT_REQUIRED_FIELDS:
-        if field not in report:
-            errors.append(f"LOOP_RESULT report missing required field '{field}'.")
+    has_low_confidence_critical = False
 
     acceptance_matrix = report.get("acceptance_matrix")
     if not isinstance(acceptance_matrix, list):
         errors.append("LOOP_RESULT report field 'acceptance_matrix' must be a list.")
-        acceptance_matrix = []
-    elif loop_name in {"implement", "review", "issues_triage"} and not acceptance_matrix:
-        errors.append(f"LOOP_RESULT report field 'acceptance_matrix' must not be empty for {loop_name} loops.")
-
-    top_findings = report.get("top_findings")
-    if not isinstance(top_findings, list):
-        errors.append("LOOP_RESULT report field 'top_findings' must be a list.")
-        top_findings = []
-    elif len(top_findings) > LOOP_REPORT_MAX_FINDINGS:
+        return errors, False
+    if loop_name in {"implement", "review", "issues_triage"} and not acceptance_matrix:
         errors.append(
-            f"LOOP_RESULT report field 'top_findings' exceeds max length {LOOP_REPORT_MAX_FINDINGS}."
+            f"LOOP_RESULT report field 'acceptance_matrix' must not be empty for {loop_name} loops."
         )
 
-    finding_order: list[int] = []
-    for idx, finding in enumerate(top_findings):
-        if not isinstance(finding, dict):
-            errors.append(f"top_findings[{idx}] must be an object.")
-            continue
-        impact = str(finding.get("impact", "")).strip().upper()
-        title = finding.get("title")
-        evidence = finding.get("evidence")
-        action = finding.get("action")
-        if impact not in IMPACTS:
-            errors.append(
-                f"top_findings[{idx}].impact must be one of {', '.join(IMPACTS)}."
-            )
-        else:
-            finding_order.append(IMPACT_ORDER.index(impact))
-        if not isinstance(title, str) or not title.strip():
-            errors.append(f"top_findings[{idx}].title must be a non-empty string.")
-        if not isinstance(evidence, str) or not evidence.strip():
-            errors.append(f"top_findings[{idx}].evidence must be a non-empty string.")
-        if not isinstance(action, str) or not action.strip():
-            errors.append(f"top_findings[{idx}].action must be a non-empty string.")
-
-    if finding_order and finding_order != sorted(finding_order):
-        errors.append("top_findings must be ordered by impact priority (BLOCKER->QUESTION).")
-
-    has_low_confidence_critical = False
     for idx, item in enumerate(acceptance_matrix):
         if not isinstance(item, dict):
             errors.append(f"acceptance_matrix[{idx}] must be an object.")
             continue
-        required_fields = ("item", "status", "evidence", "critical", "confidence", "evidence_strength")
-        for field in required_fields:
+        for field in ("item", "status", "evidence", "critical", "confidence", "evidence_strength"):
             if field not in item:
                 errors.append(f"acceptance_matrix[{idx}] missing '{field}'.")
 
@@ -919,58 +881,133 @@ def _validate_loop_report_schema(payload: dict[str, Any]) -> tuple[str, ...]:
             errors.append(
                 f"acceptance_matrix[{idx}].evidence_strength must be one of {', '.join(EVIDENCE_STRENGTH_VALUES)}."
             )
-
         if (
             isinstance(critical, bool)
             and critical
             and confidence is not None
-            and (
-                confidence < CONFIDENCE_MIN_REQUIRED
-                or evidence_strength == "LOW"
-            )
+            and (confidence < CONFIDENCE_MIN_REQUIRED or evidence_strength == "LOW")
         ):
             has_low_confidence_critical = True
+
+    return errors, has_low_confidence_critical
+
+
+def _validate_top_findings(report: dict[str, Any]) -> list[str]:
+    """Validate top_findings list and each finding's required fields and ordering."""
+    errors: list[str] = []
+
+    top_findings = report.get("top_findings")
+    if not isinstance(top_findings, list):
+        errors.append("LOOP_RESULT report field 'top_findings' must be a list.")
+        return errors
+    if len(top_findings) > LOOP_REPORT_MAX_FINDINGS:
+        errors.append(
+            f"LOOP_RESULT report field 'top_findings' exceeds max length {LOOP_REPORT_MAX_FINDINGS}."
+        )
+
+    finding_order: list[int] = []
+    for idx, finding in enumerate(top_findings):
+        if not isinstance(finding, dict):
+            errors.append(f"top_findings[{idx}] must be an object.")
+            continue
+        impact = str(finding.get("impact", "")).strip().upper()
+        title = finding.get("title")
+        evidence = finding.get("evidence")
+        action = finding.get("action")
+        if impact not in IMPACTS:
+            errors.append(f"top_findings[{idx}].impact must be one of {', '.join(IMPACTS)}.")
+        else:
+            finding_order.append(IMPACT_ORDER.index(impact))
+        if not isinstance(title, str) or not title.strip():
+            errors.append(f"top_findings[{idx}].title must be a non-empty string.")
+        if not isinstance(evidence, str) or not evidence.strip():
+            errors.append(f"top_findings[{idx}].evidence must be a non-empty string.")
+        if not isinstance(action, str) or not action.strip():
+            errors.append(f"top_findings[{idx}].action must be a non-empty string.")
+
+    if finding_order and finding_order != sorted(finding_order):
+        errors.append("top_findings must be ordered by impact priority (BLOCKER->QUESTION).")
+
+    return errors
+
+
+def _validate_state_transition(
+    report: dict[str, Any], payload: dict[str, Any]
+) -> list[str]:
+    """Validate state_transition and assert after-state matches top-level LOOP_RESULT fields."""
+    errors: list[str] = []
 
     state_transition = report.get("state_transition")
     if not isinstance(state_transition, dict):
         errors.append("LOOP_RESULT report field 'state_transition' must be an object.")
-    else:
-        before = state_transition.get("before")
-        after = state_transition.get("after")
-        if not isinstance(before, dict):
-            errors.append("state_transition.before must be an object.")
-        if not isinstance(after, dict):
-            errors.append("state_transition.after must be an object.")
-        if isinstance(after, dict):
-            after_stage = _normalize_stage_for_compare(str(after.get("stage", "")).strip() or None)
-            after_checkpoint = _normalize_checkpoint_for_compare(str(after.get("checkpoint", "")).strip() or None)
-            after_status = str(after.get("status", "")).strip().upper()
-            payload_stage = _normalize_stage_for_compare(str(payload.get("stage", "")).strip() or None)
-            payload_checkpoint = _normalize_checkpoint_for_compare(str(payload.get("checkpoint", "")).strip() or None)
-            payload_status = str(payload.get("status", "")).strip().upper()
-            if after_stage != payload_stage:
-                errors.append("state_transition.after.stage must match LOOP_RESULT stage.")
-            if after_checkpoint != payload_checkpoint:
-                errors.append("state_transition.after.checkpoint must match LOOP_RESULT checkpoint.")
-            if after_status != payload_status:
-                errors.append("state_transition.after.status must match LOOP_RESULT status.")
+        return errors
+
+    before = state_transition.get("before")
+    after = state_transition.get("after")
+    if not isinstance(before, dict):
+        errors.append("state_transition.before must be an object.")
+    if not isinstance(after, dict):
+        errors.append("state_transition.after must be an object.")
+    if isinstance(after, dict):
+        after_stage = _normalize_stage_for_compare(str(after.get("stage", "")).strip() or None)
+        after_checkpoint = _normalize_checkpoint_for_compare(str(after.get("checkpoint", "")).strip() or None)
+        after_status = str(after.get("status", "")).strip().upper()
+        payload_stage = _normalize_stage_for_compare(str(payload.get("stage", "")).strip() or None)
+        payload_checkpoint = _normalize_checkpoint_for_compare(str(payload.get("checkpoint", "")).strip() or None)
+        payload_status = str(payload.get("status", "")).strip().upper()
+        if after_stage != payload_stage:
+            errors.append("state_transition.after.stage must match LOOP_RESULT stage.")
+        if after_checkpoint != payload_checkpoint:
+            errors.append("state_transition.after.checkpoint must match LOOP_RESULT checkpoint.")
+        if after_status != payload_status:
+            errors.append("state_transition.after.status must match LOOP_RESULT status.")
+
+    return errors
+
+
+def _validate_report_loop_result_mirror(
+    report: dict[str, Any], payload: dict[str, Any]
+) -> list[str]:
+    """Validate that report.loop_result mirrors the top-level LOOP_RESULT required fields."""
+    errors: list[str] = []
 
     report_loop_result = report.get("loop_result")
     if not isinstance(report_loop_result, dict):
         errors.append("LOOP_RESULT report field 'loop_result' must be an object.")
-    else:
-        for field in LOOP_RESULT_REQUIRED_FIELDS:
-            value = report_loop_result.get(field)
-            if not isinstance(value, str) or not value.strip():
-                errors.append(f"report.loop_result.{field} must be a non-empty string.")
-                continue
-            top_value = payload.get(field)
-            if field == "status":
-                if str(top_value).strip().upper() != str(value).strip().upper():
-                    errors.append(f"report.loop_result.{field} must mirror LOOP_RESULT {field}.")
-            else:
-                if str(top_value).strip() != str(value).strip():
-                    errors.append(f"report.loop_result.{field} must mirror LOOP_RESULT {field}.")
+        return errors
+
+    for field in LOOP_RESULT_REQUIRED_FIELDS:
+        value = report_loop_result.get(field)
+        if not isinstance(value, str) or not value.strip():
+            errors.append(f"report.loop_result.{field} must be a non-empty string.")
+            continue
+        top_value = payload.get(field)
+        if field == "status":
+            if str(top_value).strip().upper() != str(value).strip().upper():
+                errors.append(f"report.loop_result.{field} must mirror LOOP_RESULT {field}.")
+        else:
+            if str(top_value).strip() != str(value).strip():
+                errors.append(f"report.loop_result.{field} must mirror LOOP_RESULT {field}.")
+
+    return errors
+
+
+def _validate_loop_report_schema(payload: dict[str, Any]) -> tuple[str, ...]:
+    errors: list[str] = []
+    loop_name = str(payload.get("loop", "")).strip()
+    report = payload.get("report")
+    if not isinstance(report, dict):
+        return ("Missing or invalid LOOP_RESULT field 'report' (object required).",)
+
+    for field in LOOP_REPORT_REQUIRED_FIELDS:
+        if field not in report:
+            errors.append(f"LOOP_RESULT report missing required field '{field}'.")
+
+    am_errors, has_low_confidence_critical = _validate_acceptance_matrix_items(report, loop_name)
+    errors.extend(am_errors)
+    errors.extend(_validate_top_findings(report))
+    errors.extend(_validate_state_transition(report, payload))
+    errors.extend(_validate_report_loop_result_mirror(report, payload))
 
     if loop_name in {"review", "issues_triage"} and has_low_confidence_critical:
         next_hints = _next_role_hint_values(payload.get("next_role_hint"))
@@ -1353,21 +1390,15 @@ def check_plan_for_checkpoint(repo_root: Path, checkpoint_id: str) -> PlanCheck:
     )
 
 
-def validate(repo_root: Path, strict: bool, strict_complexity: bool = False) -> ValidationResult:
+def _validate_state_section(
+    repo_root: Path,
+    state: StateInfo,
+    state_path: Path,
+    strict: bool,
+) -> tuple[list[str], list[str]]:
+    """Validate STATE.md fields, issue schema, work log size, and evidence path."""
     errors: list[str] = []
     warnings: list[str] = []
-
-    state_path = repo_root / ".vibe" / "STATE.md"
-    if not state_path.exists():
-        return ValidationResult(
-            ok=False,
-            errors=(f".vibe/STATE.md not found at {state_path}.",),
-            warnings=(),
-            state=None,
-            plan_check=None,
-        )
-
-    state = load_state(repo_root)
 
     if not state.stage:
         errors.append(".vibe/STATE.md: missing '- Stage: <id>' under Current focus.")
@@ -1381,11 +1412,9 @@ def validate(repo_root: Path, strict: bool, strict_complexity: bool = False) -> 
         allowed = ", ".join(sorted(ALLOWED_STATUS))
         errors.append(f".vibe/STATE.md: invalid status '{state.status}'. Allowed: {allowed}")
 
-    issue_schema_messages = _validate_issue_schema(state.issues)
-    for message in issue_schema_messages:
+    for message in _validate_issue_schema(state.issues):
         (errors if strict else warnings).append(f".vibe/STATE.md: {message}")
 
-    # Work log size check
     state_text = _read_text(state_path)
     sections = _parse_context_sections(state_text)
     work_log_lines = _get_section_lines(sections, "Work log (current session)")
@@ -1396,7 +1425,6 @@ def validate(repo_root: Path, strict: bool, strict_complexity: bool = False) -> 
             f"(>{WORK_LOG_CONSOLIDATION_CAP}); consider running consolidation to prune."
         )
 
-    # Evidence path is optional; warn if missing
     if not state.evidence_path:
         warnings.append(".vibe/STATE.md: missing evidence '- path: ...' (optional).")
     else:
@@ -1405,108 +1433,153 @@ def validate(repo_root: Path, strict: bool, strict_complexity: bool = False) -> 
             msg = f"Evidence file not found at {resolved}."
             (errors if strict else warnings).append(msg)
 
+    return errors, warnings
+
+
+def _validate_plan_section(
+    repo_root: Path,
+    state: StateInfo,
+    strict: bool,
+    strict_complexity: bool,
+) -> tuple[list[str], list[str], PlanCheck | None]:
+    """Validate PLAN.md stage headings, checkpoint ordering, stage drift, and plan check."""
+    errors: list[str] = []
+    warnings: list[str] = []
     plan_check: PlanCheck | None = None
-    if state.checkpoint:
-        plan_path = repo_root / ".vibe" / "PLAN.md"
-        plan_text = _read_text(plan_path) if plan_path.exists() else ""
-        if plan_text:
-            stage_headings = _parse_stage_headings(plan_text)
-            seen_stages: dict[str, int] = {}
-            for stage_raw, line_no, line_text in stage_headings:
-                if not is_valid_stage_id(stage_raw):
-                    errors.append(
-                        f".vibe/PLAN.md:{line_no}: invalid stage id '{stage_raw}'. "
-                        f"Expected <int><optional alpha suffix>. Line: {line_text}"
-                    )
-                    continue
-                stage_norm = normalize_stage_id(stage_raw)
-                if stage_norm in seen_stages:
-                    prev_line = seen_stages[stage_norm]
-                    errors.append(
-                        f".vibe/PLAN.md:{line_no}: duplicate stage id '{stage_norm}' "
-                        f"(previously at line {prev_line})."
-                    )
-                else:
-                    seen_stages[stage_norm] = line_no
 
-            if state.stage and not _plan_has_stage(plan_text, state.stage):
+    if not state.checkpoint:
+        return errors, warnings, plan_check
+
+    plan_path = repo_root / ".vibe" / "PLAN.md"
+    plan_text = _read_text(plan_path) if plan_path.exists() else ""
+
+    if plan_text:
+        stage_headings = _parse_stage_headings(plan_text)
+        seen_stages: dict[str, int] = {}
+        for stage_raw, line_no, line_text in stage_headings:
+            if not is_valid_stage_id(stage_raw):
                 errors.append(
-                    f".vibe/PLAN.md: missing stage section for Stage {state.stage}."
+                    f".vibe/PLAN.md:{line_no}: invalid stage id '{stage_raw}'. "
+                    f"Expected <int><optional alpha suffix>. Line: {line_text}"
                 )
-
-            # Check checkpoint minor ID ordering within each stage
-            checkpoint_ids = _parse_plan_checkpoint_ids(plan_text)
-            for w in _check_checkpoint_minor_ordering(checkpoint_ids):
-                warnings.append(f".vibe/PLAN.md: {w}")
-
-        # Check for stage drift: STATE.md stage doesn't match checkpoint's actual stage in PLAN.md
-        if plan_text and state.stage:
-            actual_stage = _get_stage_for_checkpoint(plan_text, state.checkpoint)
-            state_stage = state.stage
-            if state_stage and is_valid_stage_id(state_stage):
-                state_stage = normalize_stage_id(state_stage)
-            if actual_stage and state_stage and actual_stage != state_stage:
-                msg = (
-                    f"Stage drift detected: STATE.md says Stage {state.stage}, "
-                    f"but checkpoint {state.checkpoint} is in Stage {actual_stage} in PLAN.md."
+                continue
+            stage_norm = normalize_stage_id(stage_raw)
+            if stage_norm in seen_stages:
+                prev_line = seen_stages[stage_norm]
+                errors.append(
+                    f".vibe/PLAN.md:{line_no}: duplicate stage id '{stage_norm}' "
+                    f"(previously at line {prev_line})."
                 )
-                errors.append(msg)
+            else:
+                seen_stages[stage_norm] = line_no
 
-        plan_check = check_plan_for_checkpoint(repo_root, state.checkpoint)
-        if not plan_check.found_checkpoint:
-            msg = (
-                plan_check.warnings[0]
-                if plan_check.warnings
-                else ".vibe/PLAN.md checkpoint not found."
+        if state.stage and not _plan_has_stage(plan_text, state.stage):
+            errors.append(f".vibe/PLAN.md: missing stage section for Stage {state.stage}.")
+
+        for w in _check_checkpoint_minor_ordering(_parse_plan_checkpoint_ids(plan_text)):
+            warnings.append(f".vibe/PLAN.md: {w}")
+
+    if plan_text and state.stage:
+        actual_stage = _get_stage_for_checkpoint(plan_text, state.checkpoint)
+        state_stage = state.stage
+        if state_stage and is_valid_stage_id(state_stage):
+            state_stage = normalize_stage_id(state_stage)
+        if actual_stage and state_stage and actual_stage != state_stage:
+            errors.append(
+                f"Stage drift detected: STATE.md says Stage {state.stage}, "
+                f"but checkpoint {state.checkpoint} is in Stage {actual_stage} in PLAN.md."
             )
-            (errors if strict else warnings).append(msg)
-        else:
-            for w in plan_check.warnings:
-                (errors if strict else warnings).append(f".vibe/PLAN.md: {w}")
-            for w in plan_check.complexity_warnings:
-                (errors if strict_complexity else warnings).append(f".vibe/PLAN.md: {w}")
+
+    plan_check = check_plan_for_checkpoint(repo_root, state.checkpoint)
+    if not plan_check.found_checkpoint:
+        msg = (
+            plan_check.warnings[0]
+            if plan_check.warnings
+            else ".vibe/PLAN.md checkpoint not found."
+        )
+        (errors if strict else warnings).append(msg)
+    else:
+        for w in plan_check.warnings:
+            (errors if strict else warnings).append(f".vibe/PLAN.md: {w}")
+        for w in plan_check.complexity_warnings:
+            (errors if strict_complexity else warnings).append(f".vibe/PLAN.md: {w}")
+
+    return errors, warnings, plan_check
+
+
+def _validate_catalog_section(
+    repo_root: Path,
+    strict: bool,
+) -> tuple[list[str], list[str]]:
+    """Validate prompt catalog and workflow prompt references."""
+    errors: list[str] = []
+    warnings: list[str] = []
 
     catalog_index, catalog_path, catalog_error = _load_prompt_catalog_index(repo_root)
     if catalog_error:
         warnings.append(catalog_error)
-    else:
-        catalog_ids = set(catalog_index.keys())
+        return errors, warnings
 
-        for role, metadata in PROMPT_MAP.items():
-            prompt_id = metadata["id"]
-            if prompt_id == "stop":
-                continue
-            if prompt_id not in catalog_ids:
-                (errors if strict else warnings).append(
-                    f"Prompt map for role '{role}' references missing prompt id '{prompt_id}'."
-                )
+    catalog_ids = set(catalog_index.keys())
 
-        workflow_refs, workflow_warnings = _collect_workflow_prompt_refs(repo_root)
-        for message in workflow_warnings:
-            (errors if strict else warnings).append(message)
-
-        for workflow_name, prompt_id in workflow_refs:
-            if prompt_id != "stop" and prompt_id not in catalog_ids:
-                (errors if strict else warnings).append(
-                    f"{workflow_name}: unknown prompt id '{prompt_id}' (not present in template_prompts.md)."
-                )
-            mapped_role = _role_for_prompt_id(prompt_id)
-            if mapped_role is None:
-                (errors if strict else warnings).append(
-                    f"{workflow_name}: prompt id '{prompt_id}' has no role mapping in PROMPT_ROLE_MAP."
-                )
-
-        if catalog_path and not (repo_root / "prompts" / "template_prompts.md").exists():
-            warnings.append(
-                f"Using non-local prompt catalog at {catalog_path}; "
-                "repo-local prompts/template_prompts.md is recommended."
+    for role, metadata in PROMPT_MAP.items():
+        prompt_id = metadata["id"]
+        if prompt_id == "stop":
+            continue
+        if prompt_id not in catalog_ids:
+            (errors if strict else warnings).append(
+                f"Prompt map for role '{role}' references missing prompt id '{prompt_id}'."
             )
 
-    ok = len(errors) == 0
+    workflow_refs, workflow_warnings = _collect_workflow_prompt_refs(repo_root)
+    for message in workflow_warnings:
+        (errors if strict else warnings).append(message)
+
+    for workflow_name, prompt_id in workflow_refs:
+        if prompt_id != "stop" and prompt_id not in catalog_ids:
+            (errors if strict else warnings).append(
+                f"{workflow_name}: unknown prompt id '{prompt_id}' (not present in template_prompts.md)."
+            )
+        mapped_role = _role_for_prompt_id(prompt_id)
+        if mapped_role is None:
+            (errors if strict else warnings).append(
+                f"{workflow_name}: prompt id '{prompt_id}' has no role mapping in PROMPT_ROLE_MAP."
+            )
+
+    if catalog_path and not (repo_root / "prompts" / "template_prompts.md").exists():
+        warnings.append(
+            f"Using non-local prompt catalog at {catalog_path}; "
+            "repo-local prompts/template_prompts.md is recommended."
+        )
+
+    return errors, warnings
+
+
+def validate(repo_root: Path, strict: bool, strict_complexity: bool = False) -> ValidationResult:
+    state_path = repo_root / ".vibe" / "STATE.md"
+    if not state_path.exists():
+        return ValidationResult(
+            ok=False,
+            errors=(f".vibe/STATE.md not found at {state_path}.",),
+            warnings=(),
+            state=None,
+            plan_check=None,
+        )
+
+    state = load_state(repo_root)
+
+    state_errors, state_warnings = _validate_state_section(repo_root, state, state_path, strict)
+    plan_errors, plan_warnings, plan_check = _validate_plan_section(
+        repo_root, state, strict, strict_complexity
+    )
+    catalog_errors, catalog_warnings = _validate_catalog_section(repo_root, strict)
+
+    all_errors = state_errors + plan_errors + catalog_errors
+    all_warnings = state_warnings + plan_warnings + catalog_warnings
     return ValidationResult(
-        ok=ok,
-        errors=tuple(errors),
-        warnings=tuple(warnings),
+        ok=len(all_errors) == 0,
+        errors=tuple(all_errors),
+        warnings=tuple(all_warnings),
         state=state,
         plan_check=plan_check,
     )
@@ -1920,15 +1993,46 @@ def _run_smoke_test_gate(
     return (True, None)
 
 
-def _recommend_next(state: StateInfo, repo_root: Path) -> tuple[Role, str, str | None]:
-    """Select the next dispatcher role.
+@dataclass
+class _DecisionContext:
+    """Pre-loaded IO context for the pure role-decision function."""
+    workflow_flags: dict[str, bool]
+    plan_text: str
+    smoke_gate_result: tuple[bool, str] | None  # Set only when state is IN_REVIEW
+    context_capture_reason: str | None
+    consolidation_reason: str | None
+    process_improvements_reason: str | None
+
+
+def _gather_decision_context(state: StateInfo, repo_root: Path) -> _DecisionContext:
+    """Perform all IO needed for role selection and bundle into a context object."""
+    workflow_flags = _load_workflow_flags(repo_root)
+    plan_path = repo_root / ".vibe" / "PLAN.md"
+    plan_text = _read_text(plan_path) if plan_path.exists() else ""
+    smoke_gate_result = (
+        _run_smoke_test_gate(repo_root, state, plan_text)
+        if state.status == "IN_REVIEW"
+        else None
+    )
+    return _DecisionContext(
+        workflow_flags=workflow_flags,
+        plan_text=plan_text,
+        smoke_gate_result=smoke_gate_result,
+        context_capture_reason=_context_capture_trigger_reason(repo_root, workflow_flags),
+        consolidation_reason=_consolidation_trigger_reason(repo_root),
+        process_improvements_reason=_process_improvements_trigger_reason(
+            repo_root, workflow_flags, state.checkpoint
+        ),
+    )
+
+
+def _decide_role(state: StateInfo, ctx: _DecisionContext) -> tuple[Role, str, str | None]:
+    """Pure role-selection logic. No IO — all context is pre-loaded in ctx.
 
     Returns (role, reason, prompt_id_override).
     prompt_id_override is non-None only for maintenance cycles that need
     a specific prompt different from the role's default.
     """
-    workflow_flags = _load_workflow_flags(repo_root)
-
     # 0) Hard stop / hard triage conditions
     if state.status == "BLOCKED":
         return ("issues_triage", "Checkpoint status is BLOCKED.", None)
@@ -1960,20 +2064,17 @@ def _recommend_next(state: StateInfo, repo_root: Path) -> tuple[Role, str, str |
             None,
         )
 
-    # 1) Review if IN_REVIEW — but first run smoke test gate
+    # 1) Review if IN_REVIEW — smoke gate result pre-loaded
     if state.status == "IN_REVIEW":
-        plan_path = repo_root / ".vibe" / "PLAN.md"
-        plan_text = _read_text(plan_path) if plan_path.exists() else ""
-        passed, failure_reason = _run_smoke_test_gate(repo_root, state, plan_text)
-        if not passed:
-            return ("issues_triage", f"Smoke test gate failed: {failure_reason}", None)
+        if ctx.smoke_gate_result is not None:
+            passed, failure_reason = ctx.smoke_gate_result
+            if not passed:
+                return ("issues_triage", f"Smoke test gate failed: {failure_reason}", None)
         return ("review", "Checkpoint status is IN_REVIEW.", None)
 
     # 2) If DONE, either advance to next checkpoint or stop if plan exhausted
     if state.status == "DONE":
-        plan_path = repo_root / ".vibe" / "PLAN.md"
-        plan_text = _read_text(plan_path) if plan_path.exists() else ""
-        plan_ids = _parse_plan_checkpoint_ids(plan_text)
+        plan_ids = _parse_plan_checkpoint_ids(ctx.plan_text)
 
         if not plan_ids:
             return ("stop", "No checkpoints found in .vibe/PLAN.md (plan exhausted).", None)
@@ -1987,8 +2088,8 @@ def _recommend_next(state: StateInfo, repo_root: Path) -> tuple[Role, str, str |
 
         # If the next one is explicitly marked (DONE) or (SKIP), skip forward
         while nxt and (
-            _is_checkpoint_marked_done(plan_text, nxt)
-            or _is_checkpoint_skipped(plan_text, nxt)
+            _is_checkpoint_marked_done(ctx.plan_text, nxt)
+            or _is_checkpoint_skipped(ctx.plan_text, nxt)
         ):
             state_ck = nxt
             nxt = _next_checkpoint_after(plan_ids, state_ck)
@@ -1998,7 +2099,7 @@ def _recommend_next(state: StateInfo, repo_root: Path) -> tuple[Role, str, str |
 
         # Check for stage transition - recommend consolidation before advancing to new stage
         is_stage_change, cur_stage, nxt_stage = _detect_stage_transition(
-            plan_text, state.checkpoint, nxt
+            ctx.plan_text, state.checkpoint, nxt
         )
         if is_stage_change:
             # Check if STATE.md stage matches the plan's current stage
@@ -2021,38 +2122,41 @@ def _recommend_next(state: StateInfo, repo_root: Path) -> tuple[Role, str, str |
         # Maintenance loops fire before implementation when NOT_STARTED.
         if state.status == "NOT_STARTED":
             # Retrospective — runs once per stage after a transition, before design
-            retro_reason = _retrospective_trigger_reason(workflow_flags)
+            retro_reason = _retrospective_trigger_reason(ctx.workflow_flags)
             if retro_reason:
                 return ("retrospective", retro_reason, None)
 
             # Stage design check — runs once per stage after retrospective
-            stage_design_reason = _stage_design_trigger_reason(workflow_flags)
+            stage_design_reason = _stage_design_trigger_reason(ctx.workflow_flags)
             if stage_design_reason:
                 return ("design", stage_design_reason, None)
 
             # Maintenance cycle — refactor/test/docs based on stage%3
             maint_reason, maint_prompt = _maintenance_cycle_trigger_reason(
-                workflow_flags, state.stage,
+                ctx.workflow_flags, state.stage,
             )
             if maint_reason and maint_prompt:
                 return ("implement", maint_reason, maint_prompt)
 
-            context_reason = _context_capture_trigger_reason(repo_root, workflow_flags)
-            if context_reason:
-                return ("context_capture", context_reason, None)
+            if ctx.context_capture_reason:
+                return ("context_capture", ctx.context_capture_reason, None)
 
-            consolidation_reason = _consolidation_trigger_reason(repo_root)
-            if consolidation_reason:
-                return ("consolidation", consolidation_reason, None)
+            if ctx.consolidation_reason:
+                return ("consolidation", ctx.consolidation_reason, None)
 
-            process_reason = _process_improvements_trigger_reason(repo_root, workflow_flags, state.checkpoint)
-            if process_reason:
-                return ("improvements", process_reason, None)
+            if ctx.process_improvements_reason:
+                return ("improvements", ctx.process_improvements_reason, None)
 
         return ("implement", f"Checkpoint status is {state.status}.", None)
 
     # 4) Default
     return ("design", "No recognized status; stage design likely required.", None)
+
+
+def _recommend_next(state: StateInfo, repo_root: Path) -> tuple[Role, str, str | None]:
+    """Shell: gather IO context, then delegate to pure _decide_role."""
+    ctx = _gather_decision_context(state, repo_root)
+    return _decide_role(state, ctx)
 
 
 def _render_output(payload: dict[str, Any], fmt: str) -> str:

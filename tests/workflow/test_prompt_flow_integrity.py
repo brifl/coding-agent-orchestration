@@ -1,6 +1,7 @@
 """Integrity checks for prompt-flow wiring."""
 from __future__ import annotations
 
+import re
 import sys
 from pathlib import Path
 
@@ -126,4 +127,8 @@ def test_issue_schema_language_uses_impact() -> None:
     for path in targets:
         text = path.read_text(encoding="utf-8")
         assert "Severity:" not in text
-        assert "Severity " not in text
+        # Allow "Severity rubric" / "Severity analysis" (doc references) but forbid
+        # impact-label usage like "Severity MAJOR" or "Severity HIGH".
+        assert not re.search(r"Severity [A-Z]", text), (
+            f"Use 'impact' not 'severity' for issue labels in {path.name}"
+        )

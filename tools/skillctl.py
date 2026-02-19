@@ -17,6 +17,13 @@ from typing import Any
 from path_utils import resolve_codex_home
 from resource_resolver import find_resource
 from skill_registry import DEFAULT_AGENT, discover_skills
+from skillset_utils import (
+    find_manifest,
+    find_skillset,
+    load_manifest,
+    load_skillset,
+    parse_skillset_yaml,  # noqa: F401
+)
 
 
 REQUIRED_FIELDS = ["name", "description"]
@@ -47,13 +54,9 @@ def _write_lock(payload: dict[str, Any]) -> None:
     path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
 
 
-def _codex_home() -> Path:
-    return resolve_codex_home()
-
-
 def _agent_global_dir(agent: str) -> Path:
     if agent == "codex":
-        return _codex_home() / "skills"
+        return resolve_codex_home() / "skills"
     return Path.home() / f".{agent}" / "skills"
 
 
@@ -71,148 +74,14 @@ def _repo_skill_dest(name: str) -> Path:
     return _repo_root() / ".codex" / "skills" / name
 
 
-def _find_manifest(skill_dir: Path) -> Path | None:
-    for name in ("SKILL.md", "SKILL.yaml", "SKILL.yml", "SKILL.json"):
-        path = skill_dir / name
-        if path.exists():
-            return path
-    return None
-
-
-def _parse_yaml_minimal(text: str) -> dict[str, Any]:
-    data: dict[str, Any] = {}
-    current_key: str | None = None
-
-    for raw in text.splitlines():
-        if not raw.strip() or raw.lstrip().startswith("#"):
-            continue
-
-        indent = len(raw) - len(raw.lstrip())
-        line = raw.strip()
-
-        if indent == 0 and ":" in line and not line.startswith("-"):
-            key, value = line.split(":", 1)
-            key = key.strip()
-            value = value.strip()
-            if value == "":
-                data[key] = []
-                current_key = key
-            else:
-                data[key] = value.strip("\"'")
-                current_key = None
-            continue
-
-        if current_key and indent > 0 and line.startswith("-"):
-            item = line[1:].strip()
-            if item.startswith("name:"):
-                item = item.split(":", 1)[1].strip()
-            data[current_key].append(item.strip("\"'"))
-
-    return data
-
-
-def _front_matter(text: str) -> str | None:
-    lines = text.splitlines()
-    if not lines or lines[0].strip() != "---":
-        return None
-    for i in range(1, len(lines)):
-        if lines[i].strip() == "---":
-            return "\n".join(lines[1:i])
-    return None
-
-
-def _load_manifest(path: Path) -> dict[str, Any] | None:
-    try:
-        if path.suffix == ".json":
-            return json.loads(path.read_text(encoding="utf-8"))
-        if path.suffix in {".yaml", ".yml"}:
-            return _parse_yaml_minimal(path.read_text(encoding="utf-8"))
-        if path.suffix == ".md":
-            text = path.read_text(encoding="utf-8")
-            front = _front_matter(text)
-            if front is None:
-                return None
-            return _parse_yaml_minimal(front)
-    except Exception:
-        return None
-    return None
-
-
-def _parse_skillset_yaml(text: str) -> dict[str, Any]:
-    data: dict[str, Any] = {"extends": [], "skills": []}
-    current_section: str | None = None
-    last_skill: dict[str, Any] | None = None
-
-    for raw in text.splitlines():
-        if not raw.strip() or raw.lstrip().startswith("#"):
-            continue
-        indent = len(raw) - len(raw.lstrip())
-        line = raw.strip()
-
-        if indent == 0 and line.startswith("name:"):
-            data["name"] = line.split(":", 1)[1].strip().strip("\"'")
-            current_section = None
-            continue
-        if indent == 0 and line.startswith("description:"):
-            data["description"] = line.split(":", 1)[1].strip().strip("\"'")
-            current_section = None
-            continue
-        if indent == 0 and line.startswith("extends:"):
-            current_section = "extends"
-            continue
-        if indent == 0 and line.startswith("skills:"):
-            current_section = "skills"
-            continue
-
-        if current_section == "extends" and line.startswith("-"):
-            item = line[1:].strip().strip("\"'")
-            data["extends"].append(item)
-            continue
-
-        if current_section == "skills" and line.startswith("-"):
-            item = line[1:].strip()
-            skill: dict[str, Any] = {}
-            if item.startswith("name:"):
-                skill["name"] = item.split(":", 1)[1].strip().strip("\"'")
-            data["skills"].append(skill)
-            last_skill = skill
-            continue
-
-        if current_section == "skills" and indent > 0 and ":" in line and last_skill is not None:
-            key, value = line.split(":", 1)
-            last_skill[key.strip()] = value.strip().strip("\"'")
-
-    return data
-
-
-def _load_skillset(path: Path) -> dict[str, Any] | None:
-    try:
-        if path.suffix == ".json":
-            return json.loads(path.read_text(encoding="utf-8"))
-        if path.suffix in {".yaml", ".yml"}:
-            return _parse_skillset_yaml(path.read_text(encoding="utf-8"))
-    except Exception:
-        return None
-    return None
-
-
-def _find_skillset(name: str) -> Path | None:
-    root = _skillsets_root()
-    for ext in (".yaml", ".yml", ".json"):
-        path = root / f"{name}{ext}"
-        if path.exists():
-            return path
-    return None
-
-
 def _manifest_dependencies(skill_name: str, agent: str) -> list[str]:
     skill_dir = find_resource("skill", skill_name, agent=agent)
     if not skill_dir or not skill_dir.exists():
         return []
-    manifest_path = _find_manifest(Path(skill_dir))
+    manifest_path = find_manifest(Path(skill_dir))
     if not manifest_path:
         return []
-    manifest = _load_manifest(manifest_path)
+    manifest = load_manifest(manifest_path)
     if not manifest:
         return []
     deps = manifest.get("dependencies") or []
@@ -228,10 +97,10 @@ def resolve_skillset(name: str, agent: str) -> dict[str, Any]:
     tree: dict[str, list[str]] = {}
 
     def load_set(set_name: str) -> dict[str, Any]:
-        path = _find_skillset(set_name)
+        path = find_skillset(_skillsets_root(), set_name)
         if not path:
             raise FileNotFoundError(f"Skillset '{set_name}' not found.")
-        data = _load_skillset(path)
+        data = load_skillset(path)
         if not data:
             raise ValueError(f"Failed to parse skillset: {path}")
         return data
@@ -382,12 +251,12 @@ def cmd_validate(path: Path) -> int:
         print(f"Skill path not found: {path}")
         return 1
 
-    manifest_path = _find_manifest(path)
+    manifest_path = find_manifest(path)
     if not manifest_path:
         print(f"Missing SKILL manifest in {path}")
         return 1
 
-    manifest = _load_manifest(manifest_path)
+    manifest = load_manifest(manifest_path)
     if not manifest:
         print(f"Failed to parse manifest: {manifest_path}")
         return 1

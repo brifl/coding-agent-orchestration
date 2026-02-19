@@ -21,6 +21,7 @@ from pathlib import Path
 from typing import Any
 
 from path_utils import resolve_codex_home
+from skillset_utils import find_manifest, load_manifest
 
 DEFAULT_AGENT = "gemini"
 
@@ -41,10 +42,6 @@ _CACHE: dict[tuple[Path, str], list[SkillRecord]] = {}
 
 def _repo_root() -> Path:
     return Path.cwd()
-
-
-def _codex_home() -> Path:
-    return resolve_codex_home()
 
 
 def _repo_skill_roots(repo_root: Path) -> list[Path]:
@@ -68,7 +65,7 @@ def _skill_paths(repo_root: Path, agent: str) -> list[tuple[str, Path]]:
         paths.append(("repo", root))
 
     if agent == "codex":
-        paths.append(("global", _codex_home() / "skills"))
+        paths.append(("global", resolve_codex_home() / "skills"))
         paths.append(("system", Path("/etc/codex/skills")))
     else:
         paths.append(("global", Path.home() / f".{agent}" / "skills"))
@@ -77,78 +74,9 @@ def _skill_paths(repo_root: Path, agent: str) -> list[tuple[str, Path]]:
     return paths
 
 
-def _find_manifest(skill_dir: Path) -> Path | None:
-    for name in ("SKILL.md", "SKILL.yaml", "SKILL.yml", "SKILL.json"):
-        path = skill_dir / name
-        if path.exists():
-            return path
-    return None
-
-
-def _parse_yaml_minimal(text: str) -> dict[str, Any]:
-    data: dict[str, Any] = {}
-    current_key: str | None = None
-
-    for raw in text.splitlines():
-        if not raw.strip() or raw.lstrip().startswith("#"):
-            continue
-
-        indent = len(raw) - len(raw.lstrip())
-        line = raw.strip()
-
-        # Only treat top-level keys as authoritative.
-        if indent == 0 and ":" in line and not line.startswith("-"):
-            key, value = line.split(":", 1)
-            key = key.strip()
-            value = value.strip()
-            if value == "":
-                data[key] = []
-                current_key = key
-            else:
-                data[key] = value.strip("\"'")
-                current_key = None
-            continue
-
-        # Capture simple list items for the most recent top-level key.
-        if current_key and indent > 0 and line.startswith("-"):
-            item = line[1:].strip()
-            if item.startswith("name:"):
-                item = item.split(":", 1)[1].strip()
-            data[current_key].append(item.strip("\"'"))
-
-    return data
-
-
-def _front_matter(text: str) -> str | None:
-    lines = text.splitlines()
-    if not lines or lines[0].strip() != "---":
-        return None
-    for i in range(1, len(lines)):
-        if lines[i].strip() == "---":
-            return "\n".join(lines[1:i])
-    return None
-
-
-def _load_manifest(path: Path) -> dict[str, Any] | None:
-    try:
-        if path.suffix == ".json":
-            return json.loads(path.read_text(encoding="utf-8"))
-        if path.suffix in {".yaml", ".yml"}:
-            return _parse_yaml_minimal(path.read_text(encoding="utf-8"))
-        if path.suffix == ".md":
-            text = path.read_text(encoding="utf-8")
-            front = _front_matter(text)
-            if front is None:
-                return None
-            return _parse_yaml_minimal(front)
-    except Exception:
-        return None
-    return None
-
-
 def _record_from_dir(skill_dir: Path, source: str) -> SkillRecord:
-    manifest_path = _find_manifest(skill_dir)
-    manifest = _load_manifest(manifest_path) if manifest_path else None
+    manifest_path = find_manifest(skill_dir)
+    manifest = load_manifest(manifest_path) if manifest_path else None
 
     name = (manifest or {}).get("name") or skill_dir.name
     version = (manifest or {}).get("version")

@@ -42,6 +42,7 @@ if str(_tools_dir) not in sys.path:
 
 from path_utils import normalize_home_path, resolve_codex_home
 from resource_resolver import find_resource
+from skillset_utils import find_skillset, load_skillset, parse_skillset_yaml  # noqa: F401
 
 # All supported agents for bulk installation
 ALL_AGENTS = ["codex", "claude", "gemini", "copilot"]
@@ -236,83 +237,16 @@ def _default_agent_global_dir(agent: str) -> Path:
     return Path.home() / f".{agent}" / "skills"
 
 
-def _parse_skillset_yaml(text: str) -> dict[str, Any]:
-    data: dict[str, Any] = {"extends": [], "skills": []}
-    current_section: str | None = None
-    last_skill: dict[str, Any] | None = None
-
-    for raw in text.splitlines():
-        if not raw.strip() or raw.lstrip().startswith("#"):
-            continue
-        indent = len(raw) - len(raw.lstrip())
-        line = raw.strip()
-
-        if indent == 0 and line.startswith("name:"):
-            data["name"] = line.split(":", 1)[1].strip().strip("\"'")
-            current_section = None
-            continue
-        if indent == 0 and line.startswith("description:"):
-            data["description"] = line.split(":", 1)[1].strip().strip("\"'")
-            current_section = None
-            continue
-        if indent == 0 and line.startswith("extends:"):
-            current_section = "extends"
-            continue
-        if indent == 0 and line.startswith("skills:"):
-            current_section = "skills"
-            continue
-
-        if current_section == "extends" and line.startswith("-"):
-            item = line[1:].strip().strip("\"'")
-            data["extends"].append(item)
-            continue
-
-        if current_section == "skills" and line.startswith("-"):
-            item = line[1:].strip()
-            skill: dict[str, Any] = {}
-            if item.startswith("name:"):
-                skill["name"] = item.split(":", 1)[1].strip().strip("\"'")
-            data["skills"].append(skill)
-            last_skill = skill
-            continue
-
-        if current_section == "skills" and indent > 0 and ":" in line and last_skill is not None:
-            key, value = line.split(":", 1)
-            last_skill[key.strip()] = value.strip().strip("\"'")
-
-    return data
-
-
-def _load_skillset(path: Path) -> dict[str, Any] | None:
-    try:
-        if path.suffix == ".json":
-            return json.loads(path.read_text(encoding="utf-8"))
-        if path.suffix in {".yaml", ".yml"}:
-            return _parse_skillset_yaml(path.read_text(encoding="utf-8"))
-    except Exception:
-        return None
-    return None
-
-
-def _find_skillset(repo_root: Path, name: str) -> Path | None:
-    root = repo_root / "skillsets"
-    for ext in (".yaml", ".yml", ".json"):
-        path = root / f"{name}{ext}"
-        if path.exists():
-            return path
-    return None
-
-
 def _resolve_skillset(repo_root: Path, name: str) -> list[dict[str, Any]]:
     visited: set[str] = set()
     resolving: set[str] = set()
     resolved: dict[str, str | None] = {}
 
     def load_set(set_name: str) -> dict[str, Any]:
-        path = _find_skillset(repo_root, set_name)
+        path = find_skillset(repo_root / "skillsets", set_name)
         if not path:
             raise FileNotFoundError(f"Skillset '{set_name}' not found.")
-        data = _load_skillset(path)
+        data = load_skillset(path)
         if not data:
             raise ValueError(f"Failed to parse skillset: {path}")
         return data

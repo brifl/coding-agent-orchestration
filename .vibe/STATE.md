@@ -38,6 +38,13 @@ Define the `PipelineConfig` schema and the `agentctl plan` CLI entry point with 
 - 2026-02-18: Retrospective: [Stage 22.5] demo commands must be subprocess-portable. RETROSPECTIVE_DONE set.
 - 2026-02-18: Stage design for 23.0–23.4. Decisions: @dataclass PipelineConfig, Protocol-based PipelineProvider (injectable), config resolution via json files, resume via step output files. STAGE_DESIGNED set.
 - 2026-02-18: Maintenance cycle (docs, stage 23%3==2). Top gaps: concepts.md missing workflow flags [MAJOR], no agentctl_reference.md [MAJOR], stop conditions stale [MODERATE]. MAINTENANCE_CYCLE_DONE set.
+- 2026-02-19: continuous-refactor scan. Top candidates: (1) [MAJOR] skillset helpers duplicated across bootstrap.py/skillctl.py/skill_registry.py ~270 lines; (2) [MAJOR] `_validate_loop_report_schema` 56 branches — decompose into per-field validators; (3) [MAJOR] `_recommend_next` mixes IO with decision logic (untestable); (4) [MODERATE] pre-existing failing test test_issue_schema_language_uses_impact — fixed (assertion narrowed from "Severity " to regex Severity [A-Z]); (5) [MODERATE] `validate()` 38 branches. Fix R1 applied: test green, 141 passed.
+- 2026-02-19: R2 applied — extracted 7 shared helpers into `tools/skillset_utils.py`; removed ~270 lines of duplication from bootstrap.py, skillctl.py, skill_registry.py. 141 passed, 3 skipped.
+- 2026-02-19: R3 applied — decomposed `_validate_loop_report_schema` (56 branches) into 4 sub-validators: `_validate_acceptance_matrix_items`, `_validate_top_findings`, `_validate_state_transition`, `_validate_report_loop_result_mirror`. 141 passed.
+- 2026-02-19: R4 applied — extracted `_decide_role` pure function and `_gather_decision_context` IO shell from `_recommend_next`; `_decide_role` now testable without mocking IO. 141 passed.
+- 2026-02-19: Post-R4 scan — remaining candidates are MODERATE (`validate` CC=40, `_resolve_next_prompt_selection` CC=29) and MINOR (parsers, bootstrap steps). No MAJOR items remain. Continuous-refactor goal met.
+- 2026-02-19: R5 applied — decomposed `validate` (CC=40) into `_validate_state_section` + `_validate_plan_section` + `_validate_catalog_section`. validate now 14 lines. 141 passed.
+- 2026-02-19: Final scan — highest remaining: `_decide_role` CC=31 (inherent dispatch, testable), `_resolve_next_prompt_selection` CC=29 (structural integration), parsers/setup code all MINOR. No actionable MODERATE or MAJOR items. Stopping continuous-refactor.
 
 ## Workflow state
 
