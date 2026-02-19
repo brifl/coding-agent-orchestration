@@ -1,0 +1,178 @@
+"""Regression tests for continuous-refactor workflow override behavior."""
+from __future__ import annotations
+
+import sys
+from pathlib import Path
+
+# Add tools directory to path for imports.
+sys.path.insert(0, str(Path(__file__).parent.parent.parent / "tools"))
+
+from agentctl import StateInfo, _resolve_next_prompt_selection  # type: ignore
+
+
+def _write_state(repo_root: Path, body: str) -> None:
+    state_path = repo_root / ".vibe" / "STATE.md"
+    state_path.parent.mkdir(parents=True, exist_ok=True)
+    state_path.write_text(body, encoding="utf-8")
+
+
+def _write_plan(repo_root: Path, body: str) -> None:
+    plan_path = repo_root / ".vibe" / "PLAN.md"
+    plan_path.parent.mkdir(parents=True, exist_ok=True)
+    plan_path.write_text(body, encoding="utf-8")
+
+
+def _write_prompt_catalog(repo_root: Path, body: str) -> None:
+    prompts_dir = repo_root / "prompts"
+    prompts_dir.mkdir(parents=True, exist_ok=True)
+    (prompts_dir / "template_prompts.md").write_text(body, encoding="utf-8")
+
+
+def _write_workflow(repo_root: Path, name: str, body: str) -> None:
+    workflows_dir = repo_root / "workflows"
+    workflows_dir.mkdir(parents=True, exist_ok=True)
+    (workflows_dir / f"{name}.yaml").write_text(body, encoding="utf-8")
+
+
+def _seed_continuous_refactor_workflow(repo_root: Path) -> None:
+    _write_prompt_catalog(
+        repo_root,
+        """## prompt.refactor_scan - Refactor Scan
+```md
+scan
+```
+
+## prompt.refactor_execute - Refactor Execute
+```md
+execute
+```
+
+## prompt.refactor_verify - Refactor Verify
+```md
+verify
+```
+""",
+    )
+    _write_workflow(
+        repo_root,
+        "continuous-refactor",
+        """name: continuous-refactor
+description: test
+triggers:
+  - type: manual
+steps:
+  - prompt_id: prompt.refactor_scan
+  - prompt_id: prompt.refactor_execute
+  - prompt_id: prompt.refactor_verify
+""",
+    )
+
+
+def test_continuous_refactor_ignores_plan_exhaustion_stop(temp_repo: Path) -> None:
+    _write_state(
+        temp_repo,
+        """# STATE
+
+## Current focus
+- Stage: 1
+- Checkpoint: 1.0
+- Status: DONE
+""",
+    )
+    _write_plan(
+        temp_repo,
+        """# PLAN
+
+## Stage 1 — Demo
+### 1.0 — First
+""",
+    )
+    _seed_continuous_refactor_workflow(temp_repo)
+
+    state = StateInfo(stage="1", checkpoint="1.0", status="DONE", evidence_path=None, issues=())
+    role, prompt_id, _title, reason = _resolve_next_prompt_selection(state, temp_repo, "continuous-refactor")
+
+    assert role == "implement"
+    assert prompt_id == "prompt.refactor_scan"
+    assert "strict cycle" in reason
+
+
+def test_continuous_refactor_ignores_non_blocking_issue_routing(temp_repo: Path) -> None:
+    from agentctl import Issue  # type: ignore
+
+    _write_state(
+        temp_repo,
+        """# STATE
+
+## Current focus
+- Stage: 1
+- Checkpoint: 1.0
+- Status: IN_PROGRESS
+""",
+    )
+    _write_plan(
+        temp_repo,
+        """# PLAN
+
+## Stage 1 — Demo
+### 1.0 — First
+""",
+    )
+    _seed_continuous_refactor_workflow(temp_repo)
+
+    major_issue = Issue(
+        impact="MAJOR",
+        title="Needs cleanup",
+        line="- [ ] ISSUE-010: Needs cleanup",
+        issue_id="ISSUE-010",
+        owner="agent",
+        status="OPEN",
+        checked=False,
+        impact_specified=True,
+    )
+    state = StateInfo(stage="1", checkpoint="1.0", status="IN_PROGRESS", evidence_path=None, issues=(major_issue,))
+    role, prompt_id, _title, reason = _resolve_next_prompt_selection(state, temp_repo, "continuous-refactor")
+
+    assert role == "implement"
+    assert prompt_id == "prompt.refactor_scan"
+    assert "strict cycle" in reason
+
+
+def test_continuous_refactor_routes_blocker_to_triage(temp_repo: Path) -> None:
+    from agentctl import Issue  # type: ignore
+
+    _write_state(
+        temp_repo,
+        """# STATE
+
+## Current focus
+- Stage: 1
+- Checkpoint: 1.0
+- Status: IN_PROGRESS
+""",
+    )
+    _write_plan(
+        temp_repo,
+        """# PLAN
+
+## Stage 1 — Demo
+### 1.0 — First
+""",
+    )
+
+    blocker = Issue(
+        impact="BLOCKER",
+        title="Crashes on startup",
+        line="- [ ] ISSUE-011: Crashes on startup",
+        issue_id="ISSUE-011",
+        owner="agent",
+        status="OPEN",
+        checked=False,
+        impact_specified=True,
+    )
+    state = StateInfo(stage="1", checkpoint="1.0", status="IN_PROGRESS", evidence_path=None, issues=(blocker,))
+    role, prompt_id, _title, reason = _resolve_next_prompt_selection(state, temp_repo, "continuous-refactor")
+
+    assert role == "issues_triage"
+    assert prompt_id == "prompt.issues_triage"
+    assert "BLOCKER issue present" in reason

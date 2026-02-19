@@ -2730,6 +2730,39 @@ def _load_workflow_selector(repo_root: Path):
             raise RuntimeError(f"Failed to load workflow engine: {exc}") from exc
 
 
+def _continuous_refactor_blocking_decision(state: StateInfo) -> tuple[Role, str] | None:
+    """Return blocking override for continuous-refactor, if any.
+
+    continuous-refactor intentionally ignores normal checkpoint-plan state routing and
+    only yields to blocking states/issues.
+    """
+    if state.status == "BLOCKED":
+        return ("issues_triage", "Checkpoint status is BLOCKED.")
+
+    blocker_issues = [i for i in state.issues if i.impact == "BLOCKER"]
+    if blocker_issues:
+        all_human_owned = all(i.owner and i.owner.lower() == "human" for i in blocker_issues)
+        if all_human_owned:
+            titles = "; ".join(i.issue_id or i.title for i in blocker_issues)
+            return (
+                "stop",
+                f"All BLOCKER issues are owner: human — agent cannot proceed unilaterally. "
+                f"Resolve: {titles}",
+            )
+        return ("issues_triage", "BLOCKER issue present.")
+
+    decision_issues = [i for i in state.issues if i.status == "DECISION_REQUIRED"]
+    if decision_issues:
+        titles = "; ".join(i.issue_id or i.title for i in decision_issues)
+        return (
+            "stop",
+            f"Human decision required before proceeding. "
+            f"Resolve DECISION_REQUIRED issue(s): {titles}",
+        )
+
+    return None
+
+
 def _resolve_next_prompt_selection(
     state: StateInfo,
     repo_root: Path,
@@ -2739,11 +2772,22 @@ def _resolve_next_prompt_selection(
     base_prompt_id = prompt_override or PROMPT_MAP[base_role]["id"]
     base_prompt_title = PROMPT_MAP[base_role]["title"]
 
-    if not workflow or base_role == "stop":
+    if not workflow:
+        return (base_role, base_prompt_id, base_prompt_title, base_reason)
+
+    if workflow == "continuous-refactor":
+        blocking_decision = _continuous_refactor_blocking_decision(state)
+        if blocking_decision is not None:
+            role, reason = blocking_decision
+            return (role, PROMPT_MAP[role]["id"], PROMPT_MAP[role]["title"], reason)
+    elif base_role == "stop":
         return (base_role, base_prompt_id, base_prompt_title, base_reason)
 
     strict_cycle_workflow = workflow in {"continuous-refactor", "refactor-cycle"}
-    strict_cycle_allowed = base_role in {"implement", "review"}
+    strict_cycle_allowed = base_role in {"implement", "review"} or workflow == "continuous-refactor"
+    reason_prefix = base_reason
+    if workflow == "continuous-refactor":
+        reason_prefix = "Continuous-refactor override active (plan state ignored)."
 
     if workflow == "continuous-test-generation" and base_role == "implement":
         should_stop, stop_reason = _continuous_test_generation_should_stop(repo_root)
@@ -2790,11 +2834,19 @@ def _resolve_next_prompt_selection(
         os.chdir(current_cwd)
 
     if workflow == "continuous-refactor":
+        allowed_refactor_prompts = {
+            "prompt.refactor_scan",
+            "prompt.refactor_execute",
+            "prompt.refactor_verify",
+        }
+        if workflow_prompt_id and workflow_prompt_id not in allowed_refactor_prompts:
+            raise RuntimeError(
+                f"Workflow {workflow} selected unsupported prompt id '{workflow_prompt_id}'. "
+                "continuous-refactor only supports prompt.refactor_scan, prompt.refactor_execute, "
+                "and prompt.refactor_verify."
+            )
         should_stop, stop_reason = _continuous_refactor_should_stop(repo_root)
-        if should_stop and (
-            base_role == "implement"
-            or workflow_prompt_id == "prompt.refactor_execute"
-        ):
+        if should_stop and workflow_prompt_id == "prompt.refactor_execute":
             return (
                 "stop",
                 "stop",
@@ -2850,14 +2902,14 @@ def _resolve_next_prompt_selection(
                 base_role,
                 base_prompt_id,
                 base_prompt_title,
-                f"{base_reason} Workflow {workflow} selected {workflow_prompt_id}, "
+                f"{reason_prefix} Workflow {workflow} selected {workflow_prompt_id}, "
                 f"but dispatcher priority role is {base_role}; using dispatcher role {base_role}.",
             )
         return (
             workflow_role,
             workflow_prompt_id,
             workflow_title,
-            f"{base_reason} Workflow {workflow} selected {workflow_prompt_id} (strict cycle).",
+            f"{reason_prefix} Workflow {workflow} selected {workflow_prompt_id} (strict cycle).",
         )
 
     if workflow_role != base_role:
