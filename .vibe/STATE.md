@@ -45,6 +45,8 @@ Full test suite for dependency graph features and end-user documentation.
 - 2026-02-19: 25.4 review PASS — all 3 ACs met. Auto-advanced to 25.5 NOT_STARTED.
 - 2026-02-19: 25.5 implemented — added `tests/workflow/test_checkpoint_dag.py` (11 tests), authored `docs/checkpoint_dependencies.md` with diamond example, updated `docs/concepts.md`, and normalized 25.5 demo commands to `python3` + `--capture=sys` for smoke-gate parity.
 - 2026-02-19: 25.5 review PASS — acceptance met with adversarial probes; no follow-up checkpoint in PLAN order, so checkpoint remains 25.5 and status set to DONE (plan exhausted).
+- 2026-02-19: continuous-refactor review loop — verified working-tree refactor diff is line-ending-only (`git diff --ignore-cr-at-eol` empty); workflow regression suite (57 tests) passed; skill-packaged strict validate still fails on known ISSUE-255 while repo-local strict validate passes.
+- 2026-02-19: continuous-refactor scan loop — generated 10 refactor candidates across maintainability/safety/testability families; all surfaced as [MINOR] cleanup opportunities (exception narrowing, duplication cleanup, docs/prompt catalog line-ending normalization) with no justified [MAJOR]/[MODERATE] candidate in current DONE-state scope.
 
 ## Workflow state
 
@@ -63,6 +65,12 @@ Full test suite for dependency graph features and end-user documentation.
 - Adversarial probe 2: `python3 tools/agentctl.py --repo-root . --format json next --parallel 2` -> `recommended_roles` returns two checkpoints.
 - Review transition note: no checkpoint exists after 25.5 in PLAN order; plan exhausted with checkpoint 25.5 marked DONE in STATE.
 - `python3 .codex/skills/vibe-loop/scripts/agentctl.py --repo-root . validate --strict` -> fails on pre-existing `continuous-documentation.yaml` prompt-role mappings; repo-local `tools/agentctl.py` is used for checkpoint acceptance.
+- `git diff --ignore-cr-at-eol --stat` -> no output (line-ending-only diff across 12 files).
+- `python3 -m pytest tests/workflow/test_issue_schema_validation.py tests/workflow/test_plan_pipeline.py tests/workflow/test_skip_marker.py tests/workflow/test_stage_ordering.py -v --capture=sys` -> 57 passed.
+- `python3 .codex/skills/vibe-loop/scripts/agentctl.py --repo-root . validate --strict` -> still fails on known ISSUE-255 prompt-role mapping mismatch.
+- `python3 tools/agentctl.py --repo-root . validate --strict` -> `ok: True` (no errors).
+- `rg -n "TODO|FIXME|type: ignore|except Exception|pass  #|pragma: no cover" tools tests docs -S` -> scan hotspots found (for example `tools/skillset_utils.py:71`, `tools/skillset_utils.py:151`, `tools/plan_pipeline.py:164`, `tools/agentctl.py:2722`).
+- `python3 .codex/skills/vibe-loop/scripts/agentctl.py --repo-root . validate --strict` (scan loop rerun) -> unchanged failure on known ISSUE-255 mapping mismatch.
 
 ## Active issues
 
