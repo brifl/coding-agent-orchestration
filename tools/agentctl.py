@@ -143,6 +143,23 @@ class StateInfo:
 
 
 @dataclass(frozen=True)
+class MinorIdea:
+    idea_id: int
+    impact: str
+    title: str
+    evidence: str
+    action: str
+
+
+@dataclass(frozen=True)
+class ContinuousMinorStopContext:
+    workflow: str
+    reason: str
+    ideas: tuple[MinorIdea, ...]
+    ideas_digest: str
+
+
+@dataclass(frozen=True)
 class PlanCheck:
     found_checkpoint: bool
     has_objective: bool
@@ -1014,6 +1031,10 @@ def _loop_result_path(repo_root: Path) -> Path:
     return repo_root / ".vibe" / "LOOP_RESULT.json"
 
 
+def _continuous_approval_path(repo_root: Path) -> Path:
+    return repo_root / ".vibe" / "CONTINUOUS_APPROVALS.json"
+
+
 def _state_sha256(repo_root: Path) -> str:
     path = _state_path(repo_root)
     text = _read_text(path)
@@ -1062,7 +1083,14 @@ def _bootstrap_loop_result_record(repo_root: Path, state: StateInfo) -> None:
     record_path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 
 
-def _write_stop_loop_result(repo_root: Path, state: StateInfo, reason: str) -> None:
+def _write_stop_loop_result(
+    repo_root: Path,
+    state: StateInfo,
+    reason: str,
+    *,
+    report: dict[str, Any] | None = None,
+    extra_fields: dict[str, Any] | None = None,
+) -> None:
     """Persist a stop sentinel to LOOP_RESULT.json when the dispatcher halts."""
     path = _loop_result_path(repo_root)
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -1078,6 +1106,12 @@ def _write_stop_loop_result(repo_root: Path, state: StateInfo, reason: str) -> N
         "state_sha256": _state_sha256(repo_root),
         "recorded_at": datetime.now(timezone.utc).isoformat(),
     }
+    if report is not None:
+        payload["report"] = report
+    if isinstance(extra_fields, dict):
+        for key, value in extra_fields.items():
+            if isinstance(key, str) and key and key not in payload:
+                payload[key] = value
     path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 
 
@@ -2674,10 +2708,21 @@ CONTINUOUS_WORKFLOW_ALLOWED_PROMPTS: dict[str, set[str]] = {
     },
 }
 
+CONTINUOUS_THRESHOLD_STOP_REASONS: dict[str, str] = {
+    "continuous-refactor": "Workflow continuous-refactor found only [MINOR] refactor ideas in the latest LOOP_RESULT report; stopping.",
+    "continuous-test-generation": "Workflow continuous-test-generation found only [MINOR] test gaps in the latest gap analysis report; stopping.",
+    "continuous-documentation": "Workflow continuous-documentation found only [MINOR] documentation findings in the latest LOOP_RESULT report; stopping.",
+}
+
+CONTINUOUS_APPROVAL_EXECUTE_PROMPTS: dict[str, set[str]] = {
+    "continuous-refactor": {"prompt.refactor_execute"},
+    "continuous-test-generation": {"prompt.test_generation"},
+    "continuous-documentation": {"prompt.docs_gap_fix", "prompt.docs_refactor_fix"},
+}
+
 
 def _role_for_prompt_id(prompt_id: str) -> Role | None:
     return PROMPT_ROLE_MAP.get(prompt_id)
-
 
 def _extract_idea_impact_tags(value: Any) -> set[str]:
     if not isinstance(value, str) or not value:
@@ -2685,98 +2730,260 @@ def _extract_idea_impact_tags(value: Any) -> set[str]:
     return {match.group(1).upper() for match in IDEA_IMPACT_TAG_RE.finditer(value)}
 
 
-def _idea_impact_tags_from_loop_result(payload: dict[str, Any]) -> set[str]:
+def _top_findings_from_loop_result(payload: dict[str, Any]) -> list[dict[str, Any]]:
     report = payload.get("report")
     if not isinstance(report, dict):
-        return set()
+        return []
     top_findings = report.get("top_findings")
     if not isinstance(top_findings, list):
-        return set()
+        return []
+    return [finding for finding in top_findings if isinstance(finding, dict)]
+
+
+def _idea_impact_tags_from_loop_result(payload: dict[str, Any]) -> set[str]:
     observed_tags: set[str] = set()
-    for finding in top_findings:
-        if not isinstance(finding, dict):
-            continue
+    for finding in _top_findings_from_loop_result(payload):
         for key in ("title", "evidence", "action"):
             observed_tags.update(_extract_idea_impact_tags(finding.get(key)))
     return observed_tags
 
 
-def _continuous_refactor_should_stop(repo_root: Path) -> tuple[bool, str | None]:
+def _minor_ideas_from_loop_result(payload: dict[str, Any]) -> tuple[MinorIdea, ...]:
+    ideas: list[MinorIdea] = []
+    for idx, finding in enumerate(_top_findings_from_loop_result(payload), start=1):
+        ideas.append(
+            MinorIdea(
+                idea_id=idx,
+                impact=str(finding.get("impact", "MINOR")).strip().upper() or "MINOR",
+                title=str(finding.get("title", "")).strip(),
+                evidence=str(finding.get("evidence", "")).strip(),
+                action=str(finding.get("action", "")).strip(),
+            )
+        )
+    return tuple(ideas)
+
+
+def _minor_idea_digest(ideas: tuple[MinorIdea, ...]) -> str:
+    serial = [
+        {
+            "impact": idea.impact,
+            "title": idea.title,
+            "evidence": idea.evidence,
+            "action": idea.action,
+        }
+        for idea in ideas
+    ]
+    blob = json.dumps(serial, ensure_ascii=False, separators=(",", ":"), sort_keys=True)
+    return hashlib.sha256(blob.encode("utf-8")).hexdigest()
+
+
+def _minor_ideas_to_payload(
+    ideas: tuple[MinorIdea, ...],
+    *,
+    selected_ids: set[int] | None = None,
+) -> list[dict[str, Any]]:
+    selected = selected_ids or set()
+    return [
+        {
+            "id": idea.idea_id,
+            "impact": idea.impact,
+            "title": idea.title,
+            "evidence": idea.evidence,
+            "action": idea.action,
+            "selected": idea.idea_id in selected,
+        }
+        for idea in ideas
+    ]
+
+
+def _continuous_stop_gate_applies(workflow: str, prompt_id: str | None) -> bool:
+    if workflow == "continuous-refactor":
+        return prompt_id in CONTINUOUS_APPROVAL_EXECUTE_PROMPTS.get(workflow, set())
+    return True
+
+
+def _continuous_workflow_minor_stop_context(
+    repo_root: Path,
+    workflow: str,
+) -> ContinuousMinorStopContext | None:
+    if workflow not in CONTINUOUS_THRESHOLD_STOP_REASONS:
+        return None
+
     payload, error = _load_loop_result_record(repo_root)
     if error or payload is None:
-        return (False, None)
+        return None
 
     observed_tags = _idea_impact_tags_from_loop_result(payload)
     if not observed_tags:
-        return (False, None)
-
+        return None
     if observed_tags.intersection({"MAJOR", "MODERATE"}):
-        return (False, None)
-
+        return None
     if not observed_tags.issubset({"MINOR"}):
-        return (False, None)
+        return None
 
-    return (
-        True,
-        "Workflow continuous-refactor found only [MINOR] refactor ideas in the latest LOOP_RESULT report; stopping.",
+    if workflow == "continuous-test-generation":
+        loop_name = str(payload.get("loop", "")).strip().lower()
+        if loop_name and loop_name not in {"design", "implement", "stop"}:
+            return None
+
+    ideas = _minor_ideas_from_loop_result(payload)
+    if not ideas:
+        return None
+
+    return ContinuousMinorStopContext(
+        workflow=workflow,
+        reason=CONTINUOUS_THRESHOLD_STOP_REASONS[workflow],
+        ideas=ideas,
+        ideas_digest=_minor_idea_digest(ideas),
     )
+
+
+def _load_continuous_approvals(repo_root: Path) -> dict[str, Any]:
+    path = _continuous_approval_path(repo_root)
+    if not path.exists():
+        return {"approvals": {}}
+    try:
+        raw = json.loads(_read_text(path))
+    except (json.JSONDecodeError, OSError):
+        return {"approvals": {}}
+    if not isinstance(raw, dict):
+        return {"approvals": {}}
+    approvals = raw.get("approvals")
+    if not isinstance(approvals, dict):
+        raw["approvals"] = {}
+    return raw
+
+
+def _save_continuous_approvals(repo_root: Path, payload: dict[str, Any]) -> None:
+    path = _continuous_approval_path(repo_root)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+
+
+def _normalize_approved_ids(raw: Any, max_id: int) -> list[int]:
+    if not isinstance(raw, list):
+        return []
+    cleaned: list[int] = []
+    for item in raw:
+        if isinstance(item, bool):
+            continue
+        if isinstance(item, int):
+            value = item
+        elif isinstance(item, str) and item.strip().isdigit():
+            value = int(item.strip())
+        else:
+            continue
+        if 1 <= value <= max_id and value not in cleaned:
+            cleaned.append(value)
+    return cleaned
+
+
+def _lookup_matching_continuous_approval(
+    repo_root: Path,
+    workflow: str,
+    context: ContinuousMinorStopContext,
+) -> list[int]:
+    payload = _load_continuous_approvals(repo_root)
+    approvals_raw = payload.get("approvals")
+    approvals = approvals_raw if isinstance(approvals_raw, dict) else {}
+    entry = approvals.get(workflow)
+    if not isinstance(entry, dict):
+        return []
+
+    expected_state_hash = _state_sha256(repo_root)
+    if str(entry.get("state_sha256", "")).strip() != expected_state_hash:
+        approvals.pop(workflow, None)
+        payload["approvals"] = approvals
+        _save_continuous_approvals(repo_root, payload)
+        return []
+
+    if str(entry.get("ideas_digest", "")).strip() != context.ideas_digest:
+        approvals.pop(workflow, None)
+        payload["approvals"] = approvals
+        _save_continuous_approvals(repo_root, payload)
+        return []
+
+    approved_ids = _normalize_approved_ids(entry.get("approved_ids"), len(context.ideas))
+    if not approved_ids:
+        approvals.pop(workflow, None)
+        payload["approvals"] = approvals
+        _save_continuous_approvals(repo_root, payload)
+        return []
+    return approved_ids
+
+
+def _store_continuous_approval(
+    repo_root: Path,
+    workflow: str,
+    context: ContinuousMinorStopContext,
+    approved_ids: list[int],
+) -> None:
+    payload = _load_continuous_approvals(repo_root)
+    approvals_raw = payload.get("approvals")
+    approvals = approvals_raw if isinstance(approvals_raw, dict) else {}
+    approvals[workflow] = {
+        "approved_ids": approved_ids,
+        "ideas_digest": context.ideas_digest,
+        "recorded_at": datetime.now(timezone.utc).isoformat(),
+        "state_sha256": _state_sha256(repo_root),
+    }
+    payload["approvals"] = approvals
+    _save_continuous_approvals(repo_root, payload)
+
+
+def _clear_continuous_approval(repo_root: Path, workflow: str) -> None:
+    payload = _load_continuous_approvals(repo_root)
+    approvals_raw = payload.get("approvals")
+    approvals = approvals_raw if isinstance(approvals_raw, dict) else {}
+    if workflow not in approvals:
+        return
+    approvals.pop(workflow, None)
+    payload["approvals"] = approvals
+    _save_continuous_approvals(repo_root, payload)
+
+
+def _parse_approval_ids_arg(raw: str) -> list[int]:
+    tokens = [token for token in re.split(r"[,\s]+", raw.strip()) if token]
+    if not tokens:
+        raise ValueError("No idea IDs provided.")
+    approved_ids: list[int] = []
+    for token in tokens:
+        if not token.isdigit():
+            raise ValueError(f"Invalid idea id '{token}'; use positive integers.")
+        value = int(token)
+        if value < 1:
+            raise ValueError(f"Invalid idea id '{token}'; use positive integers.")
+        if value not in approved_ids:
+            approved_ids.append(value)
+    return approved_ids
+
+
+def _continuous_refactor_should_stop(repo_root: Path) -> tuple[bool, str | None]:
+    context = _continuous_workflow_minor_stop_context(repo_root, "continuous-refactor")
+    if context is None:
+        return (False, None)
+    return (True, context.reason)
 
 
 def _continuous_test_generation_should_stop(repo_root: Path) -> tuple[bool, str | None]:
-    payload, error = _load_loop_result_record(repo_root)
-    if error or payload is None:
+    context = _continuous_workflow_minor_stop_context(repo_root, "continuous-test-generation")
+    if context is None:
         return (False, None)
-
-    loop_name = str(payload.get("loop", "")).strip().lower()
-    # Stop decision for this workflow is based on test gap analysis output.
-    if loop_name and loop_name not in {"design", "implement"}:
-        return (False, None)
-
-    observed_tags = _idea_impact_tags_from_loop_result(payload)
-    if not observed_tags:
-        return (False, None)
-
-    if observed_tags.intersection({"MAJOR", "MODERATE"}):
-        return (False, None)
-
-    if not observed_tags.issubset({"MINOR"}):
-        return (False, None)
-
-    return (
-        True,
-        "Workflow continuous-test-generation found only [MINOR] test gaps in the latest gap analysis report; stopping.",
-    )
+    return (True, context.reason)
 
 
 def _continuous_documentation_should_stop(repo_root: Path) -> tuple[bool, str | None]:
-    payload, error = _load_loop_result_record(repo_root)
-    if error or payload is None:
+    context = _continuous_workflow_minor_stop_context(repo_root, "continuous-documentation")
+    if context is None:
         return (False, None)
-
-    observed_tags = _idea_impact_tags_from_loop_result(payload)
-    if not observed_tags:
-        return (False, None)
-
-    if observed_tags.intersection({"MAJOR", "MODERATE"}):
-        return (False, None)
-
-    if not observed_tags.issubset({"MINOR"}):
-        return (False, None)
-
-    return (
-        True,
-        "Workflow continuous-documentation found only [MINOR] documentation findings in the latest LOOP_RESULT report; stopping.",
-    )
+    return (True, context.reason)
 
 
 def _continuous_workflow_should_stop(repo_root: Path, workflow: str) -> tuple[bool, str | None]:
-    if workflow == "continuous-refactor":
-        return _continuous_refactor_should_stop(repo_root)
-    if workflow == "continuous-test-generation":
-        return _continuous_test_generation_should_stop(repo_root)
-    if workflow == "continuous-documentation":
-        return _continuous_documentation_should_stop(repo_root)
-    return (False, None)
+    context = _continuous_workflow_minor_stop_context(repo_root, workflow)
+    if context is None:
+        return (False, None)
+    return (True, context.reason)
 
 
 def _load_workflow_selector(repo_root: Path):
@@ -2900,16 +3107,6 @@ def _resolve_next_prompt_selection(
                 f"Workflow {workflow} selected unsupported prompt id '{workflow_prompt_id}'. "
                 f"{workflow} only supports {allowed_list}."
             )
-        should_stop, stop_reason = _continuous_workflow_should_stop(repo_root, workflow)
-        if should_stop and (
-            workflow != "continuous-refactor" or workflow_prompt_id == "prompt.refactor_execute"
-        ):
-            return (
-                "stop",
-                "stop",
-                f"Stop ({workflow} threshold reached)",
-                stop_reason or f"Workflow {workflow} threshold reached.",
-            )
 
     if not workflow_prompt_id:
         if raw_workflow_prompt_id:
@@ -2952,6 +3149,25 @@ def _resolve_next_prompt_selection(
         )
 
     workflow_title = catalog_index.get(workflow_prompt_id, base_prompt_title)
+
+    if workflow in CONTINUOUS_WORKFLOW_ALLOWED_PROMPTS:
+        stop_context = _continuous_workflow_minor_stop_context(repo_root, workflow)
+        if stop_context is not None and _continuous_stop_gate_applies(workflow, workflow_prompt_id):
+            approved_ids = _lookup_matching_continuous_approval(repo_root, workflow, stop_context)
+            if not approved_ids:
+                return (
+                    "stop",
+                    "stop",
+                    f"Stop ({workflow} threshold reached)",
+                    stop_context.reason,
+                )
+            approved_label = ",".join(str(value) for value in approved_ids)
+            return (
+                workflow_role,
+                workflow_prompt_id,
+                workflow_title,
+                f"{reason_prefix} Workflow {workflow} selected {workflow_prompt_id} (strict cycle, approved minor ideas: {approved_label}).",
+            )
 
     if strict_cycle_workflow:
         if not strict_cycle_allowed:
@@ -3129,8 +3345,53 @@ def cmd_next(args: argparse.Namespace) -> int:
         print(_render_output(payload, args.format))
         return 2
 
+    workflow_name = str(args.workflow or "").strip()
+    continuous_stop_context: ContinuousMinorStopContext | None = None
+    approved_ids_applied: list[int] = []
+    if workflow_name in CONTINUOUS_OVERRIDE_WORKFLOWS:
+        continuous_stop_context = _continuous_workflow_minor_stop_context(repo_root, workflow_name)
+        if (
+            role != "stop"
+            and continuous_stop_context is not None
+            and _continuous_stop_gate_applies(workflow_name, prompt_id)
+        ):
+            approved_ids_applied = _lookup_matching_continuous_approval(
+                repo_root,
+                workflow_name,
+                continuous_stop_context,
+            )
+
+    stop_has_minor_ideas = (
+        role == "stop"
+        and continuous_stop_context is not None
+        and reason == continuous_stop_context.reason
+    )
+
     if role == "stop":
-        _write_stop_loop_result(repo_root, state, reason)
+        if stop_has_minor_ideas and continuous_stop_context is not None:
+            report = {
+                "top_findings": [
+                    {
+                        "impact": idea.impact,
+                        "title": idea.title,
+                        "evidence": idea.evidence,
+                        "action": idea.action,
+                    }
+                    for idea in continuous_stop_context.ideas
+                ]
+            }
+            _write_stop_loop_result(
+                repo_root,
+                state,
+                reason,
+                report=report,
+                extra_fields={
+                    "ideas_digest": continuous_stop_context.ideas_digest,
+                    "workflow": workflow_name,
+                },
+            )
+        else:
+            _write_stop_loop_result(repo_root, state, reason)
 
     payload: dict[str, Any] = {
         "recommended_role": role,
@@ -3157,6 +3418,25 @@ def cmd_next(args: argparse.Namespace) -> int:
             }
             for r in gate_results
         ]
+
+    if stop_has_minor_ideas and continuous_stop_context is not None:
+        payload["approval_required"] = True
+        payload["minor_ideas"] = _minor_ideas_to_payload(continuous_stop_context.ideas)
+        payload["minor_ideas_digest"] = continuous_stop_context.ideas_digest
+        payload["approval_command"] = (
+            "python3 tools/agentctl.py --repo-root . --format json "
+            f"workflow-approve --workflow {workflow_name} --ids 1"
+        )
+
+    if approved_ids_applied and continuous_stop_context is not None:
+        selected = set(approved_ids_applied)
+        payload["approval_applied"] = True
+        payload["approved_minor_idea_ids"] = approved_ids_applied
+        payload["approved_minor_ideas"] = _minor_ideas_to_payload(
+            continuous_stop_context.ideas,
+            selected_ids=selected,
+        )
+        _clear_continuous_approval(repo_root, workflow_name)
 
     # Parallel dispatch: add recommended_roles list (always present; N=1 is backward compat)
     if args.workflow in CONTINUOUS_OVERRIDE_WORKFLOWS:
@@ -3246,6 +3526,74 @@ def cmd_loop_result(args: argparse.Namespace) -> int:
 
     output = {"ok": True, "loop_result_path": str(path), "recorded": normalized}
     print(_render_output(output, args.format))
+    return 0
+
+
+def cmd_workflow_approve(args: argparse.Namespace) -> int:
+    repo_root = Path(args.repo_root)
+    workflow = str(args.workflow).strip()
+
+    if workflow not in CONTINUOUS_OVERRIDE_WORKFLOWS:
+        payload = {
+            "ok": False,
+            "error": (
+                f"Unsupported workflow '{workflow}'. "
+                f"Expected one of: {', '.join(sorted(CONTINUOUS_OVERRIDE_WORKFLOWS))}."
+            ),
+        }
+        print(_render_output(payload, args.format))
+        return 2
+
+    stop_context = _continuous_workflow_minor_stop_context(repo_root, workflow)
+    if stop_context is None:
+        payload = {
+            "ok": False,
+            "error": (
+                f"No pending [MINOR]-only findings available for workflow '{workflow}'. "
+                "Run the workflow until it halts on a minor-only threshold first."
+            ),
+        }
+        print(_render_output(payload, args.format))
+        return 2
+
+    try:
+        approved_ids = _parse_approval_ids_arg(args.ids)
+    except ValueError as exc:
+        payload = {"ok": False, "error": str(exc)}
+        print(_render_output(payload, args.format))
+        return 2
+
+    max_id = len(stop_context.ideas)
+    invalid = [value for value in approved_ids if value > max_id]
+    if invalid:
+        payload = {
+            "ok": False,
+            "error": (
+                f"Approved ids out of range: {invalid}. "
+                f"Valid idea ids are 1..{max_id}."
+            ),
+            "minor_ideas": _minor_ideas_to_payload(stop_context.ideas),
+        }
+        print(_render_output(payload, args.format))
+        return 2
+
+    _store_continuous_approval(repo_root, workflow, stop_context, approved_ids)
+    selected = set(approved_ids)
+    payload = {
+        "ok": True,
+        "workflow": workflow,
+        "approved_minor_idea_ids": approved_ids,
+        "approved_minor_ideas": _minor_ideas_to_payload(
+            stop_context.ideas,
+            selected_ids=selected,
+        ),
+        "minor_ideas_digest": stop_context.ideas_digest,
+        "next_step": (
+            "Run agentctl next with the same --workflow to continue "
+            "using the approved minor ideas."
+        ),
+    }
+    print(_render_output(payload, args.format))
     return 0
 
 
@@ -3729,6 +4077,23 @@ def build_parser() -> argparse.ArgumentParser:
     src.add_argument("--json-payload", help="Raw LOOP_RESULT JSON object string.")
     src.add_argument("--stdin", action="store_true", help="Read LOOP_RESULT payload from stdin.")
     plr.set_defaults(fn=cmd_loop_result)
+
+    pwa = sub.add_parser(
+        "workflow-approve",
+        help="Approve numbered minor findings for a continuous workflow threshold stop.",
+    )
+    pwa.add_argument(
+        "--workflow",
+        required=True,
+        choices=tuple(sorted(CONTINUOUS_OVERRIDE_WORKFLOWS)),
+        help="Target continuous workflow name.",
+    )
+    pwa.add_argument(
+        "--ids",
+        required=True,
+        help="Comma/space-separated idea ids (for example: 1,3,5).",
+    )
+    pwa.set_defaults(fn=cmd_workflow_approve)
 
     pc = sub.add_parser("add-checkpoint", help="Insert a checkpoint from a template into PLAN.md.")
     pc.add_argument("--template", required=True, help="Template name (file stem).")

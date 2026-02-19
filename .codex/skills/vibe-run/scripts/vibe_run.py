@@ -242,6 +242,84 @@ def _resolve_catalog_path(repo_root: Path, decision: dict, user_catalog: str) ->
     return _skills_root_from_this_script() / "vibe-prompts" / "resources" / "template_prompts.md"
 
 
+def _record_workflow_approval(
+    agentctl_path: Path,
+    repo_root: Path,
+    workflow: str,
+    approved_ids: str,
+) -> None:
+    cmd = [
+        sys.executable,
+        str(agentctl_path),
+        "--repo-root",
+        str(repo_root),
+        "--format",
+        "json",
+        "workflow-approve",
+        "--workflow",
+        workflow,
+        "--ids",
+        approved_ids,
+    ]
+    p = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+    if p.returncode != 0:
+        raise RuntimeError(p.stderr.strip() or p.stdout.strip() or "workflow-approve command failed.")
+
+
+def _try_approval_continue(
+    decision: dict,
+    *,
+    agentctl_path: Path,
+    repo_root: Path,
+    non_interactive: bool,
+    executor_cmd: str,
+) -> bool:
+    if not decision.get("approval_required"):
+        return False
+    workflow = str(decision.get("workflow") or "").strip()
+    if not workflow:
+        return False
+    ideas = decision.get("minor_ideas")
+    if not isinstance(ideas, list) or not ideas:
+        return False
+
+    print("Minor-only threshold reached. Candidate ideas:", file=sys.stderr)
+    for item in ideas:
+        if not isinstance(item, dict):
+            continue
+        idea_id = item.get("id")
+        impact = str(item.get("impact", "")).strip()
+        title = str(item.get("title", "")).strip()
+        print(f"  {idea_id}. [{impact}] {title}", file=sys.stderr)
+
+    if non_interactive or executor_cmd:
+        print(
+            "NOTE: approval-required stop in non-interactive mode; exiting. "
+            "Run agentctl workflow-approve manually to continue.",
+            file=sys.stderr,
+        )
+        return False
+
+    while True:
+        try:
+            approved = input(
+                "Approve idea numbers to execute (for example: 1,3,5). Press Enter to stop: "
+            ).strip()
+        except EOFError:
+            return False
+        except KeyboardInterrupt:
+            print("", file=sys.stderr)
+            return False
+        if not approved:
+            return False
+        try:
+            _record_workflow_approval(agentctl_path, repo_root, workflow, approved)
+            print(f"NOTE: recorded approval for workflow {workflow}: {approved}", file=sys.stderr)
+            return True
+        except RuntimeError as exc:
+            print(f"ERROR: {exc}", file=sys.stderr)
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(prog="vibe_run.py")
     ap.add_argument("--repo-root", default=".", help="Target repo root (default: current directory)")
@@ -304,6 +382,15 @@ def main() -> int:
 
         prompt_id = decision.get("recommended_prompt_id")
         if decision.get("recommended_role") == "stop" or prompt_id == "stop":
+            should_continue = _try_approval_continue(
+                decision,
+                agentctl_path=agentctl_path,
+                repo_root=repo_root,
+                non_interactive=bool(args.non_interactive),
+                executor_cmd=str(args.executor or ""),
+            )
+            if should_continue:
+                continue
             return 0
         if not isinstance(prompt_id, str) or not prompt_id:
             print(f"ERROR: missing recommended_prompt_id in decision: {decision}", file=sys.stderr)
