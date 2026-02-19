@@ -13,7 +13,7 @@
 
 - Stage: 25
 - Checkpoint: 25.5
-- Status: IN_REVIEW  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
+- Status: DONE  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
 
 ## Objective (current checkpoint)
 
@@ -44,6 +44,7 @@ Full test suite for dependency graph features and end-user documentation.
 - 2026-02-19: 25.4 implemented — `_get_ready_checkpoints`; `--parallel N` flag on `next`; `recommended_roles` always in output; 206 tests pass.
 - 2026-02-19: 25.4 review PASS — all 3 ACs met. Auto-advanced to 25.5 NOT_STARTED.
 - 2026-02-19: 25.5 implemented — added `tests/workflow/test_checkpoint_dag.py` (11 tests), authored `docs/checkpoint_dependencies.md` with diamond example, updated `docs/concepts.md`, and normalized 25.5 demo commands to `python3` + `--capture=sys` for smoke-gate parity.
+- 2026-02-19: 25.5 review PASS — acceptance met with adversarial probes; no follow-up checkpoint in PLAN order, so checkpoint remains 25.5 and status set to DONE (plan exhausted).
 
 ## Workflow state
 
@@ -58,6 +59,9 @@ Full test suite for dependency graph features and end-user documentation.
 - `python3 -m pytest tests/workflow/test_checkpoint_dag.py -v --capture=sys` -> 11 passed.
 - `python3 tools/agentctl.py --repo-root . validate --strict` -> `ok: True`.
 - `python3 tools/agentctl.py --repo-root . --format json next` -> `recommended_role: review`.
+- Adversarial probe 1: `python3 -m pytest tests/workflow/test_checkpoint_dag.py -k "malformed or dep_blocked" -v --capture=sys` -> 3 passed.
+- Adversarial probe 2: `python3 tools/agentctl.py --repo-root . --format json next --parallel 2` -> `recommended_roles` returns two checkpoints.
+- Review transition note: no checkpoint exists after 25.5 in PLAN order; plan exhausted with checkpoint 25.5 marked DONE in STATE.
 - `python3 .codex/skills/vibe-loop/scripts/agentctl.py --repo-root . validate --strict` -> fails on pre-existing `continuous-documentation.yaml` prompt-role mappings; repo-local `tools/agentctl.py` is used for checkpoint acceptance.
 
 ## Active issues

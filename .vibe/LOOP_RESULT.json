@@ -1,9 +1,9 @@
 {
   "checkpoint": "25.5",
-  "loop": "implement",
-  "next_role_hint": "review",
+  "loop": "review",
+  "next_role_hint": "stop",
   "protocol_version": 1,
-  "recorded_at": "2026-02-19T09:52:41.936810+00:00",
+  "recorded_at": "2026-02-19T09:54:28.739871+00:00",
   "report": {
     "acceptance_matrix": [
       {
@@ -25,49 +25,49 @@
       {
         "confidence": 1.0,
         "critical": true,
-        "evidence": "docs/checkpoint_dependencies.md has Worked example: diamond dependency with 1.0 -> [1.1, 1.2] -> 1.3.",
+        "evidence": "docs/checkpoint_dependencies.md includes Worked example: diamond dependency.",
         "evidence_strength": "HIGH",
-        "item": "Docs include a diamond dependency example",
+        "item": "Docs include a worked diamond dependency example",
         "status": "PASS"
       }
     ],
     "loop_result": {
       "checkpoint": "25.5",
-      "loop": "implement",
-      "next_role_hint": "review",
-      "result": "ready_for_review",
+      "loop": "review",
+      "next_role_hint": "stop",
+      "result": "pass",
       "stage": "25",
-      "status": "IN_REVIEW"
+      "status": "DONE"
     },
     "state_transition": {
       "after": {
         "checkpoint": "25.5",
         "stage": "25",
-        "status": "IN_REVIEW"
+        "status": "DONE"
       },
       "before": {
         "checkpoint": "25.5",
         "stage": "25",
-        "status": "NOT_STARTED"
+        "status": "IN_REVIEW"
       }
     },
     "top_findings": [
       {
-        "action": "Track ISSUE-255 and align prompt-role mapping behavior in a separate checkpoint.",
-        "evidence": "python3 .codex/skills/vibe-loop/scripts/agentctl.py --repo-root . validate --strict fails on continuous-documentation prompt role mappings.",
+        "action": "Track ISSUE-255 outside checkpoint 25.5 scope.",
+        "evidence": "python3 .codex/skills/vibe-loop/scripts/agentctl.py --repo-root . validate --strict fails on continuous-documentation role mapping checks.",
         "impact": "MINOR",
-        "title": "Skill-packaged strict validate mismatch remains"
+        "title": "Skill-packaged strict validate mismatch persists"
       },
       {
-        "action": "Run consolidation loop after review/advance if dispatcher requests pruning.",
-        "evidence": "tools/agentctl.py validate warns that STATE work log has 11 entries (>10).",
+        "action": "Allow dispatcher to route consolidation for pruning on next loop.",
+        "evidence": "tools/agentctl.py validate warns work log has 12 entries (>10).",
         "impact": "QUESTION",
-        "title": "Work log exceeded consolidation cap during implementation"
+        "title": "Work log exceeds consolidation cap"
       }
     ]
   },
-  "result": "ready_for_review",
+  "result": "pass",
   "stage": "25",
-  "state_sha256": "614ecd312d95453fe5b9170d6dec51fb82086bcdd1772d12e044ad74a283cc75",
-  "status": "IN_REVIEW"
+  "state_sha256": "b597842422f1e10e751924e939818a48aeda6206fc725aaa631a45c6ec203771",
+  "status": "DONE"
 }
