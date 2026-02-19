@@ -210,3 +210,4 @@ __marimo__/
 # .vibe/ # This normally would not be commented. We are tracking the .vibe files in this repo to show an example.
 
 .vibe/
+LOOP_RESULT.json
