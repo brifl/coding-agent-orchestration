@@ -2641,6 +2641,39 @@ EXTRA_WORKFLOW_PROMPT_ROLES: dict[str, Role] = {
 PROMPT_ROLE_MAP: dict[str, Role] = {meta["id"]: role for role, meta in PROMPT_MAP.items()}
 PROMPT_ROLE_MAP.update(EXTRA_WORKFLOW_PROMPT_ROLES)
 
+CONTINUOUS_OVERRIDE_WORKFLOWS = frozenset(
+    {
+        "continuous-refactor",
+        "continuous-test-generation",
+        "continuous-documentation",
+    }
+)
+
+CONTINUOUS_OVERRIDE_REASON_PREFIX: dict[str, str] = {
+    "continuous-refactor": "Continuous-refactor override active (plan state ignored).",
+    "continuous-test-generation": "Continuous-test-generation override active (plan state ignored).",
+    "continuous-documentation": "Continuous-documentation override active (plan state ignored).",
+}
+
+CONTINUOUS_WORKFLOW_ALLOWED_PROMPTS: dict[str, set[str]] = {
+    "continuous-refactor": {
+        "prompt.refactor_scan",
+        "prompt.refactor_execute",
+        "prompt.refactor_verify",
+    },
+    "continuous-test-generation": {
+        "prompt.test_gap_analysis",
+        "prompt.test_generation",
+        "prompt.test_review",
+    },
+    "continuous-documentation": {
+        "prompt.docs_gap_analysis",
+        "prompt.docs_gap_fix",
+        "prompt.docs_refactor_analysis",
+        "prompt.docs_refactor_fix",
+    },
+}
+
 
 def _role_for_prompt_id(prompt_id: str) -> Role | None:
     return PROMPT_ROLE_MAP.get(prompt_id)
@@ -2696,7 +2729,7 @@ def _continuous_test_generation_should_stop(repo_root: Path) -> tuple[bool, str 
 
     loop_name = str(payload.get("loop", "")).strip().lower()
     # Stop decision for this workflow is based on test gap analysis output.
-    if loop_name != "design":
+    if loop_name and loop_name not in {"design", "implement"}:
         return (False, None)
 
     observed_tags = _idea_impact_tags_from_loop_result(payload)
@@ -2715,6 +2748,37 @@ def _continuous_test_generation_should_stop(repo_root: Path) -> tuple[bool, str 
     )
 
 
+def _continuous_documentation_should_stop(repo_root: Path) -> tuple[bool, str | None]:
+    payload, error = _load_loop_result_record(repo_root)
+    if error or payload is None:
+        return (False, None)
+
+    observed_tags = _idea_impact_tags_from_loop_result(payload)
+    if not observed_tags:
+        return (False, None)
+
+    if observed_tags.intersection({"MAJOR", "MODERATE"}):
+        return (False, None)
+
+    if not observed_tags.issubset({"MINOR"}):
+        return (False, None)
+
+    return (
+        True,
+        "Workflow continuous-documentation found only [MINOR] documentation findings in the latest LOOP_RESULT report; stopping.",
+    )
+
+
+def _continuous_workflow_should_stop(repo_root: Path, workflow: str) -> tuple[bool, str | None]:
+    if workflow == "continuous-refactor":
+        return _continuous_refactor_should_stop(repo_root)
+    if workflow == "continuous-test-generation":
+        return _continuous_test_generation_should_stop(repo_root)
+    if workflow == "continuous-documentation":
+        return _continuous_documentation_should_stop(repo_root)
+    return (False, None)
+
+
 def _load_workflow_selector(repo_root: Path):
     try:
         from workflow_engine import select_next_prompt
@@ -2730,11 +2794,11 @@ def _load_workflow_selector(repo_root: Path):
             raise RuntimeError(f"Failed to load workflow engine: {exc}") from exc
 
 
-def _continuous_refactor_blocking_decision(state: StateInfo) -> tuple[Role, str] | None:
-    """Return blocking override for continuous-refactor, if any.
+def _continuous_workflow_blocking_decision(state: StateInfo) -> tuple[Role, str] | None:
+    """Return blocking override for continuous workflows, if any.
 
-    continuous-refactor intentionally ignores normal checkpoint-plan state routing and
-    only yields to blocking states/issues.
+    Continuous workflow mode intentionally ignores normal checkpoint-plan state routing
+    and only yields to blocking states/issues.
     """
     if state.status == "BLOCKED":
         return ("issues_triage", "Checkpoint status is BLOCKED.")
@@ -2775,29 +2839,24 @@ def _resolve_next_prompt_selection(
     if not workflow:
         return (base_role, base_prompt_id, base_prompt_title, base_reason)
 
-    if workflow == "continuous-refactor":
-        blocking_decision = _continuous_refactor_blocking_decision(state)
+    if workflow in CONTINUOUS_OVERRIDE_WORKFLOWS:
+        blocking_decision = _continuous_workflow_blocking_decision(state)
         if blocking_decision is not None:
             role, reason = blocking_decision
             return (role, PROMPT_MAP[role]["id"], PROMPT_MAP[role]["title"], reason)
     elif base_role == "stop":
         return (base_role, base_prompt_id, base_prompt_title, base_reason)
 
-    strict_cycle_workflow = workflow in {"continuous-refactor", "refactor-cycle"}
-    strict_cycle_allowed = base_role in {"implement", "review"} or workflow == "continuous-refactor"
+    strict_cycle_workflow = workflow in {
+        "continuous-refactor",
+        "continuous-test-generation",
+        "continuous-documentation",
+        "refactor-cycle",
+    }
+    strict_cycle_allowed = base_role in {"implement", "review"} or workflow in CONTINUOUS_OVERRIDE_WORKFLOWS
     reason_prefix = base_reason
-    if workflow == "continuous-refactor":
-        reason_prefix = "Continuous-refactor override active (plan state ignored)."
-
-    if workflow == "continuous-test-generation" and base_role == "implement":
-        should_stop, stop_reason = _continuous_test_generation_should_stop(repo_root)
-        if should_stop:
-            return (
-                "stop",
-                "stop",
-                "Stop (continuous-test-generation threshold reached)",
-                stop_reason or "Workflow continuous-test-generation threshold reached.",
-            )
+    if workflow in CONTINUOUS_OVERRIDE_REASON_PREFIX:
+        reason_prefix = CONTINUOUS_OVERRIDE_REASON_PREFIX[workflow]
 
     catalog_index, _, catalog_error = _load_prompt_catalog_index(repo_root)
     if catalog_error:
@@ -2833,25 +2892,23 @@ def _resolve_next_prompt_selection(
     finally:
         os.chdir(current_cwd)
 
-    if workflow == "continuous-refactor":
-        allowed_refactor_prompts = {
-            "prompt.refactor_scan",
-            "prompt.refactor_execute",
-            "prompt.refactor_verify",
-        }
-        if workflow_prompt_id and workflow_prompt_id not in allowed_refactor_prompts:
+    if workflow in CONTINUOUS_WORKFLOW_ALLOWED_PROMPTS:
+        allowed_prompts = CONTINUOUS_WORKFLOW_ALLOWED_PROMPTS[workflow]
+        if workflow_prompt_id and workflow_prompt_id not in allowed_prompts:
+            allowed_list = ", ".join(sorted(allowed_prompts))
             raise RuntimeError(
                 f"Workflow {workflow} selected unsupported prompt id '{workflow_prompt_id}'. "
-                "continuous-refactor only supports prompt.refactor_scan, prompt.refactor_execute, "
-                "and prompt.refactor_verify."
+                f"{workflow} only supports {allowed_list}."
             )
-        should_stop, stop_reason = _continuous_refactor_should_stop(repo_root)
-        if should_stop and workflow_prompt_id == "prompt.refactor_execute":
+        should_stop, stop_reason = _continuous_workflow_should_stop(repo_root, workflow)
+        if should_stop and (
+            workflow != "continuous-refactor" or workflow_prompt_id == "prompt.refactor_execute"
+        ):
             return (
                 "stop",
                 "stop",
-                "Stop (continuous-refactor threshold reached)",
-                stop_reason or "Workflow continuous-refactor threshold reached.",
+                f"Stop ({workflow} threshold reached)",
+                stop_reason or f"Workflow {workflow} threshold reached.",
             )
 
     if not workflow_prompt_id:
@@ -3102,7 +3159,7 @@ def cmd_next(args: argparse.Namespace) -> int:
         ]
 
     # Parallel dispatch: add recommended_roles list (always present; N=1 is backward compat)
-    if args.workflow == "continuous-refactor":
+    if args.workflow in CONTINUOUS_OVERRIDE_WORKFLOWS:
         if role == "stop":
             payload["recommended_roles"] = []
         else:

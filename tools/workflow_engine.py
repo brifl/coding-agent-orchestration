@@ -16,7 +16,12 @@ from pathlib import Path
 from typing import Any
 
 WORKFLOW_RUNTIME_STATE = Path(".vibe/workflow_runtime.json")
-ROTATING_WORKFLOWS = {"continuous-refactor", "refactor-cycle"}
+ROTATING_WORKFLOWS = {
+    "continuous-refactor",
+    "continuous-test-generation",
+    "continuous-documentation",
+    "refactor-cycle",
+}
 
 
 @dataclass(frozen=True)
