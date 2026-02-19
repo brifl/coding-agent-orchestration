@@ -33,8 +33,6 @@ Full test suite for dependency graph features and end-user documentation.
 
 ## Work log (current session)
 
-- 2026-02-19: Consolidation — archived Stage 24; advanced to Stage 25, Checkpoint 25.0.
-- 2026-02-19: Stage 25 design+maintenance+improvements done; STAGE_DESIGNED, MAINTENANCE_CYCLE_DONE, PROCESS_IMPROVEMENTS_DONE set.
 - 2026-02-19: 25.0 implemented — `_parse_checkpoint_dependencies`; bug fix: PROCESS_IMPROVEMENTS_DONE suppression; 206 tests pass.
 - 2026-02-19: 25.0 review PASS — auto-advanced to 25.1 NOT_STARTED.
 - 2026-02-19: 25.1 implemented — `_validate_checkpoint_dag` (DFS cycle detection, dangling refs, self-deps); integrated into `validate()`; 206 tests pass.
