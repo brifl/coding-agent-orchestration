@@ -13,6 +13,10 @@
 
 ## Completed stages
 
+### 2026-02-19 — Stage 24: Structured Human Feedback Channel (completed)
+
+Implemented a validated human feedback protocol: `FeedbackEntry` dataclass + `_parse_feedback_file` schema parser, `agentctl feedback validate/inject/ack` subcommands, dispatcher feedback gate routing to `issues_triage` when unprocessed entries exist, `validate()` warning integration, and 34-test `test_feedback_channel.py` with `docs/feedback_channel.md` user guide (checkpoints 24.0–24.4).
+
 ### 2026-02-19 — Stage 23: Interactive Plan Authoring Pipeline (completed)
 
 Implemented `agentctl plan` end-to-end: `PipelineConfig`/`resolve_config` with layered config, `_run_pipeline_step` with `PipelineProvider` Protocol and `PipelineStepError`, `run_plan_pipeline` 6-step orchestrator with resume support, `render_plan_md` PLAN.md writer with complexity budget validation, and full integration test suite (31 tests) with `docs/plan_authoring.md` user guide (checkpoints 23.0–23.4).
@@ -961,3 +965,8 @@ Move workflow logic from hard-coded prompts to configurable definitions, enablin
   * `python tools/workflow_engine.py describe continuous-refactor`
 * **Evidence:**
   * Preset workflow executing successfully
+
+
+## Feedback archive
+
+- 2026-02-19 FEEDBACK-001 -> ISSUE-001: This is a template entry showing the FEEDBACK.md format. (Type: question, Impact: QUESTION)

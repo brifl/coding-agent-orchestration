@@ -9,10 +9,10 @@ simple so they can be updated incrementally.
   strict validation, and `LOOP_RESULT` protocol state transitions.
 - Prompt contracts live in `prompts/template_prompts.md`; loop selection and
   orchestration are driven by `.codex/skills/vibe-run/scripts/vibe_run.py`.
-- Stage 23 (Interactive Plan Authoring Pipeline) complete. Stage 24 (Structured
-  Human Feedback Channel) is active at checkpoint 24.0.
+- Stage 24 (Structured Human Feedback Channel) complete. Stage 25 (Checkpoint Dependency Graph) is active at checkpoint 25.0.
 - `tools/plan_pipeline.py` implements the full plan pipeline (PipelineConfig, PipelineProvider,
   _run_pipeline_step, run_plan_pipeline, render_plan_md); `agentctl plan` is the CLI entry point.
+- `agentctl feedback validate/inject/ack` implements the structured feedback channel; `.vibe/FEEDBACK.md` is the entry point.
 
 ## Key Decisions
 
@@ -48,9 +48,8 @@ simple so they can be updated incrementally.
 
 ## Agent Notes
 
-- 2026-02-19: Stage 23 complete (23.0–23.4). Current checkpoint is `24.0` (`NOT_STARTED`):
-  FEEDBACK.md schema, `FeedbackEntry` dataclass, and `agentctl feedback validate` subcommand.
-  Stage flags reset; retrospective pending. Next role after retrospective is `implement`.
+- 2026-02-19: Stage 24 complete (24.0–24.4). Current checkpoint is `25.0` (`NOT_STARTED`):
+  `depends_on:` syntax parser, `_parse_checkpoint_dependencies()`. Stage flags reset; retrospective + design pending.
 
 ## Loop Execution Checklist
 
@@ -120,3 +119,19 @@ Skipping any step — especially 3, 4, or 5 — breaks the vibe-run protocol. Do
   docstring in `test_plan_pipeline.py` still said "checkpoint 23.1" after 23.4 tests
   were added. Rule: when adding test classes to an existing file, update the module
   docstring before submitting to review.
+
+- **[Stage 24] `@dataclass` decorator placement is easy to displace on insertion:** When
+  inserting a new function before an `@dataclass`-decorated class, the decorator can
+  accidentally end up before the function instead of the class. Rule: after any insertion
+  near a class decorator, scan ±10 lines around the insertion point to verify the
+  decorator is still immediately above the class (not a function).
+
+- **[Stage 24] Demo commands that invoke `agentctl next` cause smoke gate loops:** The
+  smoke gate runs demo commands in a subprocess. If the demo command IS `agentctl next`,
+  the subprocess invokes the smoke gate again, creating an infinite loop (timeout after
+  30s). Rule: never use `agentctl next` as a demo command. Use `agentctl validate` or a
+  targeted subcommand instead.
+
+- **[Stage 24] `--format` flag must precede the subcommand:** `agentctl --format json
+  next` works; `agentctl next --format json` fails with "unrecognized arguments". PLAN.md
+  demo commands must always place `--format` before the subcommand name.

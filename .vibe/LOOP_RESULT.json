@@ -1,69 +1,60 @@
 {
-  "checkpoint": "24.0",
-  "loop": "consolidation",
+  "checkpoint": "25.5",
+  "loop": "review",
   "next_role_hint": "implement",
   "protocol_version": 1,
-  "recorded_at": "2026-02-19T03:08:34.551085+00:00",
+  "recorded_at": "2026-02-19T09:22:49.666524+00:00",
   "report": {
     "acceptance_matrix": [
       {
         "confidence": 1.0,
         "critical": true,
-        "evidence": "ok: True, errors: []",
+        "evidence": "_get_ready_checkpoints and cmd_next --parallel 2 verified",
         "evidence_strength": "HIGH",
-        "item": "validate --strict passes after consolidation",
+        "item": "--parallel 2 with two independent ready checkpoints returns both",
         "status": "PASS"
       },
       {
         "confidence": 1.0,
         "critical": true,
-        "evidence": "Removed 3 oldest entries; 10 remain",
+        "evidence": "_get_ready_checkpoints slice verified",
         "evidence_strength": "HIGH",
-        "item": "work log pruned to <=10 entries",
+        "item": "--parallel 2 with only one ready returns one",
         "status": "PASS"
       },
       {
         "confidence": 1.0,
         "critical": true,
-        "evidence": "Stage 23 summary added to HISTORY.md; Stage 23 removed from PLAN.md",
+        "evidence": "recommended_roles always present; single item for default",
         "evidence_strength": "HIGH",
-        "item": "Stage 23 archived to HISTORY.md",
+        "item": "--parallel 1 output structurally identical to default",
         "status": "PASS"
       }
     ],
     "loop_result": {
-      "checkpoint": "24.0",
-      "loop": "consolidation",
+      "checkpoint": "25.5",
+      "loop": "review",
       "next_role_hint": "implement",
-      "result": "aligned",
-      "stage": "24",
+      "result": "pass",
+      "stage": "25",
       "status": "NOT_STARTED"
     },
     "state_transition": {
       "after": {
-        "checkpoint": "24.0",
-        "stage": "24",
+        "checkpoint": "25.5",
+        "stage": "25",
         "status": "NOT_STARTED"
       },
       "before": {
-        "checkpoint": "23.4",
-        "stage": "23",
-        "status": "DONE"
+        "checkpoint": "25.4",
+        "stage": "25",
+        "status": "IN_REVIEW"
       }
     },
-    "top_findings": [
-      {
-        "action": "DONE",
-        "evidence": "validate passes; PLAN.md starts with Stage 24",
-        "id": "CONSOLIDATION-7",
-        "impact": "MINOR",
-        "summary": "Archived Stage 23 (Interactive Plan Authoring Pipeline) to HISTORY.md; PLAN.md pruned from 379 to 265 lines; STATE.md advanced to Stage 24, Checkpoint 24.0",
-        "title": "Stage 23 complete; advanced to Stage 24"
-      }
-    ]
+    "top_findings": []
   },
-  "result": "aligned",
-  "stage": "24",
-  "state_sha256": "876164066c7e662f13d50bfaed69b25aebf02edb35e67c20c5e1873c6ebc9a07",
+  "result": "pass",
+  "stage": "25",
+  "state_sha256": "4d2f8be6c3a711d059b80e608474c8858d263ec0b32360b0424c0fb38cb35331",
   "status": "NOT_STARTED"
 }

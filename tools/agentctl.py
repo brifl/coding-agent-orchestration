@@ -102,6 +102,23 @@ Role = Literal[
 ]
 
 
+_FEEDBACK_IMPACTS = ("QUESTION", "MINOR", "MAJOR", "BLOCKER")
+_FEEDBACK_TYPES = ("bug", "feature", "concern", "question")
+
+
+@dataclass(frozen=True)
+class FeedbackEntry:
+    feedback_id: str
+    impact: str
+    type: str
+    description: str
+    expected: str
+    proposed_action: str
+    checked: bool
+    processed: bool
+    line_number: int
+
+
 @dataclass(frozen=True)
 class Issue:
     impact: str
@@ -207,6 +224,138 @@ def _parse_plan_checkpoint_ids(plan_text: str) -> list[str]:
         except ValueError:
             ids.append(raw_id)
     return ids
+
+
+def _parse_checkpoint_dependencies(plan_text: str) -> tuple[dict[str, list[str]], list[str]]:
+    """Parse optional `depends_on: [X.Y, ...]` annotations from PLAN.md checkpoint headers.
+
+    The `depends_on:` line must appear immediately after (or within 3 lines of) the
+    `### N.M — Title` heading, before any `* **` checkpoint metadata. Parsing is
+    whitespace-tolerant.
+
+    Returns (deps_map, parse_errors) where:
+      - deps_map maps normalized checkpoint_id -> list of normalized dep IDs
+      - parse_errors is a list of diagnostic strings for malformed annotations
+    Checkpoints without `depends_on:` have an empty dep list.
+    """
+    deps_map: dict[str, list[str]] = {}
+    parse_errors: list[str] = []
+
+    checkpoint_pat = re.compile(
+        rf"^\s*#{{3,6}}\s+(?:\(\s*(?:DONE|SKIPPED|SKIP)\s*\)\s+)?(?P<id>{CHECKPOINT_ID_PATTERN})\b"
+    )
+    depends_pat = re.compile(r"^\s*depends_on:\s*(?P<rest>.*)$", re.IGNORECASE)
+    list_pat = re.compile(r"^\[(?P<inner>[^\]]*)\]$")
+
+    lines = plan_text.splitlines()
+    i = 0
+    while i < len(lines):
+        m = checkpoint_pat.match(lines[i])
+        if m:
+            raw_id = m.group("id")
+            try:
+                cp_id = normalize_checkpoint_id(raw_id)
+            except ValueError:
+                cp_id = raw_id
+            deps_map.setdefault(cp_id, [])
+            # Scan next few lines for depends_on: annotation
+            scan_limit = min(i + 4, len(lines))
+            for j in range(i + 1, scan_limit):
+                dm = depends_pat.match(lines[j])
+                if not dm:
+                    # Stop scanning at next heading or metadata line
+                    if re.match(r"^\s*#+", lines[j]) or re.match(r"^\s*\*\s+\*\*", lines[j]):
+                        break
+                    continue
+                rest = dm.group("rest").strip()
+                lm = list_pat.match(rest)
+                if not lm:
+                    parse_errors.append(
+                        f"Line {j + 1}: malformed depends_on value for {cp_id!r}: {rest!r} (expected [X.Y, ...])"
+                    )
+                    break
+                raw_deps = [s.strip() for s in lm.group("inner").split(",") if s.strip()]
+                normalized_deps: list[str] = []
+                for raw_dep in raw_deps:
+                    try:
+                        normalized_deps.append(normalize_checkpoint_id(raw_dep))
+                    except ValueError:
+                        parse_errors.append(
+                            f"Line {j + 1}: invalid dep ID {raw_dep!r} in {cp_id!r} depends_on"
+                        )
+                deps_map[cp_id] = normalized_deps
+                break
+        i += 1
+
+    return deps_map, parse_errors
+
+
+def _validate_checkpoint_dag(
+    checkpoint_ids: list[str],
+    deps: dict[str, list[str]],
+) -> list[str]:
+    """Validate the checkpoint dependency graph for cycles, dangling refs, and self-deps.
+
+    Returns a list of error strings. Empty list means the DAG is valid.
+    Uses DFS with grey/black coloring for cycle detection.
+    """
+    errors: list[str] = []
+    id_set = set(checkpoint_ids)
+
+    # Self-dependency check and dangling reference check
+    for cp_id, dep_list in deps.items():
+        for dep in dep_list:
+            if dep == cp_id:
+                errors.append(f"Self-dependency: {cp_id!r} depends on itself.")
+            elif dep not in id_set:
+                errors.append(f"Dangling dependency: {cp_id!r} depends on {dep!r}, which does not exist.")
+
+    # Cycle detection via DFS (grey/black coloring)
+    # grey = currently in DFS stack; black = fully explored
+    color: dict[str, str] = {}
+
+    def dfs(node: str, path: list[str]) -> None:
+        color[node] = "grey"
+        for dep in deps.get(node, []):
+            if dep not in id_set:
+                continue  # already reported as dangling
+            if color.get(dep) == "grey":
+                # Found a cycle — find where it starts
+                cycle_start = path.index(dep) if dep in path else 0
+                cycle_path = path[cycle_start:] + [dep]
+                errors.append("Cycle: " + " -> ".join(cycle_path))
+            elif color.get(dep) != "black":
+                dfs(dep, path + [dep])
+        color[node] = "black"
+
+    for cp_id in checkpoint_ids:
+        if color.get(cp_id) != "black":
+            dfs(cp_id, [cp_id])
+
+    return errors
+
+
+def _get_satisfied_deps(plan_text: str, checkpoint_id: str) -> bool:
+    """Return True iff all dependencies of checkpoint_id are (DONE) or (SKIP) in plan_text.
+
+    If the checkpoint has no dependencies, returns True (vacuously satisfied).
+    """
+    deps_map, _ = _parse_checkpoint_dependencies(plan_text)
+    deps = deps_map.get(checkpoint_id, [])
+    for dep in deps:
+        if not (_is_checkpoint_marked_done(plan_text, dep) or _is_checkpoint_skipped(plan_text, dep)):
+            return False
+    return True
+
+
+def _get_unmet_deps(plan_text: str, checkpoint_id: str) -> list[str]:
+    """Return the list of unsatisfied dependency IDs for checkpoint_id."""
+    deps_map, _ = _parse_checkpoint_dependencies(plan_text)
+    deps = deps_map.get(checkpoint_id, [])
+    return [
+        dep for dep in deps
+        if not (_is_checkpoint_marked_done(plan_text, dep) or _is_checkpoint_skipped(plan_text, dep))
+    ]
 
 
 def _check_checkpoint_minor_ordering(checkpoint_ids: list[str]) -> list[str]:
@@ -606,6 +755,181 @@ def _normalize_issue_detail_key(raw_key: str) -> str | None:
         "notes": "notes",
     }
     return aliases.get(normalized)
+
+
+def _parse_feedback_file(text: str) -> tuple[tuple[FeedbackEntry, ...], list[str]]:
+    """Parse .vibe/FEEDBACK.md and return (entries, errors).
+
+    Each entry has the form:
+        - [ ] FEEDBACK-001: <title>
+          - Impact: QUESTION|MINOR|MAJOR|BLOCKER
+          - Type: bug|feature|concern|question
+          - Description: <text>
+          - Expected: <text>
+          - Proposed action: <optional>
+
+    errors is a list of "line N: <message>" strings (empty on success).
+    """
+    lines = text.splitlines()
+    entries: list[FeedbackEntry] = []
+    errors: list[str] = []
+    seen_ids: dict[str, int] = {}
+
+    entry_head = re.compile(r"^\s*-\s*\[\s*([xX ]?)\s*\]\s*(.+?)\s*$")
+    detail_re = re.compile(r"^\s*-\s*(?P<key>[A-Za-z][A-Za-z _-]*)\s*:\s*(?P<val>.+?)\s*$")
+    feedback_id_re = re.compile(r"^(FEEDBACK-\d+):\s*(.+)$", re.IGNORECASE)
+
+    i = 0
+    while i < len(lines):
+        raw = lines[i]
+        m = entry_head.match(raw)
+        if not m:
+            i += 1
+            continue
+
+        entry_line = i + 1  # 1-indexed
+        title_full = m.group(2).strip()
+        id_m = feedback_id_re.match(title_full)
+        if not id_m:
+            i += 1
+            continue  # not a FEEDBACK-NNN entry; skip
+
+        feedback_id = id_m.group(1).upper()
+        checked = m.group(1).strip().lower() == "x"
+        processed = "<!-- processed:" in raw
+
+        # Duplicate ID check
+        if feedback_id in seen_ids:
+            errors.append(f"line {entry_line}: duplicate FEEDBACK-ID {feedback_id} (first seen at line {seen_ids[feedback_id]})")
+        else:
+            seen_ids[feedback_id] = entry_line
+
+        # Collect detail lines
+        fields: dict[str, str] = {}
+        j = i + 1
+        while j < len(lines):
+            nxt = lines[j]
+            if entry_head.match(nxt):
+                break
+            dm = detail_re.match(nxt)
+            if dm:
+                key = dm.group("key").strip().lower().replace(" ", "_")
+                val = dm.group("val").strip()
+                if key not in fields:
+                    fields[key] = val
+            j += 1
+
+        # Validate required fields
+        impact_raw = fields.get("impact", "")
+        impact = impact_raw.upper() if impact_raw else ""
+        if not impact:
+            errors.append(f"line {entry_line}: {feedback_id} missing required field 'Impact'")
+        elif impact not in _FEEDBACK_IMPACTS:
+            errors.append(f"line {entry_line}: {feedback_id} invalid Impact '{impact}' (must be one of {', '.join(_FEEDBACK_IMPACTS)})")
+
+        type_raw = fields.get("type", "")
+        fb_type = type_raw.lower() if type_raw else ""
+        if not fb_type:
+            errors.append(f"line {entry_line}: {feedback_id} missing required field 'Type'")
+        elif fb_type not in _FEEDBACK_TYPES:
+            errors.append(f"line {entry_line}: {feedback_id} invalid Type '{fb_type}' (must be one of {', '.join(_FEEDBACK_TYPES)})")
+
+        description = fields.get("description", "")
+        if not description:
+            errors.append(f"line {entry_line}: {feedback_id} missing required field 'Description'")
+
+        expected = fields.get("expected", "")
+        if not expected:
+            errors.append(f"line {entry_line}: {feedback_id} missing required field 'Expected'")
+
+        entries.append(FeedbackEntry(
+            feedback_id=feedback_id,
+            impact=impact or "QUESTION",
+            type=fb_type or "",
+            description=description,
+            expected=expected,
+            proposed_action=fields.get("proposed_action", ""),
+            checked=checked,
+            processed=processed,
+            line_number=entry_line,
+        ))
+        i = j
+
+    return tuple(entries), errors
+
+
+def _next_issue_id(state_text: str) -> int:
+    """Return the next available ISSUE number by scanning STATE.md Active issues."""
+    existing = re.findall(r"ISSUE-(\d+)", state_text, re.IGNORECASE)
+    if not existing:
+        return 1
+    return max(int(n) for n in existing) + 1
+
+
+def _feedback_entry_to_issue_block(entry: "FeedbackEntry", issue_id: str) -> str:
+    """Format a FeedbackEntry as an Issue block for STATE.md."""
+    notes = f"{entry.type.capitalize()}: {entry.description}" if entry.description else entry.type
+    lines = [
+        f"- [ ] {issue_id}: {entry.feedback_id} - {entry.type}",
+        f"  - Impact: {entry.impact}",
+        f"  - Status: OPEN",
+        f"  - Owner: agent",
+        f"  - Unblock Condition: {entry.expected or 'See description'}",
+        f"  - Evidence Needed: (to be determined during triage)",
+        f"  - Notes: {notes}",
+    ]
+    if entry.proposed_action:
+        lines.append(f"  - Proposed action: {entry.proposed_action}")
+    return "\n".join(lines)
+
+
+def _inject_into_state_md(state_text: str, issue_blocks: list[str]) -> str:
+    """Append issue blocks into the ## Active issues section of STATE.md."""
+    lines = state_text.splitlines(keepends=True)
+    insert_idx: int | None = None
+    in_section = False
+    for i, line in enumerate(lines):
+        if re.match(r"(?im)^\s*##\s+Active issues\s*$", line):
+            in_section = True
+            continue
+        if in_section:
+            if re.match(r"(?im)^\s*##\s+\S", line):
+                insert_idx = i
+                break
+    if insert_idx is None and in_section:
+        insert_idx = len(lines)
+
+    if insert_idx is None:
+        new_section = "\n## Active issues\n\n" + "\n\n".join(issue_blocks) + "\n"
+        return state_text + new_section
+
+    # Remove trailing placeholder "(None)" if present
+    j = insert_idx - 1
+    while j >= 0 and lines[j].strip().lower() in {"", "(none)", "(none.)"}:
+        j -= 1
+    insert_idx = j + 1
+
+    new_block = "\n" + "\n\n".join(issue_blocks) + "\n"
+    lines.insert(insert_idx, new_block)
+    return "".join(lines)
+
+
+def _mark_feedback_processed(feedback_text: str, feedback_id: str, issue_id: str) -> str:
+    """Mark a FEEDBACK entry as [x] and add <!-- processed: ISSUE-NNN --> comment."""
+    lines = feedback_text.splitlines(keepends=True)
+    entry_re = re.compile(
+        r"^(\s*-\s*\[)\s*[ ]?\s*(\]\s*" + re.escape(feedback_id) + r"\b.*?)(\s*)$"
+    )
+    result = []
+    for line in lines:
+        stripped = line.rstrip("\n\r")
+        m = entry_re.match(stripped)
+        if m and "<!-- processed:" not in stripped:
+            new_line = re.sub(r"\[\s*[ ]?\s*\]", "[x]", stripped) + f"  <!-- processed: {issue_id} -->"
+            result.append(new_line + "\n")
+        else:
+            result.append(line)
+    return "".join(result)
 
 
 def _is_placeholder_value(value: str | None) -> bool:
@@ -1574,8 +1898,27 @@ def validate(repo_root: Path, strict: bool, strict_complexity: bool = False) -> 
     )
     catalog_errors, catalog_warnings = _validate_catalog_section(repo_root, strict)
 
-    all_errors = state_errors + plan_errors + catalog_errors
-    all_warnings = state_warnings + plan_warnings + catalog_warnings
+    # Feedback gate warning
+    has_feedback, feedback_reason = _has_unprocessed_feedback(repo_root)
+    feedback_warnings = [f".vibe/FEEDBACK.md: {feedback_reason}"] if has_feedback else []
+
+    # DAG validation
+    plan_path = repo_root / ".vibe" / "PLAN.md"
+    dag_errors: list[str] = []
+    dag_warnings: list[str] = []
+    if plan_path.exists():
+        plan_text = _read_text(plan_path)
+        cp_ids = _parse_plan_checkpoint_ids(plan_text)
+        deps_map, dep_parse_errors = _parse_checkpoint_dependencies(plan_text)
+        dag_diags = _validate_checkpoint_dag(cp_ids, deps_map) + dep_parse_errors
+        if dag_diags:
+            if strict:
+                dag_errors = [f"PLAN.md DAG: {d}" for d in dag_diags]
+            else:
+                dag_warnings = [f"PLAN.md DAG: {d}" for d in dag_diags]
+
+    all_errors = state_errors + plan_errors + catalog_errors + dag_errors
+    all_warnings = state_warnings + plan_warnings + catalog_warnings + feedback_warnings + dag_warnings
     return ValidationResult(
         ok=len(all_errors) == 0,
         errors=tuple(all_errors),
@@ -1812,6 +2155,10 @@ def _process_improvements_trigger_reason(
     if workflow_flags.get("RUN_PROCESS_IMPROVEMENTS"):
         return "Workflow flag RUN_PROCESS_IMPROVEMENTS is set."
 
+    # If improvements already ran this cycle, suppress the auto-trigger
+    if workflow_flags.get("PROCESS_IMPROVEMENTS_DONE"):
+        return None
+
     # Retrospective trigger: every 5 stages
     if current_checkpoint:
         stage_num = _get_stage_number(current_checkpoint.split(".")[0] if "." in current_checkpoint else current_checkpoint)
@@ -1993,7 +2340,29 @@ def _run_smoke_test_gate(
     return (True, None)
 
 
-@dataclass
+def _has_unprocessed_feedback(repo_root: Path) -> tuple[bool, str]:
+    """Return (has_feedback, reason_string) for unprocessed FEEDBACK.md entries."""
+    feedback_path = repo_root / ".vibe" / "FEEDBACK.md"
+    if not feedback_path.exists():
+        return False, ""
+    text = feedback_path.read_text(encoding="utf-8")
+    entries, _ = _parse_feedback_file(text)
+    unprocessed = [e for e in entries if not e.processed]
+    if not unprocessed:
+        return False, ""
+    top_impact = max(
+        (e.impact for e in unprocessed),
+        key=lambda imp: _FEEDBACK_IMPACTS.index(imp) if imp in _FEEDBACK_IMPACTS else len(_FEEDBACK_IMPACTS),
+        default="QUESTION",
+    )
+    reason = (
+        f"Unprocessed human feedback: {len(unprocessed)} entries "
+        f"(top impact: {top_impact}). Run agentctl feedback inject."
+    )
+    return True, reason
+
+
+@dataclass(frozen=True)
 class _DecisionContext:
     """Pre-loaded IO context for the pure role-decision function."""
     workflow_flags: dict[str, bool]
@@ -2002,6 +2371,7 @@ class _DecisionContext:
     context_capture_reason: str | None
     consolidation_reason: str | None
     process_improvements_reason: str | None
+    unprocessed_feedback_reason: str | None
 
 
 def _gather_decision_context(state: StateInfo, repo_root: Path) -> _DecisionContext:
@@ -2023,6 +2393,7 @@ def _gather_decision_context(state: StateInfo, repo_root: Path) -> _DecisionCont
         process_improvements_reason=_process_improvements_trigger_reason(
             repo_root, workflow_flags, state.checkpoint
         ),
+        unprocessed_feedback_reason=_has_unprocessed_feedback(repo_root)[1] or None,
     )
 
 
@@ -2064,6 +2435,10 @@ def _decide_role(state: StateInfo, ctx: _DecisionContext) -> tuple[Role, str, st
             None,
         )
 
+    # 0b) Unprocessed human feedback gate
+    if ctx.unprocessed_feedback_reason:
+        return ("issues_triage", ctx.unprocessed_feedback_reason, None)
+
     # 1) Review if IN_REVIEW — smoke gate result pre-loaded
     if state.status == "IN_REVIEW":
         if ctx.smoke_gate_result is not None:
@@ -2096,6 +2471,31 @@ def _decide_role(state: StateInfo, ctx: _DecisionContext) -> tuple[Role, str, st
 
         if not nxt:
             return ("stop", "All remaining checkpoints are marked (DONE) or (SKIP) in .vibe/PLAN.md (plan exhausted).", None)
+
+        # Also skip dep-blocked checkpoints (deps not yet DONE/SKIP)
+        dep_blocked: dict[str, list[str]] = {}
+        while nxt and not _get_satisfied_deps(ctx.plan_text, nxt):
+            unmet = _get_unmet_deps(ctx.plan_text, nxt)
+            dep_blocked[nxt] = unmet
+            state_ck = nxt
+            nxt = _next_checkpoint_after(plan_ids, state_ck)
+            # Re-skip any DONE/SKIP checkpoints encountered while scanning
+            while nxt and (
+                _is_checkpoint_marked_done(ctx.plan_text, nxt)
+                or _is_checkpoint_skipped(ctx.plan_text, nxt)
+            ):
+                state_ck = nxt
+                nxt = _next_checkpoint_after(plan_ids, state_ck)
+
+        if not nxt and dep_blocked:
+            unmet_details = "; ".join(
+                f"{cp}: waiting on {deps}" for cp, deps in dep_blocked.items()
+            )
+            return (
+                "stop",
+                f"All remaining checkpoints are dep-blocked. Unmet deps: {unmet_details}",
+                None,
+            )
 
         # Check for stage transition - recommend consolidation before advancing to new stage
         is_stage_change, cur_stage, nxt_stage = _detect_stage_transition(
@@ -2635,7 +3035,7 @@ def cmd_next(args: argparse.Namespace) -> int:
     }
     if args.workflow:
         payload["workflow"] = args.workflow
-    
+
     if args.run_gates and state.status in {"NOT_STARTED", "IN_PROGRESS"}:
         gate_results = run_gates(repo_root, state.checkpoint)
         payload["gate_results"] = [
@@ -2649,6 +3049,22 @@ def cmd_next(args: argparse.Namespace) -> int:
             for r in gate_results
         ]
 
+    # Parallel dispatch: add recommended_roles list (always present; N=1 is backward compat)
+    parallel_n = getattr(args, "parallel", 1) or 1
+    plan_path = repo_root / ".vibe" / "PLAN.md"
+    plan_text = _read_text(plan_path) if plan_path.exists() else ""
+    ready_cps = _get_ready_checkpoints(plan_text, state)[:parallel_n]
+    implement_prompt = PROMPT_MAP.get("implement", {})
+    recommended_roles = [
+        {
+            "checkpoint": cp_id,
+            "role": "implement",
+            "prompt_id": implement_prompt.get("id", "prompt.checkpoint_implementation"),
+            "reason": f"Checkpoint {cp_id} is ready (deps satisfied).",
+        }
+        for cp_id in ready_cps
+    ]
+    payload["recommended_roles"] = recommended_roles
 
     print(_render_output(payload, args.format))
     return 0
@@ -2871,6 +3287,271 @@ def cmd_plan(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_feedback_validate(args: argparse.Namespace) -> int:
+    """Validate .vibe/FEEDBACK.md schema and print diagnostics."""
+    repo_root = Path(args.repo_root).resolve()
+    feedback_path = repo_root / ".vibe" / "FEEDBACK.md"
+
+    if not feedback_path.exists():
+        print("(no FEEDBACK.md found - nothing to validate)")
+        return 0
+
+    text = feedback_path.read_text(encoding="utf-8")
+    entries, errors = _parse_feedback_file(text)
+
+    if errors:
+        for err in errors:
+            print(err)
+        return 2
+
+    unprocessed = sum(1 for e in entries if not e.checked)
+    print(f"Feedback file OK ({len(entries)} entries, {unprocessed} unprocessed)")
+    return 0
+
+
+def cmd_feedback_inject(args: argparse.Namespace) -> int:
+    """Inject unprocessed FEEDBACK.md entries as Issues into STATE.md."""
+    repo_root = Path(args.repo_root).resolve()
+    feedback_path = repo_root / ".vibe" / "FEEDBACK.md"
+    state_path = repo_root / ".vibe" / "STATE.md"
+    dry_run: bool = getattr(args, "dry_run", False)
+
+    if not feedback_path.exists():
+        print("(no FEEDBACK.md found - nothing to inject)")
+        return 0
+
+    feedback_text = feedback_path.read_text(encoding="utf-8")
+    entries, errors = _parse_feedback_file(feedback_text)
+    if errors:
+        print("FEEDBACK.md has validation errors. Run 'agentctl feedback validate' to see details.")
+        for err in errors:
+            print(f"  {err}")
+        return 2
+
+    to_inject = [e for e in entries if not e.processed]
+    if not to_inject:
+        print("Nothing to inject (all entries already processed).")
+        return 0
+
+    state_text = state_path.read_text(encoding="utf-8") if state_path.exists() else ""
+    next_id = _next_issue_id(state_text)
+
+    assignments: list[tuple["FeedbackEntry", str]] = []
+    for entry in to_inject:
+        issue_id = f"ISSUE-{next_id:03d}"
+        assignments.append((entry, issue_id))
+        next_id += 1
+
+    if dry_run:
+        print(f"(dry run) Would inject {len(assignments)} feedback entries:")
+        for entry, issue_id in assignments:
+            print(f"  {entry.feedback_id} -> {issue_id} (Impact: {entry.impact})")
+        return 0
+
+    # Build issue blocks and inject
+    issue_blocks = [_feedback_entry_to_issue_block(entry, iid) for entry, iid in assignments]
+    new_state = _inject_into_state_md(state_text, issue_blocks)
+    state_path.write_text(new_state, encoding="utf-8")
+
+    # Mark feedback entries as processed
+    new_feedback = feedback_text
+    for entry, issue_id in assignments:
+        new_feedback = _mark_feedback_processed(new_feedback, entry.feedback_id, issue_id)
+    feedback_path.write_text(new_feedback, encoding="utf-8")
+
+    print(f"Injected {len(assignments)} feedback entries as Issues:")
+    for entry, issue_id in assignments:
+        print(f"  {entry.feedback_id} -> {issue_id} (Impact: {entry.impact})")
+    return 0
+
+
+def cmd_feedback_ack(args: argparse.Namespace) -> int:
+    """Archive processed FEEDBACK.md entries to HISTORY.md and clear them."""
+    repo_root = Path(args.repo_root).resolve()
+    feedback_path = repo_root / ".vibe" / "FEEDBACK.md"
+    history_path = repo_root / ".vibe" / "HISTORY.md"
+
+    if not feedback_path.exists():
+        print("(no FEEDBACK.md found - nothing to archive)")
+        return 0
+
+    feedback_text = feedback_path.read_text(encoding="utf-8")
+    entries, errors = _parse_feedback_file(feedback_text)
+    if errors:
+        print("FEEDBACK.md has validation errors. Run 'agentctl feedback validate' to see details.")
+        for err in errors:
+            print(f"  {err}")
+        return 2
+
+    to_archive = [e for e in entries if e.processed]
+    if not to_archive:
+        print("Nothing to archive.")
+        return 0
+
+    today = __import__("datetime").date.today().isoformat()
+
+    # Build archive lines
+    archive_lines: list[str] = []
+    for entry in to_archive:
+        # Extract ISSUE-ID from FEEDBACK.md line (look for <!-- processed: ISSUE-NNN -->)
+        issue_id = _extract_issue_id_for_feedback(feedback_text, entry.feedback_id)
+        arrow = "->"
+        line = (
+            f"- {today} {entry.feedback_id} {arrow} {issue_id}: "
+            f"{entry.description} (Type: {entry.type}, Impact: {entry.impact})"
+        )
+        archive_lines.append(line)
+
+    # Append to HISTORY.md under ## Feedback archive section
+    history_text = history_path.read_text(encoding="utf-8") if history_path.exists() else ""
+    history_text = _append_to_feedback_archive(history_text, archive_lines)
+    history_path.write_text(history_text, encoding="utf-8")
+
+    # Remove archived entries from FEEDBACK.md (keep unprocessed ones)
+    new_feedback = _remove_processed_entries(feedback_text)
+    feedback_path.write_text(new_feedback, encoding="utf-8")
+
+    print(f"Archived {len(to_archive)} feedback entries to HISTORY.md.")
+    return 0
+
+
+def _extract_issue_id_for_feedback(feedback_text: str, feedback_id: str) -> str:
+    """Extract ISSUE-ID from the processed comment for a given FEEDBACK-ID line."""
+    import re
+    pattern = re.compile(
+        r"- \[x\] " + re.escape(feedback_id) + r".*?<!--\s*processed:\s*(ISSUE-\d+)\s*-->",
+        re.MULTILINE,
+    )
+    m = pattern.search(feedback_text)
+    return m.group(1) if m else "ISSUE-???"
+
+
+def _append_to_feedback_archive(history_text: str, archive_lines: list[str]) -> str:
+    """Append archive lines to '## Feedback archive' section in HISTORY.md text."""
+    section_header = "## Feedback archive"
+    block = "\n".join(archive_lines)
+    if section_header in history_text:
+        # Insert after the section header line
+        parts = history_text.split(section_header, 1)
+        return parts[0] + section_header + "\n\n" + block + "\n" + parts[1].lstrip("\n")
+    else:
+        # Create section at end
+        sep = "\n\n" if history_text.rstrip() else ""
+        return history_text.rstrip() + sep + "\n## Feedback archive\n\n" + block + "\n"
+
+
+def _remove_processed_entries(feedback_text: str) -> str:
+    """Remove processed (checked + processed comment) entries from FEEDBACK.md text."""
+    import re
+    # Match a feedback entry block: starts with "- [x] FEEDBACK-NNN:" and the processed comment,
+    # followed by indented continuation lines.
+    pattern = re.compile(
+        r"- \[x\] FEEDBACK-\d+:.*?<!-- processed:.*?-->\n(?:  [^\n]*\n)*",
+        re.MULTILINE,
+    )
+    return pattern.sub("", feedback_text)
+
+
+def _parse_checkpoint_titles(plan_text: str) -> dict[str, str]:
+    """Extract title strings from checkpoint headings in PLAN.md.
+
+    Returns dict mapping normalized checkpoint_id -> title text (after the em-dash/hyphen separator).
+    Checkpoints with no title separator map to empty string.
+    """
+    titles: dict[str, str] = {}
+    pat = re.compile(
+        rf"^\s*#{{3,6}}\s+(?:\(\s*(?:DONE|SKIPPED|SKIP)\s*\)\s+)?(?P<id>{CHECKPOINT_ID_PATTERN})"
+        r"(?:\s*[\u2014\-]+\s*(?P<title>.+?))?\s*$"
+    )
+    for _, line, is_visible in _iter_visible_markdown_lines(plan_text):
+        if not is_visible:
+            continue
+        m = pat.match(line)
+        if not m:
+            continue
+        raw_id = m.group("id")
+        try:
+            cp_id = normalize_checkpoint_id(raw_id)
+        except ValueError:
+            cp_id = raw_id
+        raw_title = m.group("title")
+        titles[cp_id] = raw_title.strip() if raw_title else ""
+    return titles
+
+
+def _compute_dag_node_status(plan_text: str, checkpoint_id: str) -> str:
+    """Compute DAG node status: DONE | SKIP | READY | DEP_BLOCKED."""
+    if _is_checkpoint_marked_done(plan_text, checkpoint_id):
+        return "DONE"
+    if _is_checkpoint_skipped(plan_text, checkpoint_id):
+        return "SKIP"
+    if _get_unmet_deps(plan_text, checkpoint_id):
+        return "DEP_BLOCKED"
+    return "READY"
+
+
+def _get_ready_checkpoints(plan_text: str, state: "StateInfo") -> list[str]:
+    """Return all dep-satisfied, not-yet-done checkpoints in document order.
+
+    A checkpoint is 'ready' iff it is not DONE, not SKIP, and all its deps are satisfied.
+    The state parameter is accepted for interface consistency and future use.
+    """
+    cp_ids = _parse_plan_checkpoint_ids(plan_text)
+    return [cp_id for cp_id in cp_ids if _compute_dag_node_status(plan_text, cp_id) == "READY"]
+
+
+def cmd_dag(args: argparse.Namespace) -> int:
+    """Render the checkpoint dependency graph as JSON or ASCII tree."""
+    repo_root = Path(args.repo_root)
+    plan_path = repo_root / ".vibe" / "PLAN.md"
+    dag_format = getattr(args, "dag_format", "ascii")
+
+    if not plan_path.exists():
+        if dag_format == "json":
+            print(json.dumps({"nodes": [], "edges": [], "error": "PLAN.md not found"}, indent=2))
+        else:
+            print("No .vibe/PLAN.md found.")
+        return 1
+
+    plan_text = _read_text(plan_path)
+    cp_ids = _parse_plan_checkpoint_ids(plan_text)
+    titles = _parse_checkpoint_titles(plan_text)
+    deps_map, _ = _parse_checkpoint_dependencies(plan_text)
+
+    nodes: list[dict[str, Any]] = []
+    edges: list[dict[str, str]] = []
+
+    for cp_id in cp_ids:
+        status = _compute_dag_node_status(plan_text, cp_id)
+        title = titles.get(cp_id, "")
+        node_deps = deps_map.get(cp_id, [])
+        nodes.append({"id": cp_id, "title": title, "status": status, "deps": node_deps})
+        for dep in node_deps:
+            edges.append({"from": dep, "to": cp_id})
+
+    if dag_format == "json":
+        print(json.dumps({"nodes": nodes, "edges": edges}, indent=2))
+        return 0
+
+    # ASCII output
+    _STATUS_ICONS = {"DONE": "[+]", "SKIP": "[-]", "READY": "[>]", "DEP_BLOCKED": "[!]"}
+    for node in nodes:
+        status = node["status"]
+        cp_id = node["id"]
+        title = node["title"]
+        icon = _STATUS_ICONS.get(status, "[?]")
+        sep = " -- " if title else ""
+        label = f"{icon} {cp_id}{sep}{title}"
+        if status == "READY":
+            label += " (ready)"
+        elif status == "DEP_BLOCKED":
+            unmet = _get_unmet_deps(plan_text, cp_id)
+            label += f" (blocked: {', '.join(unmet)})"
+        print(label)
+
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="agentctl", description="Control-plane helper for vibecoding loops.")
     p.add_argument("--repo-root", default=".", help="Path to repository root (default: .)")
@@ -2909,6 +3590,14 @@ def build_parser() -> argparse.ArgumentParser:
     pn.add_argument(
         "--workflow",
         help="Use configured workflow to select the next prompt.",
+    )
+    pn.add_argument(
+        "--parallel",
+        type=int,
+        default=None,
+        metavar="N",
+        help="Return up to N simultaneously-runnable (dep-satisfied) checkpoints (N>=1). "
+             "Adds recommended_roles list to output; N=1 is identical to default behavior.",
     )
     pn.set_defaults(fn=cmd_next)
 
@@ -2958,6 +3647,34 @@ def build_parser() -> argparse.ArgumentParser:
         help="Resume a previous pipeline run by run ID, reusing completed step outputs.",
     )
     pp.set_defaults(fn=cmd_plan)
+
+    pfb = sub.add_parser("feedback", help="Manage .vibe/FEEDBACK.md entries.")
+    pfb_sub = pfb.add_subparsers(dest="feedback_cmd", required=True)
+
+    pfb_v = pfb_sub.add_parser("validate", help="Validate FEEDBACK.md schema and print diagnostics.")
+    pfb_v.set_defaults(fn=cmd_feedback_validate)
+
+    pfb_i = pfb_sub.add_parser("inject", help="Inject unprocessed FEEDBACK.md entries as Issues into STATE.md.")
+    pfb_i.add_argument(
+        "--dry-run",
+        dest="dry_run",
+        action="store_true",
+        help="Print what would be injected without modifying files.",
+    )
+    pfb_i.set_defaults(fn=cmd_feedback_inject)
+
+    pfb_a = pfb_sub.add_parser("ack", help="Archive processed FEEDBACK.md entries to HISTORY.md.")
+    pfb_a.set_defaults(fn=cmd_feedback_ack)
+
+    pdag = sub.add_parser("dag", help="Render the checkpoint dependency graph.")
+    pdag.add_argument(
+        "--format",
+        dest="dag_format",
+        choices=("json", "ascii"),
+        default="ascii",
+        help="Output format: json (structured) or ascii (default, human-readable tree).",
+    )
+    pdag.set_defaults(fn=cmd_dag)
 
     return p
 

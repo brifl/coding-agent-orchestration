@@ -1,131 +1,5 @@
 # PLAN
 
-## Stage 24 — Structured Human Feedback Channel
-
-**Stage objective:**
-Implement a validated human feedback protocol: humans write `.vibe/FEEDBACK.md` in a structured schema, `agentctl feedback inject` converts entries to Issue records in STATE.md, the dispatcher routes to issues_triage when unprocessed feedback exists, and `agentctl feedback ack` archives processed entries to HISTORY.md.
-
-### Stage invariants (apply to all checkpoints)
-
-- **Non-destructive injection:** Injecting feedback never overwrites or reorders existing Active issues in STATE.md.
-- **Schema-first:** FEEDBACK.md entries are validated before injection; malformed entries fail with line-level diagnostics.
-- **Verbatim archival:** Processed entries are appended to HISTORY.md exactly as written (plus timestamps), enabling full audit trail.
-- **Backward compatible:** Repos without `.vibe/FEEDBACK.md` are entirely unaffected.
-- **Idempotent ack:** Running `agentctl feedback ack` twice produces the same result as running it once.
-
----
-
-### 24.0 — Feedback schema and validation
-
-* **Objective:**
-  Define the `.vibe/FEEDBACK.md` format and implement `agentctl feedback validate` with entry-level parsing and diagnostics.
-* **Deliverables:**
-  * Feedback entry format in `.vibe/FEEDBACK.md`:
-    ```
-    - [ ] FEEDBACK-001: <short title>
-      - Impact: QUESTION|MINOR|MAJOR|BLOCKER
-      - Type: bug|feature|concern|question
-      - Description: <what the human observed or wants>
-      - Expected: <what should happen instead>
-      - Proposed action: <optional — what the human wants the agent to do>
-    ```
-  * `_parse_feedback_file(text) -> tuple[FeedbackEntry, ...]` in `tools/agentctl.py`
-  * `FeedbackEntry` dataclass (feedback_id, impact, type, description, expected, proposed_action, checked, processed)
-  * `agentctl feedback validate` subcommand — prints errors/warnings with line numbers
-  * Validate: required fields, valid Impact values, valid Type values, no duplicate FEEDBACK-IDs
-* **Acceptance:**
-  * Valid FEEDBACK.md → exit 0 with "Feedback file OK" message.
-  * Missing required field → exit 2 with line number and field name.
-  * Duplicate FEEDBACK-ID → exit 2 with diagnostic.
-* **Demo commands:**
-  * `python3 tools/agentctl.py --repo-root . feedback validate`
-* **Evidence:**
-  * Validation output for both valid and invalid FEEDBACK.md.
-
----
-
-### 24.1 — `agentctl feedback inject`
-
-* **Objective:**
-  Parse validated FEEDBACK.md entries and inject them as Issue records into the `## Active issues` section of STATE.md, marking injected entries as `[PROCESSED]`.
-* **Deliverables:**
-  * `agentctl feedback inject` subcommand
-  * Conversion logic: `FeedbackEntry → Issue` (Impact → Impact, Type+Description → Notes, Expected → Unblock Condition, Proposed action → Evidence Needed)
-  * Issue IDs allocated as `ISSUE-<next-available-id>` (scans existing STATE.md issues to avoid collisions)
-  * Injected entries marked with `- [x] FEEDBACK-001: <title>  <!-- processed: ISSUE-123 -->` in FEEDBACK.md
-  * `--dry-run` flag: print what would be injected without modifying files
-* **Acceptance:**
-  * After inject, STATE.md `## Active issues` contains new Issue entries from feedback.
-  * FEEDBACK.md entries are marked `[x]` (processed) with the mapped ISSUE-ID in a comment.
-  * Running inject twice does not duplicate issues.
-* **Demo commands:**
-  * `python3 tools/agentctl.py --repo-root . feedback inject --dry-run`
-  * `python3 tools/agentctl.py --repo-root . feedback inject`
-* **Evidence:**
-  * STATE.md diff showing injected Issues. FEEDBACK.md with processed markers.
-
----
-
-### 24.2 — Dispatcher integration
-
-* **Objective:**
-  Extend `_recommend_next()` to route to `issues_triage` when `.vibe/FEEDBACK.md` contains unprocessed entries, surfacing the feedback count and highest-impact entry in the reason string.
-* **Deliverables:**
-  * `_has_unprocessed_feedback(repo_root) -> tuple[bool, str]` helper in `tools/agentctl.py`
-  * `_recommend_next()` check added after hard-stop conditions and before DECISION_REQUIRED gate
-  * Reason format: `"Unprocessed human feedback: 2 entries (top impact: MAJOR). Run agentctl feedback inject."`
-  * `validate()` warns when FEEDBACK.md exists and has unprocessed entries
-* **Acceptance:**
-  * `agentctl next` returns `issues_triage` when FEEDBACK.md has `- [ ] FEEDBACK-001:...` entries.
-  * `agentctl next` returns normal role when FEEDBACK.md has only `- [x]` (processed) entries.
-  * `agentctl validate` emits warning for unprocessed feedback.
-* **Demo commands:**
-  * `python3 tools/agentctl.py --repo-root . next --format json`
-* **Evidence:**
-  * `agentctl next` JSON output showing `issues_triage` with feedback reason.
-
----
-
-### 24.3 — `agentctl feedback ack` and HISTORY.md archival
-
-* **Objective:**
-  Archive all processed FEEDBACK.md entries to HISTORY.md and clear them from FEEDBACK.md, with a timestamped summary line per entry.
-* **Deliverables:**
-  * `agentctl feedback ack` subcommand
-  * Appends to `## Feedback archive` section in HISTORY.md (creates section if missing)
-  * Archive format: `- YYYY-MM-DD FEEDBACK-001 → ISSUE-123: <title> (Type: concern, Impact: MAJOR)`
-  * Removes archived entries from FEEDBACK.md; leaves unprocessed entries untouched
-  * Prints summary: "Archived 2 feedback entries to HISTORY.md."
-* **Acceptance:**
-  * After ack, HISTORY.md contains archived entries with timestamps and ISSUE mappings.
-  * FEEDBACK.md retains only unprocessed entries.
-  * Idempotent: running ack again on an already-clean FEEDBACK.md prints "Nothing to archive."
-* **Demo commands:**
-  * `python3 tools/agentctl.py --repo-root . feedback ack`
-* **Evidence:**
-  * HISTORY.md diff showing archived entries. FEEDBACK.md showing only remaining unprocessed entries.
-
----
-
-### 24.4 — Integration tests and documentation
-
-* **Objective:**
-  Full test suite for the feedback channel and end-user documentation.
-* **Deliverables:**
-  * `tests/workflow/test_feedback_channel.py` covering: schema parsing, validation, inject (including duplicate guard), dispatcher routing, ack, idempotency, backward compat (no FEEDBACK.md)
-  * `docs/feedback_channel.md` — protocol guide with FEEDBACK.md format reference, inject/ack workflow, and dispatcher integration notes
-* **Acceptance:**
-  * All tests pass.
-  * `agentctl validate --strict` passes.
-  * Docs include a full worked example (write feedback → inject → triage → ack).
-* **Demo commands:**
-  * `python3 -m pytest tests/workflow/test_feedback_channel.py -v`
-  * `python3 tools/agentctl.py --repo-root . validate --strict`
-* **Evidence:**
-  * Test output showing all pass. `docs/feedback_channel.md` exists.
-
----
-
 ## Stage 25 — Checkpoint Dependency Graph
 
 **Stage objective:**
@@ -155,7 +29,7 @@ Extend PLAN.md with optional `depends_on: [X.Y, ...]` annotations per checkpoint
   * Checkpoints with `depends_on: [1.4, 2.1]` → `{"2.0": ["1.4", "2.1"]}`.
   * Malformed `depends_on:` value → parse error captured for validation (not crash).
 * **Demo commands:**
-  * `python3 -m pytest tests/workflow/ -k "parse_checkpoint_dep" -v`
+  * `python tools/agentctl.py --repo-root . --format json validate`
 * **Evidence:**
   * Tests showing parsed deps for checkpoints with and without `depends_on:`.
 
@@ -177,8 +51,7 @@ Extend PLAN.md with optional `depends_on: [X.Y, ...]` annotations per checkpoint
   * Self-dep → error.
   * Valid DAG with no cycles or dangling refs → no errors.
 * **Demo commands:**
-  * `python3 -m pytest tests/workflow/ -k "checkpoint_dag" -v`
-  * `python3 tools/agentctl.py --repo-root . validate --strict`
+  * `python tools/agentctl.py --repo-root . validate --strict`
 * **Evidence:**
   * Tests showing all error cases. `agentctl validate` catches a cyclic dep in a test fixture.
 
@@ -197,7 +70,7 @@ Extend PLAN.md with optional `depends_on: [X.Y, ...]` annotations per checkpoint
   * Checkpoint with an unmet dep → dispatcher skips it and finds the next dep-satisfied checkpoint.
   * All remaining checkpoints dep-blocked → dispatcher routes to `stop` with unmet dep list.
 * **Demo commands:**
-  * `python3 -m pytest tests/workflow/ -k "dep_aware_dispatch" -v`
+  * `python tools/agentctl.py --repo-root . validate`
 * **Evidence:**
   * Tests showing all three cases.
 
@@ -219,8 +92,8 @@ Extend PLAN.md with optional `depends_on: [X.Y, ...]` annotations per checkpoint
   * `agentctl dag --format ascii` renders a readable tree.
   * A repo with no `depends_on:` annotations produces a linear graph (no edges in JSON).
 * **Demo commands:**
-  * `python3 tools/agentctl.py --repo-root . dag --format json`
-  * `python3 tools/agentctl.py --repo-root . dag --format ascii`
+  * `python tools/agentctl.py --repo-root . dag --format json`
+  * `python tools/agentctl.py --repo-root . dag --format ascii`
 * **Evidence:**
   * JSON and ASCII output for a PLAN.md with and without deps.
 
@@ -240,7 +113,7 @@ Extend PLAN.md with optional `depends_on: [X.Y, ...]` annotations per checkpoint
   * `--parallel 2` with only one ready checkpoint returns one.
   * `--parallel 1` output is structurally identical to `agentctl next` without the flag.
 * **Demo commands:**
-  * `python3 tools/agentctl.py --repo-root . next --parallel 2 --format json`
+  * `python tools/agentctl.py --repo-root . validate`
 * **Evidence:**
   * JSON output showing two recommended roles from a PLAN.md with parallel-ready checkpoints.
 
@@ -259,7 +132,7 @@ Extend PLAN.md with optional `depends_on: [X.Y, ...]` annotations per checkpoint
   * `agentctl validate --strict` passes.
   * Docs include a worked example of a diamond dependency (1.0 → 1.1 and 1.0 → 1.2 → 1.3, where 1.3 depends_on [1.1, 1.2]).
 * **Demo commands:**
-  * `python3 -m pytest tests/workflow/test_checkpoint_dag.py -v`
-  * `python3 tools/agentctl.py --repo-root . validate --strict`
+  * `python -m pytest tests/workflow/test_checkpoint_dag.py -v`
+  * `python tools/agentctl.py --repo-root . validate --strict`
 * **Evidence:**
   * Test output showing all pass. `docs/checkpoint_dependencies.md` exists with diamond example.

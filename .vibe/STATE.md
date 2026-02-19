@@ -11,51 +11,52 @@
 
 ## Current focus
 
-- Stage: 24
-- Checkpoint: 24.0
+- Stage: 25
+- Checkpoint: 25.5
 - Status: NOT_STARTED  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
 
 ## Objective (current checkpoint)
 
-Define the `.vibe/FEEDBACK.md` format and implement `agentctl feedback validate` with entry-level parsing and diagnostics.
+Full test suite for dependency graph features and end-user documentation.
 
 ## Deliverables (current checkpoint)
 
-- Feedback entry format in `.vibe/FEEDBACK.md`
-- `_parse_feedback_file(text) -> tuple[FeedbackEntry, ...]` in `tools/agentctl.py`
-- `FeedbackEntry` dataclass (feedback_id, impact, type, description, expected, proposed_action, checked, processed)
-- `agentctl feedback validate` subcommand — prints errors/warnings with line numbers
-- Validate: required fields, valid Impact values, valid Type values, no duplicate FEEDBACK-IDs
+- `tests/workflow/test_checkpoint_dag.py` covering all Stage 25 DAG features
+- `docs/checkpoint_dependencies.md` — dependency graph guide with syntax, validation, dag usage, and parallel dispatch
+- `docs/concepts.md` updated with DAG concepts
 
 ## Acceptance (current checkpoint)
 
-- Valid FEEDBACK.md → exit 0 with "Feedback file OK" message.
-- Missing required field → exit 2 with line number and field name.
-- Duplicate FEEDBACK-ID → exit 2 with diagnostic.
+- All tests pass.
+- `agentctl validate --strict` passes.
+- Docs include a worked example of a diamond dependency.
 
 ## Work log (current session)
 
-- 2026-02-19: Consolidation — pruned work log 13→10 entries; archived Stage 21 (RLM) to HISTORY.md; removed Stages 21 and 22 from PLAN.md.
-- 2026-02-19: 23.1 implemented — `PipelineStepError`, `PipelineProvider` Protocol, `_run_pipeline_step(prompt_id, inputs, config, *, provider)` in plan_pipeline.py; 11 tests in tests/workflow/test_plan_pipeline.py; 152 total passed.
-- 2026-02-19: 23.1 review PASS — all 3 acceptance criteria met, 4 adversarial probes green, no MODERATE/MAJOR findings. Advanced to 23.2 NOT_STARTED.
-- 2026-02-19: 23.2 implemented — `PipelineResult`, `run_plan_pipeline(config, repo_root, *, provider, run_id, resume_run_id)`, `--resume` flag in agentctl plan; 5 orchestration tests; 157 total passed.
-- 2026-02-19: 23.2 review PASS — all 3 acceptance criteria met, 4 adversarial probes green, no MODERATE/MAJOR findings. Advanced to 23.3 NOT_STARTED.
-- 2026-02-19: 23.3 implemented — `render_plan_md(result) -> (str, list[str])`, `_render_checkpoint_section`, `_PLAN_WRITER_COMPLEXITY_BUDGET`; `cmd_plan` writes PLAN.md with summary; 8 plan_writer tests; 165 total passed.
-- 2026-02-19: 23.3 review PASS — all 3 acceptance criteria met, 4 adversarial probes green, no MODERATE/MAJOR findings. Advanced to 23.4 NOT_STARTED.
-- 2026-02-19: 23.4 implemented — `TestConfigValidation` (6 tests), `TestDocsExist`; `docs/plan_authoring.md` created; 31 pipeline tests pass; 172 total passed.
-- 2026-02-19: 23.4 review PASS — 31/31 tests pass; 3 adversarial probes green; MINOR: stale docstring fixed; DONE; Stage 23 complete.
-- 2026-02-19: Consolidation — archived Stage 23 to HISTORY.md; removed Stage 23 from PLAN.md; advanced to Stage 24, Checkpoint 24.0 NOT_STARTED.
+- 2026-02-19: Consolidation — archived Stage 24; advanced to Stage 25, Checkpoint 25.0.
+- 2026-02-19: Stage 25 design+maintenance+improvements done; STAGE_DESIGNED, MAINTENANCE_CYCLE_DONE, PROCESS_IMPROVEMENTS_DONE set.
+- 2026-02-19: 25.0 implemented — `_parse_checkpoint_dependencies`; bug fix: PROCESS_IMPROVEMENTS_DONE suppression; 206 tests pass.
+- 2026-02-19: 25.0 review PASS — auto-advanced to 25.1 NOT_STARTED.
+- 2026-02-19: 25.1 implemented — `_validate_checkpoint_dag` (DFS cycle detection, dangling refs, self-deps); integrated into `validate()`; 206 tests pass.
+- 2026-02-19: 25.1 review PASS — auto-advanced to 25.2 NOT_STARTED.
+- 2026-02-19: 25.2 implemented — `_get_satisfied_deps`, `_get_unmet_deps`; dep-blocked skip loop + stop in `_decide_role`; 206 tests pass.
+- 2026-02-19: 25.2 review PASS — all 3 ACs met. Auto-advanced to 25.3 NOT_STARTED.
+- 2026-02-19: 25.3 implemented — `_parse_checkpoint_titles`, `_compute_dag_node_status`, `cmd_dag`; JSON+ASCII output; `dag --format` subparser; 206 tests pass.
+- 2026-02-19: 25.3 review PASS — all 3 ACs met. Auto-advanced to 25.4 NOT_STARTED.
+- 2026-02-19: 25.4 implemented — `_get_ready_checkpoints`; `--parallel N` flag on `next`; `recommended_roles` always in output; 206 tests pass.
+- 2026-02-19: 25.4 review PASS — all 3 ACs met. Auto-advanced to 25.5 NOT_STARTED.
 
 ## Workflow state
 
 - [ ] RUN_CONTEXT_CAPTURE
-- [ ] STAGE_DESIGNED
-- [ ] MAINTENANCE_CYCLE_DONE
-- [ ] RETROSPECTIVE_DONE
+- [x] STAGE_DESIGNED
+- [x] MAINTENANCE_CYCLE_DONE
+- [x] RETROSPECTIVE_DONE
+- [x] PROCESS_IMPROVEMENTS_DONE
 
 ## Evidence
 
-(None — checkpoint 24.0 not yet started)
+(None — checkpoint 25.5 not yet started)
 
 ## Active issues
 
