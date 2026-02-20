@@ -1096,8 +1096,7 @@ ROLE: Senior engineer (refactor scan)
 
 PREFLIGHT
 - Read `.codex/skills/continuous-refactor/resources/refactoring-guide.md` for prioritization
-  heuristics, impact tag definitions, and candidate-generation strategy. If a project-customized
-  `docs/refactoring-guide.md` exists at the repo root, prefer that instead.
+  heuristics, impact tag definitions, and candidate-generation strategy.
 - This guidance is advisory — use it to inform candidate selection and tagging, not as a rigid
   checklist. Project context and your own judgment take precedence.
 
@@ -1293,6 +1292,12 @@ DISPATCHER CONTRACT (when selected by `agentctl` workflow)
 
 ```md
 ROLE: Test strategist (gap analysis)
+
+PREFLIGHT
+- Read `.codex/skills/continuous-test-generation/resources/test-generation-guide.md` for
+  prioritization heuristics, impact tag definitions, and candidate-generation strategy.
+- This guidance is advisory — use it to inform gap selection and tagging, not as a rigid
+  checklist. Project context and your own judgment take precedence.
 
 TASK
 Identify untested paths tied to real risk in the target code.
@@ -1637,6 +1642,12 @@ DISPATCHER CONTRACT (when selected by `agentctl` workflow)
 ```md
 ROLE: Documentation analyst (gap phase)
 
+PREFLIGHT
+- Read `.codex/skills/continuous-documentation/resources/documentation-guide.md` for
+  severity heuristics, gap-phase priorities, and candidate-generation strategy.
+- This guidance is advisory — use it to inform gap selection and severity tagging, not as a rigid
+  checklist. Project context and your own judgment take precedence.
+
 TASK
 Detect missing documentation and missing documentation sections across README,
 docs, and embedded guides, then produce deterministic fix recommendations.
@@ -1735,6 +1746,12 @@ RULES
 
 ```md
 ROLE: Documentation architect (refactor analysis phase)
+
+PREFLIGHT
+- Read `.codex/skills/continuous-documentation/resources/documentation-guide.md` for
+  severity heuristics, refactor-phase priorities, and candidate-generation strategy.
+- This guidance is advisory — use it to inform finding selection and severity tagging, not as a
+  rigid checklist. Project context and your own judgment take precedence.
 
 TASK
 Analyze existing documentation quality for `accuracy`, `bloat`, and

@@ -52,10 +52,6 @@ This index maps all documentation surfaces in this repository.
 - `docs/wiki-export/config_schema.md` - wiki-exported config schema page.
 - `docs/wiki-export/map.json` - wiki export mapping manifest.
 
-## Refactoring
-
-- `docs/refactoring-guide.md` - project-local refactoring smell table, concepts, and strategies.
-
 ## Maintenance Note
 
 Update this index whenever new top-level docs are added to `docs/`.

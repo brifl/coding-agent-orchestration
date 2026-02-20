@@ -379,13 +379,6 @@ def install_skills_agent_global(agent: str, force: bool) -> int:
     if _copy_file(canonical_catalog, dst_catalog, force=True):
         updated.append(str(dst_catalog))
 
-    # 5b) Sync refactoring guide into continuous-refactor resources (always refresh)
-    refactor_guide_src = repo_root / "docs" / "refactoring-guide.md"
-    if refactor_guide_src.exists():
-        dst_refactor_guide = dst_root / "continuous-refactor" / "resources" / "refactoring-guide.md"
-        if _copy_file(refactor_guide_src, dst_refactor_guide, force=True):
-            updated.append(str(dst_refactor_guide))
-
     # 6) Ensure key helper scripts are present inside skills (force refresh)
     helper_pairs = [
         (repo_root / "tools" / "agentctl.py", dst_root / "vibe-loop" / "scripts" / "agentctl.py"),
