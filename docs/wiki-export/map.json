@@ -4,6 +4,11 @@
       "finding_id": "refactor:structure:docs_config_schema.md:10757d23d6",
       "source": "docs/config_schema.md",
       "target": "docs/wiki-export/config_schema.md"
+    },
+    {
+      "finding_id": "refactor:structure:docs_workflow_improvements.md:d680e34929",
+      "source": "docs/workflow_improvements.md",
+      "target": "docs/wiki-export/workflow_improvements.md"
     }
   ],
   "schema_version": 1

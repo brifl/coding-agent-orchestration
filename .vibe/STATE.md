@@ -56,6 +56,9 @@ Full test suite for dependency graph features and end-user documentation.
 - 2026-02-20: continuous-refactor verify loop — confirmed active refactor diff is line-ending-only (`git diff --ignore-cr-at-eol --stat` empty despite large `git diff --stat` churn), reran workflow regression slice (57 passed), and both strict validation entrypoints return `ok: True`.
 - 2026-02-20: continuous-refactor scan loop — generated 10 `[MINOR]` candidates across maintainability/safety/testability from remaining hotspots (`except Exception` branches and repeated workflow-test `sys.path` bootstraps); recommended first moves are narrowing CLI exception handling in `tools/agentctl.py`/`tools/bootstrap.py` and centralizing workflow-test import bootstrap usage.
 - 2026-02-20: continuous-refactor stop gate — workflow stopped on minor-only scan findings and exposed approval-required idea IDs 1-5 for optional execution through `workflow-approve`.
+- 2026-02-20: continuous-documentation preflight — recorded a context-capture LOOP_RESULT acknowledgement to clear pending STATE sync before entering workflow dispatch.
+- 2026-02-20: continuous-documentation execute loop (`prompt.docs_refactor_fix`) — ran deterministic refactor analysis/fix pipeline; applied 2 finding-mapped doc changes (`merge_duplicates`, `migrate_to_wiki`) with zero consistency validation errors; post-fix refactor report moved from `MODERATE:1/MINOR:2` to `MODERATE:0/MINOR:3`.
+- 2026-02-20: continuous-documentation stop gate — workflow stopped on minor-only documentation findings and exposed approval-required idea IDs 1-3 for optional follow-up execution.
 
 ## Workflow state
 
@@ -98,6 +101,16 @@ Full test suite for dependency graph features and end-user documentation.
 - `rg --count-matches "except Exception" tools tests/workflow -S` -> `tools/agentctl.py:6`, `tools/bootstrap.py:2`, `tools/plan_pipeline.py:1`, `tools/skillctl.py:1`, `tools/rlm/runtime.py:1`, `tools/rlm/provider_check.py:1`.
 - `rg --count-matches "sys.path.insert\\(0, str\\(Path\\(__file__\\)\\.parent\\.parent\\.parent / \\\"tools\\\"\\)\\)" tests/workflow -S` -> 14 workflow test modules still perform local `sys.path` bootstrap.
 - `python3 tools/agentctl.py --repo-root . --format json next --workflow continuous-refactor` -> `recommended_role: stop`, `approval_required: true`, and `workflow-approve --ids <n>` command surfaced for minor-idea selection.
+- `python3 tools/agentctl.py --repo-root . --format json next --workflow continuous-documentation` -> first call returned `requires_loop_result: true` (pending acknowledgement); after recording loop result, dispatcher selected `prompt.docs_refactor_fix`.
+- `python3 tools/agentctl.py --repo-root . --format json loop-result --line 'LOOP_RESULT: {...context_capture...}'` -> `ok: true` (acknowledgement cleared).
+- `python3 tools/docs/doc_refactor_report.py --repo-root . --out .vibe/docs/refactor_report.before.current.json` -> summary `MAJOR:0, MODERATE:1, MINOR:2`.
+- `python3 tools/docs/apply_refactor_fixes.py --repo-root . --report .vibe/docs/refactor_report.before.current.json --log .vibe/docs/refactor_fix_log.jsonl --apply` -> `changed_rows: 2`, `validation_errors: []`.
+- `python3 tools/docs/doc_refactor_report.py --repo-root . --out .vibe/docs/refactor_report.after.current.json` -> summary `MAJOR:0, MODERATE:0, MINOR:3`.
+- `.vibe/docs/refactor_fix_log.jsonl` -> applied rows for `docs/wiki-export/workflow_improvements.md` and `docs/skill_reference.md`; `split_to_code_specific_doc` was `noop_exists`.
+- `docs/wiki-export/map.json` -> added mapping for `docs/workflow_improvements.md` to `docs/wiki-export/workflow_improvements.md`.
+- `python3 .codex/skills/vibe-loop/scripts/agentctl.py --repo-root . validate --strict` -> `ok: True` (warning only: optional evidence path).
+- `python3 .codex/skills/vibe-loop/scripts/agentctl.py --repo-root . --format json loop-result --line 'LOOP_RESULT: {...docs_refactor_fix...}'` -> `ok: true` (implement loop recorded with minor-only findings).
+- `python3 tools/agentctl.py --repo-root . --format json next --workflow continuous-documentation` -> `recommended_role: stop`, `approval_required: true`, and `workflow-approve --ids <n>` command surfaced for minor-idea selection.
 
 ## Active issues
 
