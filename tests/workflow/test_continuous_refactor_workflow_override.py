@@ -2,6 +2,9 @@
 from __future__ import annotations
 
 import json
+import shutil
+import subprocess
+import sys
 from pathlib import Path
 
 from agentctl import StateInfo, _resolve_next_prompt_selection, build_parser  # type: ignore
@@ -63,6 +66,13 @@ steps:
   - prompt_id: prompt.refactor_verify
 """,
     )
+
+
+def _seed_workflow_engine(repo_root: Path) -> None:
+    tools_dir = repo_root / "tools"
+    tools_dir.mkdir(parents=True, exist_ok=True)
+    src = Path(__file__).resolve().parents[2] / "tools" / "workflow_engine.py"
+    shutil.copyfile(src, tools_dir / "workflow_engine.py")
 
 
 def _run_json_command(capsys, argv: list[str]) -> tuple[int, dict[str, object]]:
@@ -219,3 +229,55 @@ def test_cmd_next_continuous_refactor_recommended_roles_not_plan_coupled(temp_re
     assert len(recommended_roles) == 1
     assert recommended_roles[0]["checkpoint"] == "1.0"
     assert recommended_roles[0]["prompt_id"] == payload["recommended_prompt_id"]
+
+
+def test_skill_packaged_cmd_next_continuous_refactor_uses_strict_cycle(temp_repo: Path) -> None:
+    _write_state(
+        temp_repo,
+        """# STATE
+
+## Current focus
+- Stage: 1
+- Checkpoint: 1.0
+- Status: DONE
+""",
+    )
+    _write_plan(
+        temp_repo,
+        """# PLAN
+
+## Stage 1 — Demo
+### 1.0 — First
+""",
+    )
+    _seed_continuous_refactor_workflow(temp_repo)
+    _seed_workflow_engine(temp_repo)
+
+    skill_agentctl = Path(__file__).resolve().parents[2] / ".codex" / "skills" / "vibe-loop" / "scripts" / "agentctl.py"
+    proc = subprocess.run(
+        [
+            sys.executable,
+            str(skill_agentctl),
+            "--repo-root",
+            str(temp_repo),
+            "--format",
+            "json",
+            "next",
+            "--workflow",
+            "continuous-refactor",
+        ],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+        check=False,
+    )
+
+    assert proc.returncode == 0, proc.stderr or proc.stdout
+    payload = json.loads(proc.stdout)
+    assert payload["recommended_prompt_id"] in {
+        "prompt.refactor_scan",
+        "prompt.refactor_execute",
+        "prompt.refactor_verify",
+    }
+    assert payload["recommended_role"] in {"implement", "review"}
+    assert "strict cycle" in payload["reason"]

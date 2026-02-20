@@ -522,6 +522,11 @@ consolidate
 improve
 ```
 
+## prompt.retrospective - Retrospective
+```md
+retro
+```
+
 ## prompt.advance_checkpoint - Advance Checkpoint
 ```md
 advance
