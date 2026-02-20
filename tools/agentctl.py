@@ -2821,6 +2821,12 @@ def _continuous_workflow_minor_stop_context(
     if error or payload is None:
         return None
 
+    # If the LOOP_RESULT was written by a different workflow's stop sentinel,
+    # its findings belong to that workflow and must not trigger a stop here.
+    loop_result_workflow = str(payload.get("workflow", "")).strip()
+    if loop_result_workflow and loop_result_workflow != workflow:
+        return None
+
     observed_tags = _idea_impact_tags_from_loop_result(payload)
     if not observed_tags:
         return None
