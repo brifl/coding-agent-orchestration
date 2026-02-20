@@ -11,14 +11,20 @@ def _write_executable(path: Path, content: str) -> None:
     path.chmod(0o755)
 
 
+def _catalog_path(repo_root: Path) -> Path:
+    return repo_root / ".codex" / "skills" / "vibe-prompts" / "resources" / "template_prompts.md"
+
+
+def _write_prompt_catalog(repo_root: Path) -> None:
+    catalog_path = _catalog_path(repo_root)
+    catalog_path.parent.mkdir(parents=True, exist_ok=True)
+    catalog_path.write_text("# template prompts\n", encoding="utf-8")
+
+
 def _setup_fake_repo(repo_root: Path, *, executor_body: str) -> None:
     (repo_root / ".vibe").mkdir(parents=True)
     (repo_root / "tools").mkdir(parents=True)
-    (repo_root / "prompts").mkdir(parents=True)
-    (repo_root / "prompts" / "template_prompts.md").write_text(
-        "# template prompts\n",
-        encoding="utf-8",
-    )
+    _write_prompt_catalog(repo_root)
 
     _write_executable(
         repo_root / "tools" / "agentctl.py",
@@ -38,7 +44,7 @@ if "next" in args:
         payload = {
             "recommended_role": "implement",
             "recommended_prompt_id": "prompt.checkpoint_implementation",
-            "prompt_catalog_path": str(repo_root / "prompts" / "template_prompts.md"),
+            "prompt_catalog_path": str(repo_root / ".codex" / "skills" / "vibe-prompts" / "resources" / "template_prompts.md"),
             "stage": "1",
             "checkpoint": "1.0",
             "status": "NOT_STARTED",
@@ -83,11 +89,7 @@ raise SystemExit(2)
 def _setup_fake_repo_ack_gated(repo_root: Path) -> None:
     (repo_root / ".vibe").mkdir(parents=True)
     (repo_root / "tools").mkdir(parents=True)
-    (repo_root / "prompts").mkdir(parents=True)
-    (repo_root / "prompts" / "template_prompts.md").write_text(
-        "# template prompts\n",
-        encoding="utf-8",
-    )
+    _write_prompt_catalog(repo_root)
 
     _write_executable(
         repo_root / "tools" / "agentctl.py",
@@ -113,7 +115,7 @@ if "next" in args:
         payload = {
             "recommended_role": "implement",
             "recommended_prompt_id": "prompt.checkpoint_implementation",
-            "prompt_catalog_path": str(repo_root / "prompts" / "template_prompts.md"),
+            "prompt_catalog_path": str(repo_root / ".codex" / "skills" / "vibe-prompts" / "resources" / "template_prompts.md"),
             "stage": "1",
             "checkpoint": "1.0",
             "status": "NOT_STARTED",
@@ -150,11 +152,7 @@ raise SystemExit(2)
 def _setup_fake_repo_minor_approval(repo_root: Path) -> None:
     (repo_root / ".vibe").mkdir(parents=True)
     (repo_root / "tools").mkdir(parents=True)
-    (repo_root / "prompts").mkdir(parents=True)
-    (repo_root / "prompts" / "template_prompts.md").write_text(
-        "# template prompts\n",
-        encoding="utf-8",
-    )
+    _write_prompt_catalog(repo_root)
 
     _write_executable(
         repo_root / "tools" / "agentctl.py",

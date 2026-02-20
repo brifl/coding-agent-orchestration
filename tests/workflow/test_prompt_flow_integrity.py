@@ -29,8 +29,8 @@ CORE_PROMPT_IDS = [
 
 
 def _write_prompt_catalog(repo_root: Path) -> None:
-    prompts_dir = repo_root / "prompts"
-    prompts_dir.mkdir(parents=True, exist_ok=True)
+    catalog_path = repo_root / ".codex" / "skills" / "vibe-prompts" / "resources" / "template_prompts.md"
+    catalog_path.parent.mkdir(parents=True, exist_ok=True)
     sections = []
     for prompt_id in CORE_PROMPT_IDS:
         sections.append(
@@ -43,7 +43,7 @@ def _write_prompt_catalog(repo_root: Path) -> None:
                 ]
             )
         )
-    (prompts_dir / "template_prompts.md").write_text("\n\n".join(sections) + "\n", encoding="utf-8")
+    catalog_path.write_text("\n\n".join(sections) + "\n", encoding="utf-8")
 
 
 def test_validate_strict_fails_for_unknown_workflow_prompt(
@@ -106,12 +106,13 @@ def test_repo_workflow_prompt_ids_exist_and_are_mapped() -> None:
 
 def test_skill_prompt_catalog_is_synced_with_repo_catalog() -> None:
     repo_root = Path(__file__).resolve().parents[2]
-    canonical = repo_root / "prompts" / "template_prompts.md"
-    skill_copy = repo_root / ".codex" / "skills" / "vibe-prompts" / "resources" / "template_prompts.md"
+    expected_catalog = repo_root / ".codex" / "skills" / "vibe-prompts" / "resources" / "template_prompts.md"
+    catalog_index, catalog_path, catalog_error = _load_prompt_catalog_index(repo_root)
 
-    assert canonical.exists()
-    assert skill_copy.exists()
-    assert canonical.read_text(encoding="utf-8") == skill_copy.read_text(encoding="utf-8")
+    assert catalog_error is None
+    assert catalog_path == expected_catalog
+    assert expected_catalog.exists()
+    assert "prompt.stage_design" in catalog_index
 
 
 def test_issue_schema_language_uses_impact() -> None:
@@ -120,7 +121,7 @@ def test_issue_schema_language_uses_impact() -> None:
         repo_root / "AGENTS.md",
         repo_root / "templates" / "repo_root" / "AGENTS.md",
         repo_root / "README.md",
-        repo_root / "prompts" / "template_prompts.md",
+        repo_root / ".codex" / "skills" / "vibe-prompts" / "resources" / "template_prompts.md",
         repo_root / "templates" / "vibe_folder" / "STATE.md",
     ]
 

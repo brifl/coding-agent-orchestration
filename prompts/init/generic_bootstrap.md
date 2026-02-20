@@ -33,7 +33,7 @@ EXECUTION
 
 3. Get the prompt body:
    ```bash
-   python3 tools/prompt_catalog.py prompts/template_prompts.md get <recommended_prompt_id>
+   python3 tools/prompt_catalog.py .codex/skills/vibe-prompts/resources/template_prompts.md get <recommended_prompt_id>
    ```
 
 4. Execute the prompt:

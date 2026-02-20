@@ -20,7 +20,7 @@ READ ORDER
 
 EXECUTION
 - Run `python3 tools/agentctl.py --repo-root . next --format json` to get recommended prompt
-- Fetch prompt body: `python3 tools/prompt_catalog.py prompts/template_prompts.md get <prompt_id>`
+- Fetch prompt body: `python3 tools/prompt_catalog.py .codex/skills/vibe-prompts/resources/template_prompts.md get <prompt_id>`
 - Execute the prompt, update STATE.md, commit changes
 - Record loop completion: `python3 tools/agentctl.py --repo-root . --format json loop-result --line 'LOOP_RESULT: {...}'`
 - For continuous mode: loop until agentctl returns `recommended_role: "stop"`

@@ -3,9 +3,9 @@
 resource_resolver.py
 
 Resolves resources (skills, prompts, etc.) by searching in a defined order of precedence:
-1. Repo-Local (`.codex/skills/`, `prompts/`)
-2. Global (`~/.codex/skills/` or `$CODEX_HOME/skills`)
-3. Built-in (`built_in/skills/`, `built_in/prompts/`)
+1. Repo-Local (`.codex/skills/*/resources/`)
+2. Global (`~/.codex/skills/*/resources/` or `$CODEX_HOME/skills/*/resources/`)
+3. Built-in (`built_in/skills/*/resources/`)
 """
 
 from __future__ import annotations
@@ -17,6 +17,15 @@ from pathlib import Path
 
 # Assume 'gemini' for the agent if not specified.
 DEFAULT_AGENT = "gemini"
+PROMPT_SKILL_PRIORITY = (
+    "vibe-prompts",
+    "vibe-loop",
+    "vibe-run",
+    "vibe-one-loop",
+    "continuous-refactor",
+    "continuous-test-generation",
+    "continuous-documentation",
+)
 
 _WSL_UNC_RE = re.compile(r"^//wsl(?:\.localhost)?/[^/]+/(.+)$", re.IGNORECASE)
 _WIN_DRIVE_RE = re.compile(r"^([A-Za-z]):/(.+)$")
@@ -62,6 +71,25 @@ def _codex_repo_skill_roots(repo_root: Path) -> list[Path]:
         current = current.parent
     return roots
 
+
+def _append_path_if_new(search_paths: list[Path], path: Path) -> None:
+    if path not in search_paths:
+        search_paths.append(path)
+
+
+def _append_prompt_catalog_candidates(
+    search_paths: list[Path],
+    skills_root: Path,
+    resource_name: str,
+) -> None:
+    for skill_name in PROMPT_SKILL_PRIORITY:
+        _append_path_if_new(search_paths, skills_root / skill_name / "resources" / resource_name)
+
+    if skills_root.exists():
+        for candidate in sorted(skills_root.glob(f"*/resources/{resource_name}")):
+            _append_path_if_new(search_paths, candidate)
+
+
 def find_resource(resource_type: str, resource_name: str, agent: str | None = None) -> Path | None:
     """
     Finds a resource by searching in the defined order of precedence.
@@ -82,29 +110,39 @@ def find_resource(resource_type: str, resource_name: str, agent: str | None = No
     if resource_type == "skill":
         # 1. Repo-Local (Codex searches .codex/skills from cwd up)
         for root in _codex_repo_skill_roots(repo_root):
-            search_paths.append(root / resource_name)
+            _append_path_if_new(search_paths, root / resource_name)
 
         # Legacy repo layout fallback
-        search_paths.append(repo_root / "skills" / resource_name)
+        _append_path_if_new(search_paths, repo_root / "skills" / resource_name)
 
         # 2. Global
         if agent_name == "codex":
-            search_paths.append(_codex_home() / "skills" / resource_name)
-            search_paths.append(Path("/etc/codex/skills") / resource_name)
+            _append_path_if_new(search_paths, _codex_home() / "skills" / resource_name)
+            _append_path_if_new(search_paths, Path("/etc/codex/skills") / resource_name)
         else:
-            search_paths.append(Path.home() / f".{agent_name}" / "skills" / resource_name)
+            _append_path_if_new(search_paths, Path.home() / f".{agent_name}" / "skills" / resource_name)
 
         # 3. Built-in
-        search_paths.append(repo_root / "built_in" / "skills" / resource_name)
+        _append_path_if_new(search_paths, repo_root / "built_in" / "skills" / resource_name)
     elif resource_type == "prompt":
-        # For prompts, we look for the containing file.
-        # The resource_name is a key inside the file.
-        # 1. Repo-Local
-        search_paths.append(repo_root / "prompts" / "template_prompts.md")
-        # 2. Global
-        search_paths.append(Path.home() / f".{agent_name}" / "prompts" / "template_prompts.md")
-        # 3. Built-in
-        search_paths.append(repo_root / "built_in" / "prompts" / "template_prompts.md")
+        # For prompts, search prompt catalogs copied into skill resources first.
+        for root in _codex_repo_skill_roots(repo_root):
+            _append_prompt_catalog_candidates(search_paths, root, resource_name)
+
+        # Legacy repo-local skills layout fallback.
+        _append_prompt_catalog_candidates(search_paths, repo_root / "skills", resource_name)
+
+        # Global locations.
+        if agent_name == "codex":
+            codex_home = _codex_home()
+            _append_prompt_catalog_candidates(search_paths, codex_home / "skills", resource_name)
+            _append_prompt_catalog_candidates(search_paths, Path("/etc/codex/skills"), resource_name)
+        else:
+            agent_root = Path.home() / f".{agent_name}"
+            _append_prompt_catalog_candidates(search_paths, agent_root / "skills", resource_name)
+
+        # Built-in fallback location.
+        _append_prompt_catalog_candidates(search_paths, repo_root / "built_in" / "skills", resource_name)
 
     for path in search_paths:
         if path.exists():

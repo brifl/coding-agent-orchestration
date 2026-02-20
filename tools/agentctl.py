@@ -5,7 +5,7 @@ agentctl: lightweight control-plane helper for the vibecoding loop.
 Commands:
 - validate: enforce invariants across .vibe/STATE.md (and optionally .vibe/PLAN.md)
 - status: print current stage/checkpoint/status + issue summary
-- next: recommend which prompt loop to run next (ids align to prompts/template_prompts.md)
+- next: recommend which prompt loop to run next (ids align to template_prompts.md)
 
 Assumptions:
 - Repo authoritative workflow files live under .vibe/
@@ -87,6 +87,16 @@ LOOP_REPORT_MAX_FINDINGS = 5
 CONFIDENCE_MIN_REQUIRED = 0.75
 IDEA_IMPACT_TAG_RE = re.compile(r"\[(MAJOR|MODERATE|MINOR)\]", re.IGNORECASE)
 WORK_LOG_CONSOLIDATION_CAP = 10
+PROMPT_CATALOG_FILENAME = "template_prompts.md"
+PROMPT_SKILL_PRIORITY = (
+    "vibe-prompts",
+    "vibe-loop",
+    "vibe-run",
+    "vibe-one-loop",
+    "continuous-refactor",
+    "continuous-test-generation",
+    "continuous-documentation",
+)
 
 Role = Literal[
     "issues_triage",
@@ -557,12 +567,45 @@ def _next_checkpoint_after(plan_ids: list[str], current_id: str) -> str | None:
     return None
 
 
-def _resolve_prompt_catalog_path(repo_root: Path) -> Path | None:
-    local_path = repo_root / "prompts" / "template_prompts.md"
-    if local_path.exists():
-        return local_path
+def _iter_prompt_catalog_candidates_in_skills(skills_root: Path) -> Iterable[Path]:
+    seen: set[Path] = set()
+    for skill_name in PROMPT_SKILL_PRIORITY:
+        candidate = skills_root / skill_name / "resources" / PROMPT_CATALOG_FILENAME
+        if candidate in seen:
+            continue
+        seen.add(candidate)
+        yield candidate
 
-    resolved = find_resource("prompt", "template_prompts.md")
+    if skills_root.exists():
+        for candidate in sorted(skills_root.glob(f"*/resources/{PROMPT_CATALOG_FILENAME}")):
+            if candidate in seen:
+                continue
+            seen.add(candidate)
+            yield candidate
+
+
+def _iter_repo_prompt_catalog_candidates(repo_root: Path) -> Iterable[Path]:
+    for root in (repo_root / ".codex" / "skills", repo_root / "skills"):
+        yield from _iter_prompt_catalog_candidates_in_skills(root)
+
+    # Built-in fallback locations.
+    yield from _iter_prompt_catalog_candidates_in_skills(repo_root / "built_in" / "skills")
+
+
+def _is_within_path(path: Path, root: Path) -> bool:
+    try:
+        path.resolve().relative_to(root.resolve())
+        return True
+    except ValueError:
+        return False
+
+
+def _resolve_prompt_catalog_path(repo_root: Path) -> Path | None:
+    for candidate in _iter_repo_prompt_catalog_candidates(repo_root):
+        if candidate.exists():
+            return candidate
+
+    resolved = find_resource("prompt", PROMPT_CATALOG_FILENAME)
     if resolved and resolved.exists():
         return resolved
     return None
@@ -573,7 +616,11 @@ def _load_prompt_catalog_index(
 ) -> tuple[dict[str, str], Path | None, str | None]:
     catalog_path = _resolve_prompt_catalog_path(repo_root)
     if catalog_path is None:
-        return ({}, None, "Prompt catalog not found (expected prompts/template_prompts.md).")
+        return (
+            {},
+            None,
+            "Prompt catalog not found (expected .codex/skills/*/resources/template_prompts.md).",
+        )
     fallback_reason: str | None = None
     try:
         from prompt_catalog import load_catalog  # type: ignore
@@ -1912,11 +1959,14 @@ def _validate_catalog_section(
                 f"{workflow_name}: prompt id '{prompt_id}' has no role mapping in PROMPT_ROLE_MAP."
             )
 
-    if catalog_path and not (repo_root / "prompts" / "template_prompts.md").exists():
-        warnings.append(
-            f"Using non-local prompt catalog at {catalog_path}; "
-            "repo-local prompts/template_prompts.md is recommended."
-        )
+    if catalog_path:
+        local_skill_roots = (repo_root / ".codex" / "skills", repo_root / "skills")
+        is_repo_local = any(_is_within_path(catalog_path, root) for root in local_skill_roots)
+        if not is_repo_local:
+            warnings.append(
+                f"Using non-local prompt catalog at {catalog_path}; "
+                "repo-local .codex/skills/*/resources/template_prompts.md is recommended."
+            )
 
     return errors, warnings
 

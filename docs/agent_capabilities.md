@@ -54,7 +54,7 @@ Copilot cannot natively loop without user intervention. To achieve pseudo-contin
 python tools/agentctl.py --repo-root . --format json next
 
 # 2. Get the prompt body
-python tools/prompt_catalog.py prompts/template_prompts.md get <prompt_id>
+python tools/prompt_catalog.py .codex/skills/vibe-prompts/resources/template_prompts.md get <prompt_id>
 
 # 3. Paste the prompt to Copilot, let it execute
 # 4. Repeat from step 1 until agentctl returns "stop"

@@ -16,7 +16,7 @@ Commands:
 
   install-skills --global --agent <agent_name>
     - Installs/updates skills for the specified agent into ~/.codex/skills (Codex) or ~/.<agent>/skills
-    - Syncs prompts/template_prompts.md into the vibe-prompts skill resources.
+    - Syncs template_prompts.md into every installed skill's resources directory.
     - Copies supporting scripts (agentctl.py, prompt_catalog.py) into skill scripts as needed.
 
 Design:
@@ -53,6 +53,7 @@ ALL_AGENTS = ["codex", "claude", "gemini", "copilot"]
 CANONICAL_AGENTS_TEMPLATE = Path("templates/repo_root/AGENTS.md")
 CANONICAL_VIBE_TEMPLATE = Path("templates/repo_root/VIBE.md")
 DEFAULT_INIT_SKILLSET = "vibe-base"
+PROMPT_CATALOG_FILENAME = "template_prompts.md"
 
 
 def _repo_root_from_this_file() -> Path:
@@ -71,6 +72,45 @@ def _read_text(path: Path) -> str:
 def _write_text(path: Path, content: str) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(content, encoding="utf-8")
+
+
+def _resolve_canonical_prompt_catalog(repo_root: Path) -> Path:
+    candidates = [
+        repo_root / ".codex" / "skills" / "vibe-prompts" / "resources" / PROMPT_CATALOG_FILENAME,
+        repo_root / "skills" / "vibe-prompts" / "resources" / PROMPT_CATALOG_FILENAME,
+    ]
+    for path in candidates:
+        if path.exists():
+            return path
+    raise FileNotFoundError(
+        "Canonical catalog missing (expected .codex/skills/vibe-prompts/resources/template_prompts.md)."
+    )
+
+
+def _validate_prompt_catalog(repo_root: Path, catalog_path: Path) -> None:
+    proc = subprocess.run(
+        [sys.executable, str(repo_root / "tools" / "prompt_catalog.py"), str(catalog_path), "list"],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+    )
+    if proc.returncode != 0:
+        raise RuntimeError(f"Prompt catalog validation failed:\n{proc.stderr or proc.stdout}")
+
+
+def _sync_prompt_catalog_to_skills(
+    catalog_path: Path,
+    skills_root: Path,
+    skill_names: Iterable[str],
+    *,
+    force: bool,
+) -> list[str]:
+    updated: list[str] = []
+    for skill_name in sorted({name for name in skill_names if name}):
+        dst_catalog = skills_root / skill_name / "resources" / PROMPT_CATALOG_FILENAME
+        if _copy_file(catalog_path, dst_catalog, force=force):
+            updated.append(str(dst_catalog))
+    return updated
 
 
 def _copy_if_missing(src: Path, dst: Path, *, force: bool = False) -> str:
@@ -185,8 +225,10 @@ def init_repo(target_repo: Path, skillset: str | None = None, overwrite: bool = 
     skill_defs = _resolve_skillset(repo_root, effective_skillset)
     dst_root = target_repo / ".codex" / "skills"
     dst_root.mkdir(parents=True, exist_ok=True)
+    installed_skill_names: list[str] = []
     for skill in skill_defs:
         name = skill["name"]
+        installed_skill_names.append(name)
         src_dir = repo_root / ".codex" / "skills" / name
         if not src_dir.exists():
             src_dir = repo_root / "skills" / name
@@ -198,6 +240,12 @@ def init_repo(target_repo: Path, skillset: str | None = None, overwrite: bool = 
             created.extend(u)
         else:
             skipped.append(str(dst_dir))
+
+    catalog_path = _resolve_canonical_prompt_catalog(repo_root)
+    _validate_prompt_catalog(repo_root, catalog_path)
+    created.extend(
+        _sync_prompt_catalog_to_skills(catalog_path, dst_root, installed_skill_names, force=False)
+    )
 
     # Summary
     print("init-repo summary")
@@ -360,26 +408,15 @@ def install_skills_agent_global(agent: str, force: bool) -> int:
         updated.extend(_sync_dir(src_dir, dst_root / name, force=True))
 
     # 3) Canonical catalog location
-    canonical_catalog = repo_root / "prompts" / "template_prompts.md"
-    if not canonical_catalog.exists():
-        raise FileNotFoundError(f"Canonical catalog missing: {canonical_catalog}")
+    canonical_catalog = _resolve_canonical_prompt_catalog(repo_root)
+    _validate_prompt_catalog(repo_root, canonical_catalog)
 
-    # 4) Validate the catalog BEFORE installing it (no package imports; use subprocess)
-    p = subprocess.run(
-        [sys.executable, str(repo_root / "tools" / "prompt_catalog.py"), str(canonical_catalog), "list"],
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        text=True,
+    # 4) Sync catalog into every installed skill resources directory (always refresh).
+    updated.extend(
+        _sync_prompt_catalog_to_skills(canonical_catalog, dst_root, skill_names, force=True)
     )
-    if p.returncode != 0:
-        raise RuntimeError(f"Prompt catalog validation failed:\n{p.stderr or p.stdout}")
 
-    # 5) Sync catalog into installed vibe-prompts resources (always refresh)
-    dst_catalog = dst_root / "vibe-prompts" / "resources" / "template_prompts.md"
-    if _copy_file(canonical_catalog, dst_catalog, force=True):
-        updated.append(str(dst_catalog))
-
-    # 6) Ensure key helper scripts are present inside skills (force refresh)
+    # 5) Ensure key helper scripts are present inside skills (force refresh)
     helper_pairs = [
         (repo_root / "tools" / "agentctl.py", dst_root / "vibe-loop" / "scripts" / "agentctl.py"),
         (repo_root / "tools" / "checkpoint_templates.py", dst_root / "vibe-loop" / "scripts" / "checkpoint_templates.py"),
@@ -432,6 +469,12 @@ def install_skills_agent_repo(agent: str, target_repo: Path, force: bool) -> int
 
     if not skill_names:
         raise RuntimeError(f"No repo-local skills found in: {src_skills_root}")
+
+    canonical_catalog = _resolve_canonical_prompt_catalog(repo_root)
+    _validate_prompt_catalog(repo_root, canonical_catalog)
+    updated.extend(
+        _sync_prompt_catalog_to_skills(canonical_catalog, dst_root, skill_names, force=True)
+    )
 
     print(f"install-skills summary ({agent} repo-local)")
     print(f"- Repo: {target_repo}")

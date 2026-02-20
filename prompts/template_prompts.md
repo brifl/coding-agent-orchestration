@@ -500,12 +500,12 @@ GOAL
 Implement one bounded improvement to the workflow system with objective validation.
 
 PREFLIGHT
-1) Read `AGENTS.md` (optional if already read), `.vibe/STATE.md`, `.vibe/PLAN.md`, `.vibe/HISTORY.md` (optional), `prompts/template_prompts.md`, `.codex/skills/vibe-loop/scripts/agentctl.py` (if relevant), `README.md` (optional).
+1) Read `AGENTS.md` (optional if already read), `.vibe/STATE.md`, `.vibe/PLAN.md`, `.vibe/HISTORY.md` (optional), `.codex/skills/vibe-prompts/resources/template_prompts.md`, `.codex/skills/vibe-loop/scripts/agentctl.py` (if relevant), `README.md` (optional).
 2) Run `python3 .codex/skills/vibe-loop/scripts/agentctl.py --repo-root . validate --strict`.
 3) Diagnose at least one concrete process problem before choosing work.
 
 ALLOWED FILES
-- `prompts/template_prompts.md`
+- `.codex/skills/vibe-prompts/resources/template_prompts.md`
 - `AGENTS.md`
 - `.codex/skills/vibe-loop/scripts/agentctl.py` (+ tests)
 - `docs/*.md`
@@ -758,7 +758,7 @@ READ ORDER
 
 STANDARD COMMANDS
 1) `python3 .codex/skills/vibe-loop/scripts/agentctl.py --repo-root . --format json next`
-2) `python3 tools/prompt_catalog.py prompts/template_prompts.md get <prompt_id>`
+2) `python3 tools/prompt_catalog.py .codex/skills/vibe-prompts/resources/template_prompts.md get <prompt_id>`
 3) Execute prompt loop, update `.vibe/STATE.md`, commit changes when tracked files changed.
 4) Record loop completion:
    `python3 .codex/skills/vibe-loop/scripts/agentctl.py --repo-root . --format json loop-result --line 'LOOP_RESULT: {...,"report":<report_json>}'`
@@ -798,7 +798,7 @@ READ ORDER
 
 STANDARD COMMANDS
 1) `python3 .codex/skills/vibe-loop/scripts/agentctl.py --repo-root . --format json next`
-2) `python3 tools/prompt_catalog.py prompts/template_prompts.md get <prompt_id>`
+2) `python3 tools/prompt_catalog.py .codex/skills/vibe-prompts/resources/template_prompts.md get <prompt_id>`
 3) Execute prompt loop, update `.vibe/STATE.md`, commit changes when tracked files changed.
 4) Record loop completion:
    `python3 .codex/skills/vibe-loop/scripts/agentctl.py --repo-root . --format json loop-result --line 'LOOP_RESULT: {...,"report":<report_json>}'`
@@ -839,7 +839,7 @@ READ ORDER
 
 STANDARD COMMANDS
 1) `python3 .codex/skills/vibe-loop/scripts/agentctl.py --repo-root . --format json next`
-2) `python3 tools/prompt_catalog.py prompts/template_prompts.md get <prompt_id>`
+2) `python3 tools/prompt_catalog.py .codex/skills/vibe-prompts/resources/template_prompts.md get <prompt_id>`
 3) Execute prompt loop, update `.vibe/STATE.md`, commit changes when tracked files changed.
 4) Record loop completion:
    `python3 .codex/skills/vibe-loop/scripts/agentctl.py --repo-root . --format json loop-result --line 'LOOP_RESULT: {...,"report":<report_json>}'`

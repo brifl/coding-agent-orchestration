@@ -87,7 +87,14 @@ def test_removing_skip_reactivates_checkpoint(temp_repo: Path) -> None:
 
 
 def test_consolidation_prompt_preserves_skip_marker() -> None:
-    catalog_path = Path(__file__).parent.parent.parent / "prompts" / "template_prompts.md"
+    catalog_path = (
+        Path(__file__).parent.parent.parent
+        / ".codex"
+        / "skills"
+        / "vibe-prompts"
+        / "resources"
+        / "template_prompts.md"
+    )
     entries = load_catalog(catalog_path)
     consolidation = next(entry for entry in entries if entry.key == "prompt.consolidation")
     assert "Preserve any stages/checkpoints marked (SKIP)" in consolidation.body

@@ -23,15 +23,13 @@ def _write_plan(repo_root: Path, body: str) -> None:
 
 
 def _write_prompt_catalog(repo_root: Path, body: str) -> None:
-    prompts_dir = repo_root / "prompts"
-    prompts_dir.mkdir(parents=True, exist_ok=True)
-    (prompts_dir / "template_prompts.md").write_text(body, encoding="utf-8")
-
-
-def _write_skill_prompt_catalog(repo_root: Path, body: str) -> None:
     prompt_path = repo_root / ".codex" / "skills" / "vibe-prompts" / "resources" / "template_prompts.md"
     prompt_path.parent.mkdir(parents=True, exist_ok=True)
     prompt_path.write_text(body, encoding="utf-8")
+
+
+def _write_skill_prompt_catalog(repo_root: Path, body: str) -> None:
+    _write_prompt_catalog(repo_root, body)
 
 
 def _write_workflow(repo_root: Path, name: str, body: str) -> None:

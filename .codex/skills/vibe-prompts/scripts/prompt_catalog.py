@@ -2,7 +2,7 @@
 """
 prompt_catalog.py
 
-Shared parser for prompts/template_prompts.md.
+Shared parser for template_prompts.md.
 
 Catalog conventions:
 - A prompt section begins at a line: "## <id> — <title>" OR "## <title>" (legacy)
@@ -154,7 +154,7 @@ def _validate_catalog_path(catalog_path: Path) -> None:
     if catalog_path.name != "template_prompts.md":
         raise ValueError(
             f"Non-canonical prompt catalog path: {catalog_path}. "
-            "Use prompts/template_prompts.md."
+            "Use template_prompts.md."
         )
     matches = sorted(p for p in catalog_path.parent.glob("*template_prompts*.md") if p.is_file())
     if len(matches) > 1:
@@ -207,7 +207,7 @@ def main() -> int:
     _ensure_utf8_output()
 
     p = argparse.ArgumentParser(prog="prompt_catalog.py")
-    p.add_argument("catalog", type=str, help="Path to prompts/template_prompts.md")
+    p.add_argument("catalog", type=str, help="Path to template_prompts.md")
     sub = p.add_subparsers(dest="cmd", required=True)
 
     sp_list = sub.add_parser("list", help="List prompt keys and titles")

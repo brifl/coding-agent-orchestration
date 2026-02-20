@@ -236,10 +236,15 @@ def _resolve_catalog_path(repo_root: Path, decision: dict, user_catalog: str) ->
         return Path(decision_catalog)
     if user_catalog:
         return Path(user_catalog).expanduser().resolve()
-    repo_catalog = repo_root / "prompts" / "template_prompts.md"
-    if repo_catalog.exists():
-        return repo_catalog
-    return _skills_root_from_this_script() / "vibe-prompts" / "resources" / "template_prompts.md"
+
+    skills_root = _skills_root_from_this_script()
+    candidates = [
+        repo_root / ".codex" / "skills" / "vibe-run" / "resources" / "template_prompts.md",
+        repo_root / ".codex" / "skills" / "vibe-prompts" / "resources" / "template_prompts.md",
+        skills_root / "vibe-run" / "resources" / "template_prompts.md",
+        skills_root / "vibe-prompts" / "resources" / "template_prompts.md",
+    ]
+    return next((path for path in candidates if path.exists()), candidates[0])
 
 
 def _record_workflow_approval(

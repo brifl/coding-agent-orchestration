@@ -20,7 +20,7 @@ This skill can:
 
 ## Resources
 
-- `resources/template_prompts.md` (canonical prompt catalog; synced from `prompts/template_prompts.md`)
+- `resources/template_prompts.md` (canonical prompt catalog; synced by bootstrap install tooling)
 
 ## Scripts
 

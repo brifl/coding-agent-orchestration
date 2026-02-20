@@ -2,7 +2,7 @@
 """
 clipper.py
 
-Metadata-driven button UI for copying prompt bodies from prompts/template_prompts.md.
+Metadata-driven button UI for copying prompt bodies from skill resources.
 
 - Uses tools/prompt_catalog.py parsing conventions.
 - Buttons are keyed by stable IDs (e.g., prompt.onboarding).
@@ -24,7 +24,8 @@ def _repo_root_from_this_file() -> Path:
 
 
 def _default_catalog_path() -> Path:
-    return _repo_root_from_this_file() / "prompts" / "template_prompts.md"
+    repo_root = _repo_root_from_this_file()
+    return repo_root / ".codex" / "skills" / "vibe-prompts" / "resources" / "template_prompts.md"
 
 
 class ClipperApp:
@@ -87,7 +88,7 @@ def main() -> int:
         "--catalog",
         type=str,
         default=str(_default_catalog_path()),
-        help="Path to prompts/template_prompts.md",
+        help="Path to template_prompts.md",
     )
     args = p.parse_args()
     catalog_path = Path(args.catalog).expanduser().resolve()

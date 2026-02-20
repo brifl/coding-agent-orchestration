@@ -232,17 +232,17 @@ def main() -> int:
     elif args.catalog:
         catalog_path = Path(args.catalog).expanduser().resolve()
     else:
-        # Check for prompts/template_prompts.md in the repo root first
-        repo_catalog_path = repo_root / "prompts" / "template_prompts.md"
-        if repo_catalog_path.exists():
-            catalog_path = repo_catalog_path
-        else:
-            # Fallback to finding vibe-prompts skill
-            vibe_prompts_dir = next(skills_root.glob("**/vibe-prompts"), None)
-            if not vibe_prompts_dir:
-                print(f"ERROR: could not find vibe-prompts skill under {skills_root}", file=sys.stderr)
-                return 2
-            catalog_path = vibe_prompts_dir / "resources" / "template_prompts.md"
+        catalog_candidates = [
+            repo_root / ".codex" / "skills" / "vibe-loop" / "resources" / "template_prompts.md",
+            repo_root / ".codex" / "skills" / "vibe-prompts" / "resources" / "template_prompts.md",
+        ]
+        vibe_loop_dir = next(skills_root.glob("**/vibe-loop"), None)
+        if vibe_loop_dir:
+            catalog_candidates.append(vibe_loop_dir / "resources" / "template_prompts.md")
+        vibe_prompts_dir = next(skills_root.glob("**/vibe-prompts"), None)
+        if vibe_prompts_dir:
+            catalog_candidates.append(vibe_prompts_dir / "resources" / "template_prompts.md")
+        catalog_path = next((path for path in catalog_candidates if path.exists()), catalog_candidates[0])
 
     if not catalog_path.exists():
         print(f"ERROR: catalog not found at: {catalog_path}", file=sys.stderr)

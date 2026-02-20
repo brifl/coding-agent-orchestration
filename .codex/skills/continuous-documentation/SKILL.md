@@ -36,7 +36,7 @@ Run one dispatcher step at a time:
 python3 tools/agentctl.py --repo-root . --format json next --workflow continuous-documentation
 
 # 2. Read the prompt body from the catalog
-python3 tools/prompt_catalog.py prompts/template_prompts.md get <recommended_prompt_id>
+python3 tools/prompt_catalog.py .codex/skills/continuous-documentation/resources/template_prompts.md get <recommended_prompt_id>
 
 # 3. Execute the prompt body (do the actual documentation work)
 

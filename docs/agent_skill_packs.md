@@ -7,7 +7,7 @@ skills directly. Each pack provides instructions, prompt locations, and invocati
 
 All agents use the same prompt catalog and bootstraps:
 - Bootstraps: `prompts/init/*.md`
-- Loop catalog: `prompts/template_prompts.md`
+- Loop catalog: `.codex/skills/vibe-prompts/resources/template_prompts.md`
 
 ## Codex (reference)
 
@@ -27,7 +27,7 @@ All agents use the same prompt catalog and bootstraps:
 ## Claude Code
 
 - **Instructions**: paste `prompts/init/claude_bootstrap.md` into a new chat.
-- **Prompt pack**: `prompts/template_prompts.md` (loop prompts).
+- **Prompt pack**: `~/.claude/skills/vibe-prompts/resources/template_prompts.md` (or repo-local `.codex/skills/vibe-prompts/resources/template_prompts.md`).
 - **Invocation pattern**:
   1) Use the bootstrap to select the next loop.
   2) Execute exactly one loop manually.
@@ -36,7 +36,7 @@ All agents use the same prompt catalog and bootstraps:
 ## Gemini
 
 - **Instructions**: paste `prompts/init/gemini_bootstrap.md` into a new chat.
-- **Prompt pack**: `prompts/template_prompts.md` (loop prompts).
+- **Prompt pack**: `~/.gemini/skills/vibe-prompts/resources/template_prompts.md` (or repo-local `.codex/skills/vibe-prompts/resources/template_prompts.md`).
 - **Invocation pattern**:
   1) Use the bootstrap to select the next loop.
   2) Execute exactly one loop manually.
@@ -45,7 +45,7 @@ All agents use the same prompt catalog and bootstraps:
 ## Copilot
 
 - **Instructions**: paste `prompts/init/copilot_bootstrap.md` into a new chat.
-- **Prompt pack**: `prompts/template_prompts.md` (loop prompts).
+- **Prompt pack**: `~/.copilot/skills/vibe-prompts/resources/template_prompts.md` (or repo-local `.codex/skills/vibe-prompts/resources/template_prompts.md`).
 - **Invocation pattern**:
   1) Use the bootstrap to select the next loop.
   2) Execute exactly one loop manually.

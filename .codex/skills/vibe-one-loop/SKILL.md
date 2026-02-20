@@ -24,7 +24,7 @@ and prompt packs that reference `$vibe-one-loop`.
 - Run exactly one loop and stop:
   - `python3 scripts/vibe_one_loop.py --repo-root . --show-decision`
 - Optional: provide an explicit prompt catalog path:
-  - `python3 scripts/vibe_one_loop.py --repo-root . --catalog prompts/template_prompts.md --show-decision`
+  - `python3 scripts/vibe_one_loop.py --repo-root . --catalog .codex/skills/vibe-one-loop/resources/template_prompts.md --show-decision`
 
 ## Output
 
