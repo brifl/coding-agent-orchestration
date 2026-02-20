@@ -28,6 +28,12 @@ def _write_prompt_catalog(repo_root: Path, body: str) -> None:
     (prompts_dir / "template_prompts.md").write_text(body, encoding="utf-8")
 
 
+def _write_skill_prompt_catalog(repo_root: Path, body: str) -> None:
+    prompt_path = repo_root / ".codex" / "skills" / "vibe-prompts" / "resources" / "template_prompts.md"
+    prompt_path.parent.mkdir(parents=True, exist_ok=True)
+    prompt_path.write_text(body, encoding="utf-8")
+
+
 def _write_workflow(repo_root: Path, name: str, body: str) -> None:
     workflows_dir = repo_root / "workflows"
     workflows_dir.mkdir(parents=True, exist_ok=True)
@@ -64,6 +70,27 @@ steps:
   - prompt_id: prompt.refactor_scan
   - prompt_id: prompt.refactor_execute
   - prompt_id: prompt.refactor_verify
+""",
+    )
+
+
+def _seed_continuous_refactor_skill_prompt_catalog(repo_root: Path) -> None:
+    _write_skill_prompt_catalog(
+        repo_root,
+        """## prompt.refactor_scan - Refactor Scan
+```md
+scan
+```
+
+## prompt.refactor_execute - Refactor Execute
+```md
+execute
+```
+
+## prompt.refactor_verify - Refactor Verify
+```md
+verify
+```
 """,
     )
 
@@ -280,4 +307,58 @@ def test_skill_packaged_cmd_next_continuous_refactor_uses_strict_cycle(temp_repo
         "prompt.refactor_verify",
     }
     assert payload["recommended_role"] in {"implement", "review"}
+    assert "strict cycle" in payload["reason"]
+
+
+def test_skill_packaged_cmd_next_continuous_refactor_uses_repo_skill_prompt_catalog(temp_repo: Path) -> None:
+    _write_state(
+        temp_repo,
+        """# STATE
+
+## Current focus
+- Stage: 1
+- Checkpoint: 1.0
+- Status: DONE
+""",
+    )
+    _write_plan(
+        temp_repo,
+        """# PLAN
+
+## Stage 1 — Demo
+### 1.0 — First
+""",
+    )
+    _seed_continuous_refactor_skill_prompt_catalog(temp_repo)
+    skill_agentctl = Path(__file__).resolve().parents[2] / ".codex" / "skills" / "vibe-loop" / "scripts" / "agentctl.py"
+    proc = subprocess.run(
+        [
+            sys.executable,
+            str(skill_agentctl),
+            "--repo-root",
+            str(temp_repo),
+            "--format",
+            "json",
+            "next",
+            "--workflow",
+            "continuous-refactor",
+        ],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+        check=False,
+        cwd=str(Path(__file__).resolve().parents[2]),
+    )
+
+    assert proc.returncode == 0, proc.stderr or proc.stdout
+    payload = json.loads(proc.stdout)
+    assert payload["recommended_prompt_id"] in {
+        "prompt.refactor_scan",
+        "prompt.refactor_execute",
+        "prompt.refactor_verify",
+    }
+    assert payload["recommended_role"] in {"implement", "review"}
+    assert payload["prompt_catalog_path"] == str(
+        temp_repo / ".codex" / "skills" / "vibe-prompts" / "resources" / "template_prompts.md"
+    )
     assert "strict cycle" in payload["reason"]

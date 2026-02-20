@@ -558,9 +558,15 @@ def _next_checkpoint_after(plan_ids: list[str], current_id: str) -> str | None:
 
 
 def _resolve_prompt_catalog_path(repo_root: Path) -> Path | None:
-    local_path = repo_root / "prompts" / "template_prompts.md"
-    if local_path.exists():
-        return local_path
+    candidates = [
+        repo_root / "prompts" / "template_prompts.md",
+        repo_root / ".codex" / "skills" / "vibe-prompts" / "resources" / "template_prompts.md",
+        repo_root / "skills" / "vibe-prompts" / "resources" / "template_prompts.md",
+        repo_root / "built_in" / "prompts" / "template_prompts.md",
+    ]
+    for path in candidates:
+        if path.exists():
+            return path
 
     resolved = find_resource("prompt", "template_prompts.md")
     if resolved and resolved.exists():
@@ -3005,14 +3011,33 @@ def _load_workflow_selector(repo_root: Path):
         from workflow_engine import select_next_prompt
         return select_next_prompt
     except Exception:
-        repo_tools_dir = (repo_root / "tools").resolve()
-        if repo_tools_dir.exists() and str(repo_tools_dir) not in sys.path:
-            sys.path.insert(0, str(repo_tools_dir))
+        pass
+
+    tool_candidates = [
+        (repo_root / "tools").resolve(),
+        # Support repos that vendor only skill scripts by falling back to the
+        # framework checkout that contains this script.
+        (Path(__file__).resolve().parents[4] / "tools").resolve(),
+    ]
+    seen: set[str] = set()
+    for tools_dir in tool_candidates:
+        key = str(tools_dir)
+        if key in seen or not tools_dir.exists():
+            continue
+        seen.add(key)
+        if key not in sys.path:
+            sys.path.insert(0, key)
         try:
             from workflow_engine import select_next_prompt
             return select_next_prompt
-        except Exception as exc:
-            raise RuntimeError(f"Failed to load workflow engine: {exc}") from exc
+        except Exception:
+            continue
+
+    try:
+        from workflow_engine import select_next_prompt
+        return select_next_prompt
+    except Exception as exc:
+        raise RuntimeError(f"Failed to load workflow engine: {exc}") from exc
 
 
 def _continuous_workflow_blocking_decision(state: StateInfo) -> tuple[Role, str] | None:

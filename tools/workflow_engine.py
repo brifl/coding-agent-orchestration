@@ -23,6 +23,25 @@ ROTATING_WORKFLOWS = {
     "refactor-cycle",
 }
 
+BUILTIN_WORKFLOW_STEPS: dict[str, list[str]] = {
+    "continuous-refactor": [
+        "prompt.refactor_scan",
+        "prompt.refactor_execute",
+        "prompt.refactor_verify",
+    ],
+    "continuous-test-generation": [
+        "prompt.test_gap_analysis",
+        "prompt.test_generation",
+        "prompt.test_review",
+    ],
+    "continuous-documentation": [
+        "prompt.docs_gap_analysis",
+        "prompt.docs_gap_fix",
+        "prompt.docs_refactor_analysis",
+        "prompt.docs_refactor_fix",
+    ],
+}
+
 
 @dataclass(frozen=True)
 class WorkflowStep:
@@ -153,6 +172,15 @@ def _load_workflow(name: str) -> Workflow:
                 path=path,
             )
         return _parse_yaml_workflow(path.read_text(encoding="utf-8"), path)
+    builtin_steps = BUILTIN_WORKFLOW_STEPS.get(name)
+    if builtin_steps:
+        return Workflow(
+            name=name,
+            description=f"Built-in fallback workflow for {name}",
+            triggers=[{"type": "manual"}],
+            steps=[WorkflowStep(prompt_id=prompt_id, condition=None, every=None) for prompt_id in builtin_steps],
+            path=root / f"<builtin:{name}>",
+        )
     raise FileNotFoundError(f"Workflow '{name}' not found in {root}.")
 
 
