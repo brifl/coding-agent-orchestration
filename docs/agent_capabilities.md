@@ -29,7 +29,7 @@ and scripts do not assume abilities that an agent cannot reliably provide.
 - Uses Read/Write/Edit/Bash tools for full file and command access
 - Can invoke `python tools/agentctl.py` directly to get next prompt
 - Continuous mode: invoke agentctl in a loop, execute returned prompts
-- No native skill system; uses direct tool invocation
+- Supports installed skills via the `Skill` tool (e.g., `/continuous-documentation`, `/continuous-refactor`, `/vibe-run`); skill scripts under `~/.claude/skills/<name>/` or `.codex/skills/<name>/` are invoked by name
 
 ### Gemini Code
 

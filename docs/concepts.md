@@ -51,6 +51,22 @@ Stop conditions:
 This definition prevents self-looping prompts and keeps control in `agentctl` rather than
 inside individual prompt bodies.
 
+## Dispatcher priority order
+
+When `agentctl next` evaluates what to do, it checks triggers in this order (first match wins):
+
+1. **BLOCKER issues** — all human-owned → `stop`; any agent-owned → `issues_triage`
+2. **MAJOR+ issues** → `issues_triage`
+3. **Work log consolidation** (>10 entries) → `consolidation`
+4. **Retrospective** (`RETROSPECTIVE_DONE` flag unset) → `retrospective`
+5. **Stage design** (`STAGE_DESIGNED` flag unset) → `design`
+6. **Maintenance cycle** (`MAINTENANCE_CYCLE_DONE` flag unset) → `implement` (maintenance prompt)
+7. **Context capture** (CONTEXT.md missing or stale) → `context_capture`
+8. **Process improvements** (`RUN_PROCESS_IMPROVEMENTS` flag set) → `improvements`
+9. **Normal implementation** → `implement`
+
+For detailed flag lifecycle and feature descriptions see `docs/workflow_improvements.md`.
+
 ## Checkpoint dependency DAG
 
 `PLAN.md` checkpoints can declare dependencies via `depends_on: [X.Y, ...]`, which
