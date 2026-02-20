@@ -53,6 +53,9 @@ Full test suite for dependency graph features and end-user documentation.
 - 2026-02-19: continuous-refactor execute loop (approved idea 5) — aligned `.codex/skills/vibe-loop/scripts/agentctl.py` workflow prompt-role mappings for all continuous-documentation prompts and added regression coverage in `tests/workflow/test_continuous_aux_workflow_overrides.py`.
 - 2026-02-19: continuous-refactor verify loop (post-approved idea 5) — `tests/workflow/test_continuous_aux_workflow_overrides.py` passed (10 tests) and both strict validation entrypoints now return `ok: True`, resolving ISSUE-255 mismatch evidence.
 - 2026-02-19: continuous-refactor scan loop (post-approved idea 5) — generated next minor-only backlog focusing on remaining broad exception branches and repeated workflow-test `sys.path` bootstraps now that ISSUE-255 parity is fixed.
+- 2026-02-20: continuous-refactor verify loop — confirmed active refactor diff is line-ending-only (`git diff --ignore-cr-at-eol --stat` empty despite large `git diff --stat` churn), reran workflow regression slice (57 passed), and both strict validation entrypoints return `ok: True`.
+- 2026-02-20: continuous-refactor scan loop — generated 10 `[MINOR]` candidates across maintainability/safety/testability from remaining hotspots (`except Exception` branches and repeated workflow-test `sys.path` bootstraps); recommended first moves are narrowing CLI exception handling in `tools/agentctl.py`/`tools/bootstrap.py` and centralizing workflow-test import bootstrap usage.
+- 2026-02-20: continuous-refactor stop gate — workflow stopped on minor-only scan findings and exposed approval-required idea IDs 1-5 for optional execution through `workflow-approve`.
 
 ## Workflow state
 
@@ -84,6 +87,17 @@ Full test suite for dependency graph features and end-user documentation.
 - `python3 -m pytest tests/workflow/test_continuous_aux_workflow_overrides.py -v --capture=sys` -> 10 passed.
 - `python3 .codex/skills/vibe-loop/scripts/agentctl.py --repo-root . validate --strict` -> `ok: True` (errors cleared for continuous-documentation prompt-role mappings).
 - `rg -n "except Exception|sys.path.insert\\(0, str\\(Path\\(__file__\\)\\.parent\\.parent\\.parent / \\\"tools\\\"\\)\\)|TODO|FIXME" tools tests/workflow -S` -> remaining minor hotspots concentrated in `tools/skillctl.py`, `tools/plan_pipeline.py`, `tools/bootstrap.py`, `tools/agentctl.py`, and legacy workflow test modules.
+- `python3 tools/agentctl.py --repo-root . --format json next --workflow continuous-refactor` -> `recommended_prompt_id: prompt.refactor_verify` (`recommended_role: review`).
+- `git diff --stat` -> 9 files changed, 5420 insertions, 5420 deletions (textual churn due line ending normalization).
+- `git diff --ignore-cr-at-eol --stat` -> no output (content-equivalent after CRLF normalization).
+- `python3 .codex/skills/vibe-loop/scripts/agentctl.py --repo-root . validate --strict` -> `ok: True` (warning only: optional evidence path).
+- `python3 tools/agentctl.py --repo-root . validate --strict` -> `ok: True` (warnings only: work-log length + optional evidence path).
+- `python3 -m pytest tests/workflow/test_issue_schema_validation.py tests/workflow/test_plan_pipeline.py tests/workflow/test_skip_marker.py tests/workflow/test_stage_ordering.py -v --capture=sys` -> 57 passed in 8.25s.
+- `python3 tools/agentctl.py --repo-root . --format json next --workflow continuous-refactor` -> `recommended_prompt_id: prompt.refactor_scan` (`recommended_role: implement`).
+- `rg -n "except Exception|sys.path.insert\\(0, str\\(Path\\(__file__\\)\\.parent\\.parent\\.parent / \\\"tools\\\"\\)\\)|TODO|FIXME|type: ignore|pragma: no cover" tools tests/workflow docs -S` -> hotspot inventory captured for scan ranking.
+- `rg --count-matches "except Exception" tools tests/workflow -S` -> `tools/agentctl.py:6`, `tools/bootstrap.py:2`, `tools/plan_pipeline.py:1`, `tools/skillctl.py:1`, `tools/rlm/runtime.py:1`, `tools/rlm/provider_check.py:1`.
+- `rg --count-matches "sys.path.insert\\(0, str\\(Path\\(__file__\\)\\.parent\\.parent\\.parent / \\\"tools\\\"\\)\\)" tests/workflow -S` -> 14 workflow test modules still perform local `sys.path` bootstrap.
+- `python3 tools/agentctl.py --repo-root . --format json next --workflow continuous-refactor` -> `recommended_role: stop`, `approval_required: true`, and `workflow-approve --ids <n>` command surfaced for minor-idea selection.
 
 ## Active issues
 
