@@ -53,7 +53,7 @@ ALL_AGENTS = ["codex", "claude", "gemini", "copilot"]
 CANONICAL_AGENTS_TEMPLATE = Path("templates/repo_root/AGENTS.md")
 CANONICAL_VIBE_TEMPLATE = Path("templates/repo_root/VIBE.md")
 DEFAULT_INIT_SKILLSET = "vibe-base"
-PROMPT_CATALOG_FILENAME = "template_prompts.md"
+from constants import PROMPT_CATALOG_FILENAME
 
 
 def _repo_root_from_this_file() -> Path:

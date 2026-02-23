@@ -34,6 +34,11 @@ if str(_tools_dir) not in sys.path:
     sys.path.insert(0, str(_tools_dir))
 
 import checkpoint_templates
+from constants import (
+    COMPLEXITY_BUDGET,
+    PROMPT_CATALOG_FILENAME,
+    PROMPT_SKILL_PRIORITY,
+)
 from resource_resolver import find_resource
 from stage_ordering import (
     CHECKPOINT_ID_PATTERN,
@@ -87,16 +92,6 @@ LOOP_REPORT_MAX_FINDINGS = 5
 CONFIDENCE_MIN_REQUIRED = 0.75
 IDEA_IMPACT_TAG_RE = re.compile(r"\[(MAJOR|MODERATE|MINOR)\]", re.IGNORECASE)
 WORK_LOG_CONSOLIDATION_CAP = 10
-PROMPT_CATALOG_FILENAME = "template_prompts.md"
-PROMPT_SKILL_PRIORITY = (
-    "vibe-prompts",
-    "vibe-loop",
-    "vibe-run",
-    "vibe-one-loop",
-    "continuous-refactor",
-    "continuous-test-generation",
-    "continuous-documentation",
-)
 
 Role = Literal[
     "issues_triage",
@@ -1686,12 +1681,7 @@ def _extract_checkpoint_section(plan_text: str, checkpoint_id: str) -> str | Non
     return "".join(line for _, line, _ in indexed_lines[start_idx:end_idx]).rstrip()
 
 
-# Checkpoint complexity budget: warn when a checkpoint is likely too large for one loop.
-COMPLEXITY_BUDGET: dict[str, int] = {
-    "Deliverables": 5,
-    "Acceptance": 6,
-    "Demo commands": 4,
-}
+# COMPLEXITY_BUDGET is imported from constants.py
 
 _CHECKPOINT_FIELD_NAMES = ("Objective", "Deliverables", "Acceptance", "Demo commands", "Evidence")
 _CHECKPOINT_FIELD_HEADING_RE = re.compile(
@@ -2051,7 +2041,8 @@ def load_gate_config(repo_root: Path, checkpoint_id: str | None) -> GateConfig:
     try:
         config_data = json.loads(_read_text(config_path))
         gate_data = config_data.get("quality_gates", {})
-    except (json.JSONDecodeError, IOError):
+    except (json.JSONDecodeError, IOError) as exc:
+        print(f"[agentctl] warning: failed to parse gate config {config_path}: {exc}", file=sys.stderr)
         return GateConfig(gates=[])
 
     all_gates: list[Gate] = []
@@ -3096,27 +3087,6 @@ def _parse_approval_ids_arg(raw: str) -> list[int]:
     return approved_ids
 
 
-def _continuous_refactor_should_stop(repo_root: Path) -> tuple[bool, str | None]:
-    context = _continuous_workflow_minor_stop_context(repo_root, "continuous-refactor")
-    if context is None:
-        return (False, None)
-    return (True, context.reason)
-
-
-def _continuous_test_generation_should_stop(repo_root: Path) -> tuple[bool, str | None]:
-    context = _continuous_workflow_minor_stop_context(repo_root, "continuous-test-generation")
-    if context is None:
-        return (False, None)
-    return (True, context.reason)
-
-
-def _continuous_documentation_should_stop(repo_root: Path) -> tuple[bool, str | None]:
-    context = _continuous_workflow_minor_stop_context(repo_root, "continuous-documentation")
-    if context is None:
-        return (False, None)
-    return (True, context.reason)
-
-
 def _continuous_workflow_should_stop(repo_root: Path, workflow: str) -> tuple[bool, str | None]:
     context = _continuous_workflow_minor_stop_context(repo_root, workflow)
     if context is None:
@@ -3213,8 +3183,8 @@ def _load_workflow_selector(repo_root: Path):
     try:
         from workflow_engine import select_next_prompt
         return select_next_prompt
-    except Exception:
-        pass
+    except Exception as exc:
+        print(f"[agentctl] workflow_engine direct import failed: {exc}", file=sys.stderr)
 
     tool_candidates = [
         (repo_root / "tools").resolve(),
@@ -3233,7 +3203,8 @@ def _load_workflow_selector(repo_root: Path):
         try:
             from workflow_engine import select_next_prompt
             return select_next_prompt
-        except Exception:
+        except Exception as exc:
+            print(f"[agentctl] workflow_engine import from {tools_dir} failed: {exc}", file=sys.stderr)
             continue
 
     try:
@@ -4144,7 +4115,6 @@ def cmd_feedback_ack(args: argparse.Namespace) -> int:
 
 def _extract_issue_id_for_feedback(feedback_text: str, feedback_id: str) -> str:
     """Extract ISSUE-ID from the processed comment for a given FEEDBACK-ID line."""
-    import re
     pattern = re.compile(
         r"- \[x\] " + re.escape(feedback_id) + r".*?<!--\s*processed:\s*(ISSUE-\d+)\s*-->",
         re.MULTILINE,
@@ -4169,7 +4139,6 @@ def _append_to_feedback_archive(history_text: str, archive_lines: list[str]) -> 
 
 def _remove_processed_entries(feedback_text: str) -> str:
     """Remove processed (checked + processed comment) entries from FEEDBACK.md text."""
-    import re
     # Match a feedback entry block: starts with "- [x] FEEDBACK-NNN:" and the processed comment,
     # followed by indented continuation lines.
     pattern = re.compile(

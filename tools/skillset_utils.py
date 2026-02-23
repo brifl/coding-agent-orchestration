@@ -76,7 +76,9 @@ def load_skillset(path: Path) -> dict[str, Any] | None:
             return json.loads(path.read_text(encoding="utf-8"))
         if path.suffix in {".yaml", ".yml"}:
             return parse_skillset_yaml(path.read_text(encoding="utf-8"))
-    except _MANIFEST_LOAD_EXCEPTIONS:
+    except _MANIFEST_LOAD_EXCEPTIONS as exc:
+        import sys
+        print(f"[skillset_utils] warning: failed to load skillset {path}: {exc}", file=sys.stderr)
         return None
     return None
 

@@ -353,12 +353,7 @@ def run_plan_pipeline(
 # PLAN.md writer
 # ---------------------------------------------------------------------------
 
-# Complexity budget mirroring agentctl.py COMPLEXITY_BUDGET (kept in sync manually).
-_PLAN_WRITER_COMPLEXITY_BUDGET: dict[str, int] = {
-    "Deliverables": 5,
-    "Acceptance": 6,
-    "Demo commands": 4,
-}
+from constants import COMPLEXITY_BUDGET as _PLAN_WRITER_COMPLEXITY_BUDGET
 
 
 def _render_checkpoint_section(cp: dict[str, Any]) -> tuple[list[str], list[str]]:

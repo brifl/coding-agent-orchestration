@@ -16,17 +16,7 @@ from pathlib import Path
 
 from path_utils import resolve_codex_home
 
-# Assume 'gemini' for the agent if not specified.
-DEFAULT_AGENT = "gemini"
-PROMPT_SKILL_PRIORITY = (
-    "vibe-prompts",
-    "vibe-loop",
-    "vibe-run",
-    "vibe-one-loop",
-    "continuous-refactor",
-    "continuous-test-generation",
-    "continuous-documentation",
-)
+from constants import DEFAULT_AGENT, PROMPT_SKILL_PRIORITY
 
 def _get_repo_root() -> Path:
     """Gets the repository root by searching for the .git directory."""

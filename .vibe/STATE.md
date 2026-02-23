@@ -59,6 +59,8 @@ Full test suite for dependency graph features and end-user documentation.
 - 2026-02-20: continuous-documentation preflight — recorded a context-capture LOOP_RESULT acknowledgement to clear pending STATE sync before entering workflow dispatch.
 - 2026-02-20: continuous-documentation execute loop (`prompt.docs_refactor_fix`) — ran deterministic refactor analysis/fix pipeline; applied 2 finding-mapped doc changes (`merge_duplicates`, `migrate_to_wiki`) with zero consistency validation errors; post-fix refactor report moved from `MODERATE:1/MINOR:2` to `MODERATE:0/MINOR:3`.
 - 2026-02-20: continuous-documentation stop gate — workflow stopped on minor-only documentation findings and exposed approval-required idea IDs 1-3 for optional follow-up execution.
+- 2026-02-23: continuous-refactor scan loop — deep codebase scan identified 10+ refactor candidates across 4 strategy families (maintainability, safety, testability, performance); top findings: agentctl.py god module (4438 LOC), duplicated constants/helpers across 6+ files, `_repo_root()=Path.cwd()` shared-state hazard, swallowed exceptions in 4 critical paths, 3 dead functions, and scattered env reads with no central config layer.
+- 2026-02-23: continuous-refactor execute loop (checkpoints A+B) — created `tools/constants.py` centralizing `COMPLEXITY_BUDGET`, `PROMPT_CATALOG_FILENAME`, `PROMPT_SKILL_PRIORITY`, `DEFAULT_AGENT`; updated 5 import sites (agentctl, plan_pipeline, resource_resolver, skill_registry, bootstrap); added stderr diagnostics to 4 swallowed-exception sites; removed 3 dead `_continuous_*_should_stop` wrappers and 2 redundant in-function `import re` statements; 241 tests pass, both strict validation entrypoints pass.
 
 ## Workflow state
 

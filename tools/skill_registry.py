@@ -23,7 +23,7 @@ from typing import Any
 from path_utils import resolve_codex_home
 from skillset_utils import find_manifest, load_manifest
 
-DEFAULT_AGENT = "gemini"
+from constants import DEFAULT_AGENT
 
 
 @dataclass(frozen=True)
