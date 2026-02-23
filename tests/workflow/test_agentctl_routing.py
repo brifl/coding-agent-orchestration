@@ -1060,6 +1060,69 @@ def test_agent_owned_blocker_routes_to_issues_triage(temp_repo: Path) -> None:
     assert role == "issues_triage"
 
 
+def test_major_issue_in_progress_routes_to_implement(temp_repo: Path) -> None:
+    """MAJOR issues already in progress should not pin dispatcher to triage."""
+    from agentctl import Issue  # type: ignore
+
+    _write_state(
+        temp_repo,
+        """# STATE
+
+## Current focus
+- Stage: 1
+- Checkpoint: 1.0
+- Status: IN_PROGRESS
+""",
+    )
+    issue = Issue(
+        impact="MAJOR",
+        title="Harden contract validation",
+        line="- [ ] ISSUE-400: Harden contract validation",
+        issue_id="ISSUE-400",
+        owner="agent",
+        status="IN_PROGRESS",
+        unblock_condition="Implement and test strict checks",
+        evidence_needed="Targeted tests pass",
+        checked=False,
+        impact_specified=True,
+    )
+    state = StateInfo(stage="1", checkpoint="1.0", status="IN_PROGRESS", evidence_path=None, issues=(issue,))
+    role, reason, _ = _recommend_next(state, temp_repo)
+    assert role == "implement", reason
+
+
+def test_major_issue_open_routes_to_issues_triage(temp_repo: Path) -> None:
+    """MAJOR issues still OPEN should route to triage first."""
+    from agentctl import Issue  # type: ignore
+
+    _write_state(
+        temp_repo,
+        """# STATE
+
+## Current focus
+- Stage: 1
+- Checkpoint: 1.0
+- Status: IN_PROGRESS
+""",
+    )
+    issue = Issue(
+        impact="MAJOR",
+        title="Contract ambiguity needs triage",
+        line="- [ ] ISSUE-401: Contract ambiguity needs triage",
+        issue_id="ISSUE-401",
+        owner="agent",
+        status="OPEN",
+        unblock_condition="Clarify scope and evidence",
+        evidence_needed="Updated STATE issue notes",
+        checked=False,
+        impact_specified=True,
+    )
+    state = StateInfo(stage="1", checkpoint="1.0", status="IN_PROGRESS", evidence_path=None, issues=(issue,))
+    role, reason, _ = _recommend_next(state, temp_repo)
+    assert role == "issues_triage"
+    assert "MAJOR" in reason
+
+
 def test_mixed_blocker_ownership_routes_to_issues_triage(temp_repo: Path) -> None:
     """If any BLOCKER is agent-owned, triage (not stop) so agent can work on it."""
     from agentctl import Issue  # type: ignore

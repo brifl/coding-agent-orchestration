@@ -2131,13 +2131,63 @@ def run_gates(repo_root: Path, checkpoint_id: str | None) -> list[GateResult]:
     return results
 
 
-def _top_issue_impact(issues: tuple[Issue, ...]) -> str | None:
+_ACTIONABLE_ISSUE_STATUSES = {"OPEN", "IN_PROGRESS", "DECISION_REQUIRED"}
+_TRIAGE_PENDING_ISSUE_STATUSES = {"", "OPEN", "BLOCKED", "DECISION_REQUIRED"}
+
+
+def _top_issue_impact(
+    issues: tuple[Issue, ...],
+    *,
+    actionable_only: bool = False,
+) -> str | None:
     if not issues:
         return None
+    candidates: tuple[Issue, ...] = issues
+    if actionable_only:
+        actionable: list[Issue] = []
+        for issue in issues:
+            impact = (issue.impact or "").strip().upper()
+            status = (issue.status or "").strip().upper()
+            # Always surface BLOCKER severity, even when status is BLOCKED.
+            if impact == "BLOCKER":
+                actionable.append(issue)
+                continue
+            # Preserve legacy behavior when status is missing: treat as actionable.
+            if not status or status in _ACTIONABLE_ISSUE_STATUSES:
+                actionable.append(issue)
+        if actionable:
+            candidates = tuple(actionable)
+        else:
+            return None
     # choose highest impact by IMPACT_ORDER
     order = {sev: idx for idx, sev in enumerate(IMPACT_ORDER)}
-    best = min(issues, key=lambda i: order.get(i.impact, 999))
+    best = min(candidates, key=lambda i: order.get(i.impact, 999))
     return best.impact
+
+
+def _issue_status_token(issue: Issue) -> str:
+    raw = (issue.status or "").strip().upper()
+    if not raw:
+        return ""
+    return raw.split()[0]
+
+
+def _top_pending_triage_issue_impact(issues: tuple[Issue, ...]) -> str | None:
+    """Return top impact among high-impact issues that still need triage.
+
+    MAJOR/QUESTION issues already marked IN_PROGRESS should not pin the
+    dispatcher to issues_triage forever; after triage, implementation must run.
+    """
+    pending: list[Issue] = []
+    for issue in issues:
+        impact = (issue.impact or "").strip().upper()
+        if impact not in {"MAJOR", "QUESTION"}:
+            continue
+        if _issue_status_token(issue) in _TRIAGE_PENDING_ISSUE_STATUSES:
+            pending.append(issue)
+    if not pending:
+        return None
+    return _top_issue_impact(tuple(pending))
 
 
 def _get_section_lines(sections: dict[str, list[str]], section_name: str) -> list[str]:
@@ -2500,7 +2550,7 @@ def _decide_role(state: StateInfo, ctx: _DecisionContext) -> tuple[Role, str, st
     if state.status == "BLOCKED":
         return ("issues_triage", "Checkpoint status is BLOCKED.", None)
 
-    top = _top_issue_impact(state.issues)
+    top = _top_issue_impact(state.issues, actionable_only=True)
     if top == "BLOCKER":
         blocker_issues = [i for i in state.issues if i.impact == "BLOCKER"]
         all_human_owned = all(
@@ -2607,9 +2657,14 @@ def _decide_role(state: StateInfo, ctx: _DecisionContext) -> tuple[Role, str, st
 
     # 3) Normal execution states
     if state.status in {"NOT_STARTED", "IN_PROGRESS"}:
-        # If there are non-blocking issues, triage can be recommended (your choice)
-        if top in {"MAJOR", "QUESTION"}:
-            return ("issues_triage", f"Active issues present (top impact: {top}).", None)
+        # Route to triage only for high-impact issues still pending triage.
+        pending_triage_top = _top_pending_triage_issue_impact(state.issues)
+        if pending_triage_top in {"MAJOR", "QUESTION"}:
+            return (
+                "issues_triage",
+                f"Active issues present (top impact: {pending_triage_top}).",
+                None,
+            )
 
         # Maintenance loops fire before implementation when NOT_STARTED.
         if state.status == "NOT_STARTED":
@@ -2764,6 +2819,25 @@ CONTINUOUS_WORKFLOW_ALLOWED_PROMPTS: dict[str, set[str]] = {
         "prompt.docs_refactor_analysis",
         "prompt.docs_refactor_fix",
     },
+}
+
+CONTINUOUS_WORKFLOW_STEP_ORDER: dict[str, tuple[str, ...]] = {
+    "continuous-refactor": (
+        "prompt.refactor_scan",
+        "prompt.refactor_execute",
+        "prompt.refactor_verify",
+    ),
+    "continuous-test-generation": (
+        "prompt.test_gap_analysis",
+        "prompt.test_generation",
+        "prompt.test_review",
+    ),
+    "continuous-documentation": (
+        "prompt.docs_gap_analysis",
+        "prompt.docs_gap_fix",
+        "prompt.docs_refactor_analysis",
+        "prompt.docs_refactor_fix",
+    ),
 }
 
 CONTINUOUS_THRESHOLD_STOP_REASONS: dict[str, str] = {
@@ -3050,19 +3124,138 @@ def _continuous_workflow_should_stop(repo_root: Path, workflow: str) -> tuple[bo
     return (True, context.reason)
 
 
+def _workflow_runtime_path(repo_root: Path) -> Path:
+    return repo_root / ".vibe" / "workflow_runtime.json"
+
+
+def _load_workflow_runtime(repo_root: Path) -> dict[str, Any]:
+    path = _workflow_runtime_path(repo_root)
+    if not path.exists():
+        return {"workflows": {}}
+    try:
+        payload = json.loads(_read_text(path))
+    except (OSError, json.JSONDecodeError):
+        return {"workflows": {}}
+    if not isinstance(payload, dict):
+        return {"workflows": {}}
+    workflows = payload.get("workflows")
+    if not isinstance(workflows, dict):
+        payload["workflows"] = {}
+    return payload
+
+
+def _save_workflow_runtime(repo_root: Path, payload: dict[str, Any]) -> None:
+    path = _workflow_runtime_path(repo_root)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+
+
+def _select_builtin_continuous_prompt(
+    repo_root: Path,
+    workflow_name: str,
+    allowed_prompt_ids: set[str] | None,
+    *,
+    advance: bool,
+) -> str | None:
+    ordered_prompt_ids = CONTINUOUS_WORKFLOW_STEP_ORDER.get(workflow_name)
+    if not ordered_prompt_ids:
+        return None
+
+    prompt_ids = [
+        prompt_id
+        for prompt_id in ordered_prompt_ids
+        if allowed_prompt_ids is None or prompt_id in allowed_prompt_ids
+    ]
+    if not prompt_ids:
+        return None
+
+    state = load_state(repo_root)
+    runtime = _load_workflow_runtime(repo_root)
+    workflows_raw = runtime.get("workflows")
+    workflows = workflows_raw if isinstance(workflows_raw, dict) else {}
+    entry_raw = workflows.get(workflow_name)
+    entry = entry_raw if isinstance(entry_raw, dict) else {}
+
+    order_sig = "|".join(prompt_ids)
+    raw_cursor = entry.get("next_index", 0)
+    try:
+        cursor = int(raw_cursor)
+    except (TypeError, ValueError):
+        cursor = 0
+    if cursor < 0:
+        cursor = 0
+
+    if (
+        entry.get("order_sig") != order_sig
+        or entry.get("stage") != state.stage
+        or entry.get("checkpoint") != state.checkpoint
+    ):
+        cursor = 0
+
+    index = cursor % len(prompt_ids)
+    selected = prompt_ids[index]
+    if not advance:
+        return selected
+
+    workflows[workflow_name] = {
+        "checkpoint": state.checkpoint,
+        "next_index": (index + 1) % len(prompt_ids),
+        "order_sig": order_sig,
+        "stage": state.stage,
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+    }
+    runtime["workflows"] = workflows
+    _save_workflow_runtime(repo_root, runtime)
+    return selected
+
+
 def _load_workflow_selector(repo_root: Path):
     try:
         from workflow_engine import select_next_prompt
         return select_next_prompt
     except Exception:
-        repo_tools_dir = (repo_root / "tools").resolve()
-        if repo_tools_dir.exists() and str(repo_tools_dir) not in sys.path:
-            sys.path.insert(0, str(repo_tools_dir))
+        pass
+
+    tool_candidates = [
+        (repo_root / "tools").resolve(),
+        # Support repos that vendor only skill scripts by falling back to the
+        # framework checkout that contains this script.
+        (Path(__file__).resolve().parents[4] / "tools").resolve(),
+    ]
+    seen: set[str] = set()
+    for tools_dir in tool_candidates:
+        key = str(tools_dir)
+        if key in seen or not tools_dir.exists():
+            continue
+        seen.add(key)
+        if key not in sys.path:
+            sys.path.insert(0, key)
         try:
             from workflow_engine import select_next_prompt
             return select_next_prompt
-        except Exception as exc:
-            raise RuntimeError(f"Failed to load workflow engine: {exc}") from exc
+        except Exception:
+            continue
+
+    try:
+        from workflow_engine import select_next_prompt
+        return select_next_prompt
+    except Exception as exc:
+        def _fallback_select_next_prompt(
+            workflow_name: str,
+            allowed_prompt_ids: set[str] | None = None,
+            **kwargs: Any,
+        ) -> str | None:
+            advance = bool(kwargs.get("advance", True))
+            return _select_builtin_continuous_prompt(
+                repo_root,
+                workflow_name,
+                allowed_prompt_ids,
+                advance=advance,
+            )
+
+        if repo_root.exists():
+            return _fallback_select_next_prompt
+        raise RuntimeError(f"Failed to load workflow engine: {exc}") from exc
 
 
 def _continuous_workflow_blocking_decision(state: StateInfo) -> tuple[Role, str] | None:

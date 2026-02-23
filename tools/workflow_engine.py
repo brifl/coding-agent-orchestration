@@ -23,7 +23,7 @@ ROTATING_WORKFLOWS = {
     "refactor-cycle",
 }
 
-BUILTIN_WORKFLOW_STEPS: dict[str, list[str]] = {
+WORKFLOW_STEP_ORDER: dict[str, list[str]] = {
     "continuous-refactor": [
         "prompt.refactor_scan",
         "prompt.refactor_execute",
@@ -41,6 +41,8 @@ BUILTIN_WORKFLOW_STEPS: dict[str, list[str]] = {
         "prompt.docs_refactor_fix",
     ],
 }
+# Backward-compatible alias used by older callers/tests.
+BUILTIN_WORKFLOW_STEPS = WORKFLOW_STEP_ORDER
 
 
 @dataclass(frozen=True)
@@ -172,7 +174,7 @@ def _load_workflow(name: str) -> Workflow:
                 path=path,
             )
         return _parse_yaml_workflow(path.read_text(encoding="utf-8"), path)
-    builtin_steps = BUILTIN_WORKFLOW_STEPS.get(name)
+    builtin_steps = WORKFLOW_STEP_ORDER.get(name)
     if builtin_steps:
         return Workflow(
             name=name,
@@ -293,6 +295,8 @@ def _select_rotating_prompt(
     workflow: Workflow,
     state: dict[str, Any],
     allowed_prompt_ids: set[str] | None,
+    *,
+    advance: bool,
 ) -> str | None:
     prompt_ids = _eligible_prompt_ids(workflow, state, allowed_prompt_ids)
     if not prompt_ids:
@@ -325,6 +329,9 @@ def _select_rotating_prompt(
 
     index = cursor % len(prompt_ids)
     selected = prompt_ids[index]
+    if not advance:
+        return selected
+
     workflows[workflow.name] = {
         "checkpoint": checkpoint,
         "next_index": (index + 1) % len(prompt_ids),
@@ -340,13 +347,15 @@ def _select_rotating_prompt(
 def select_next_prompt(
     workflow_name: str,
     allowed_prompt_ids: set[str] | None = None,
+    *,
+    advance: bool = True,
 ) -> str | None:
     workflow = _load_workflow(workflow_name)
     state = _parse_state()
     if workflow.triggers and not any(_trigger_matches(t, state) for t in workflow.triggers):
         return None
     if workflow.name in ROTATING_WORKFLOWS:
-        return _select_rotating_prompt(workflow, state, allowed_prompt_ids)
+        return _select_rotating_prompt(workflow, state, allowed_prompt_ids, advance=advance)
     prompt_ids = _eligible_prompt_ids(workflow, state, allowed_prompt_ids)
     return prompt_ids[0] if prompt_ids else None
 

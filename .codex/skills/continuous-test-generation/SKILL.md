@@ -32,15 +32,15 @@ Run one dispatcher step at a time:
 
 ```bash
 # 1. Ask the dispatcher for the next prompt
-python3 tools/agentctl.py --repo-root . --format json next --workflow continuous-test-generation
+python3 .codex/skills/vibe-loop/scripts/agentctl.py --repo-root . --format json next --workflow continuous-test-generation
 
 # 2. Read the prompt body from the catalog
-python3 tools/prompt_catalog.py .codex/skills/continuous-test-generation/resources/template_prompts.md get <recommended_prompt_id>
+python3 .codex/skills/vibe-prompts/scripts/prompt_catalog.py .codex/skills/vibe-prompts/resources/template_prompts.md get <recommended_prompt_id>
 
 # 3. Execute the prompt body (do the actual test generation work)
 
 # 4. After execution, record the loop result
-python3 tools/agentctl.py --repo-root . --format json loop-result --line "LOOP_RESULT: <json>"
+python3 .codex/skills/vibe-loop/scripts/agentctl.py --repo-root . --format json loop-result --line "LOOP_RESULT: <json>"
 
 # 5. Repeat from step 1 until recommended_role == "stop"
 ```

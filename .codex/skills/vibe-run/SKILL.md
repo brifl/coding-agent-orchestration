@@ -27,13 +27,13 @@ Each loop iteration follows this sequence:
 
 ```bash
 # Step 1: dispatch
-python3 tools/agentctl.py --repo-root . --format json next --workflow <workflow-name>
+python3 .codex/skills/vibe-loop/scripts/agentctl.py --repo-root . --format json next --workflow <workflow-name>
 
 # Step 2: fetch prompt body
-python3 tools/prompt_catalog.py .codex/skills/vibe-run/resources/template_prompts.md get <recommended_prompt_id>
+python3 .codex/skills/vibe-prompts/scripts/prompt_catalog.py .codex/skills/vibe-prompts/resources/template_prompts.md get <recommended_prompt_id>
 
 # Step 4: record loop result
-python3 tools/agentctl.py --repo-root . --format json loop-result --line "LOOP_RESULT: <json>"
+python3 .codex/skills/vibe-loop/scripts/agentctl.py --repo-root . --format json loop-result --line "LOOP_RESULT: <json>"
 ```
 
 ### LOOP_RESULT required fields

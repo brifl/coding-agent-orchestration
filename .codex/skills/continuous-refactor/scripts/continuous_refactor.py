@@ -39,6 +39,11 @@ def main() -> int:
         action="store_true",
         help="Do not pause between loops. Use only when another process updates state.",
     )
+    ap.add_argument(
+        "--simulate-loop-result",
+        action="store_true",
+        help="Auto-record synthetic LOOP_RESULT entries for non-interactive dry-runs.",
+    )
     args = ap.parse_args()
 
     repo_root = Path(args.repo_root).expanduser().resolve()
@@ -60,6 +65,8 @@ def main() -> int:
         cmd.append("--show-decision")
     if args.non_interactive:
         cmd.append("--non-interactive")
+    if args.simulate_loop_result:
+        cmd.append("--simulate-loop-result")
 
     result = subprocess.run(cmd)
     return int(result.returncode)
