@@ -22,6 +22,97 @@ Everything runs off four files in `.vibe/`:
 
 Agents do **not** invent workflows. They run the prompt loop recommended by `agentctl.py`.
 
+## Quick start for a simple project (what to edit + where to write)
+
+If you want to run a small demo in your own repo, treat this as the minimum path:
+
+**How to run this in practice (important):**
+- Keep this orchestration repo as a toolkit/reference repo (any location on disk is fine).
+- Your app/project repo stays separate; you do **not** copy or clone this whole repo into it.
+- Run bootstrap from this toolkit repo and point it at your app repo path.
+- After bootstrap, do day-to-day workflow commands from inside your app repo using the copied tools in that repo.
+
+Example:
+
+```bash
+# from this orchestration repo
+python3 tools/bootstrap.py init-repo /path/to/my-app
+
+# then work inside your app repo
+cd /path/to/my-app
+python3 tools/agentctl.py --repo-root . --format json next
+```
+
+### 1) Initialize orchestration files once
+
+Run:
+
+```bash
+python3 tools/bootstrap.py init-repo /path/to/your/repo
+```
+
+This creates the files you will actively edit:
+
+- `AGENTS.md` (repo root): your execution contract for all agents.
+- `.vibe/PLAN.md`: your checkpoint backlog.
+- `.vibe/STATE.md`: your current position/status in the loop.
+- `.vibe/HISTORY.md`: archived summaries after work is done.
+- `.vibe/CONTEXT.md`: short context handoff notes.
+
+### 2) Write a tiny plan in `.vibe/PLAN.md`
+
+For a demo, keep 1 stage and 1–2 checkpoints. In each checkpoint, write:
+
+- Objective
+- Deliverables
+- Acceptance
+- Demo commands
+- Evidence
+
+Tip: use `agentctl add-checkpoint --template ...` if you want a prebuilt structure.
+
+### 3) Set the active checkpoint in `.vibe/STATE.md`
+
+In `.vibe/STATE.md`, set:
+
+- Current stage/checkpoint to your first checkpoint.
+- Status to `NOT_STARTED` (or `IN_PROGRESS` if resuming).
+- Active issues list (empty is fine; use the required issue schema if blocked).
+
+### 4) Run the loop dispatcher
+
+From your project root:
+
+```bash
+python3 tools/agentctl.py --repo-root . --format json next
+```
+
+Use the returned role/prompt, do that one loop, then update `.vibe/STATE.md` with results.
+
+### 5) Record loop output (required for continuity)
+
+After each loop, write the `LOOP_RESULT` line back through `agentctl`:
+
+```bash
+python3 tools/agentctl.py --repo-root . --format json loop-result --line 'LOOP_RESULT: {...}'
+```
+
+This keeps future recommendations deterministic.
+
+### 6) Repeat until `recommended_role` is `stop`
+
+Normal demo flow is:
+
+`implement -> review -> (auto-advance) -> implement -> review -> ... -> consolidation -> context_capture -> stop`
+
+### 7) Where each kind of writing should go
+
+- Scope/work definition: `.vibe/PLAN.md`
+- Live status + blockers: `.vibe/STATE.md`
+- Session/stage summaries: `.vibe/HISTORY.md`
+- “What to remember next time”: `.vibe/CONTEXT.md`
+- Agent operating rules for this repo: `AGENTS.md`
+
 ## How work progresses
 
 1) `agentctl.py next` chooses the next loop (implement, review, triage, consolidation, etc.).
