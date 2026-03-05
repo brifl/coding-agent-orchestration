@@ -2,7 +2,9 @@
 
 This repository tracks agentic work using state files only.
 
-## Core files
+## Core files for agentic workflow
+
+All files in `.vibe` track the progress of work. 
 
 - `AGENTS.md` — execution contract and operating policy.
 - `.vibe/PLAN.md` — checkpoint backlog with acceptance criteria.
@@ -24,8 +26,7 @@ To avoid drift, treat these as the single source of truth for structure:
 2. Pick the active checkpoint from `.vibe/STATE.md`.
 3. Implement only that checkpoint.
 4. Run required demo/test commands.
-5. Update `.vibe/STATE.md` with work log + evidence.
-6. Open a PR.
+5. Update `.vibe/STATE.md` and `.vibe/HISTORY.md` (and `.vibe/CONTEXT.md` if relevant)
 7. Human reviews.
 
 ## Quick consistency checks (agent + human)
