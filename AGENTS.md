@@ -26,7 +26,7 @@ No Python orchestrator is required.
 
 - Do one checkpoint at a time (unless explicitly requested more).
 - Keep diffs small and reviewable.
-- Limite interventions and changes to what is necessary to meet acceptance
+- Limit interventions and changes to what is necessary to meet acceptance criteria
 - Human reviews after each checkpoint.
 
 ## Checkpoint format (PLAN.md)
