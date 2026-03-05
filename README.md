@@ -1,7 +1,9 @@
-# Vibe Coding-Agent Orchestration
+# Vibe Coding-Agent Orchestration - "Basic"
 
 A practical system for running coding agents with predictable loops, explicit state, and low overhead.
 This repository is the canonical reference implementation of the workflow.
+
+This branch (basic) aims to be a minimal, fast-use for starter. Maybe I'll move to the complete stuff later (in main).
 
 ## Why this exists
 
