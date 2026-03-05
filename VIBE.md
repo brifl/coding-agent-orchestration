@@ -19,13 +19,13 @@ Minimal markdown workflow.
 - Open a PR.
 - Human review.
 
-## Status values
+## Canonical templates (DRY)
 
-- `NOT_STARTED`
-- `IN_PROGRESS`
-- `IN_REVIEW`
-- `BLOCKED`
-- `DONE`
+Use these as the single source of truth for structure and allowed values:
+
+- `templates/META_TEMPLATES/PLAN.md`
+- `templates/META_TEMPLATES/STATE.md`
+- `templates/META_TEMPLATES/HISTORY.md`
 
 ## Stop conditions
 

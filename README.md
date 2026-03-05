@@ -10,6 +10,14 @@ This repository tracks agentic work using state files only.
 - `.vibe/HISTORY.md` — optional archive for completed checkpoints and resolved issues.
 - `.vibe/CONTEXT.md` — optional handoff notes and durable project context.
 
+## Canonical templates (DRY)
+
+To avoid drift, treat these as the single source of truth for structure:
+
+- `templates/META_TEMPLATES/PLAN.md`
+- `templates/META_TEMPLATES/STATE.md`
+- `templates/META_TEMPLATES/HISTORY.md`
+
 ## Workflow loop
 
 1. Read `AGENTS.md`, `.vibe/STATE.md`, and `.vibe/PLAN.md` (plus optional history/context if needed).
@@ -30,39 +38,10 @@ Use this before or after each checkpoint to keep planning artifacts aligned:
 - **Evidence quality:** all acceptance claims point to concrete commands, outputs, commits, or screenshots.
 - **Scope discipline:** only one checkpoint is active unless explicitly requested otherwise.
 
-## Checkpoint template (`PLAN.md`)
+## Templates and examples
 
-```md
-### <stage>.<n> — <title>
-- Objective:
-- Deliverables:
-- Acceptance:
-- Demo commands:
-- Evidence:
-```
-
-## State template (`STATE.md`)
-
-```md
-## Current focus
-- Stage: <id>
-- Checkpoint: <id>
-- Status: NOT_STARTED|IN_PROGRESS|IN_REVIEW|BLOCKED|DONE
-
-## Work log (current session)
-- YYYY-MM-DD: <change summary>
-
-## Evidence
-- `<command>` -> <result>
-
-## Active issues
-- [ ] ISSUE-<id>: <title>
-  - Impact: QUESTION|MINOR|MAJOR|BLOCKER
-  - Status: OPEN|IN_PROGRESS|BLOCKED|RESOLVED
-  - Owner: agent|human
-  - Unblock Condition: <condition>
-  - Evidence Needed: <proof>
-```
+When creating or updating planning docs, link to and follow the canonical templates in
+`templates/META_TEMPLATES/` rather than copying template blocks into additional docs.
 
 ## Philosophy
 

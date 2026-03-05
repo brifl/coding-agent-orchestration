@@ -24,6 +24,7 @@
 
 ## Work log (current session)
 <!-- Append-only bullets for what changed and why. Prefer file/line references. -->
+- 2026-03-05: Updated `README.md` and `VIBE.md` to point to canonical meta templates instead of re-embedding template definitions, reducing doc duplication.
 
 ## Evidence
 <!-- Paste command outputs, links to commits/PRs, screenshots, etc. -->
