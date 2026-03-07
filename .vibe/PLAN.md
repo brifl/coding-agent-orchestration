@@ -136,3 +136,42 @@ Extend PLAN.md with optional `depends_on: [X.Y, ...]` annotations per checkpoint
   * `python3 tools/agentctl.py --repo-root . validate --strict`
 * **Evidence:**
   * Test output showing all pass. `docs/checkpoint_dependencies.md` exists with diamond example.
+
+---
+
+## Stage 26 — Agent Platform Simplification
+
+**Stage objective:**
+Remove workflow support surfaces for all agent platforms except Codex and Claude Code, while leaving provider integrations unchanged.
+
+### Stage invariants (apply to all checkpoints)
+
+- **Codex/Claude only:** `codex` and `claude` are the only supported workflow agent identifiers.
+- **Stable repo layout:** Repo-local installs still target `.codex/skills`; this stage only trims unsupported agent paths and docs.
+- **No provider churn:** LLM provider integrations (`anthropic`, `openai`, `google`, `triton`, etc.) are out of scope for this stage.
+- **Prompt catalog parity:** Repo prompt sources and copied skill resource catalogs must stay in sync.
+
+---
+
+### 26.0 — Remove non-Codex/Claude platform support
+
+* **Objective:**
+  Remove Gemini, Copilot, and generic agent-platform surfaces from tooling, prompts, docs, manifests, and tests.
+* **Deliverables:**
+  * `tools/constants.py`, `tools/bootstrap.py`, `tools/skillctl.py`, `tools/skill_registry.py`, `tools/resource_resolver.py`, and `.codex/skills/vibe-loop/scripts/resource_resolver.py` only accept Codex/Claude agent identifiers and default to Codex
+  * Prompt/bootstrap cleanup across `.codex/skills/*/resources/template_prompts.md`, `prompts/template_prompts.md`, and `prompts/init/` removes Gemini/Copilot/generic bootstraps
+  * Agent-support docs updated in `README.md`, `docs/agent_skill_packs.md`, `docs/agent_capabilities.md`, `docs/base_skills.md`, `docs/skill_lifecycle.md`, and `prompts/init/capability_map.md`
+  * Continuous workflow skill manifests advertise only Codex and Claude support
+  * Regression coverage updated in `tests/workflow/test_bootstrap.py`, `tests/workflow/test_prompt_flow_integrity.py`, and `tests/workflow/test_skill_tooling.py`
+* **Acceptance:**
+  * CLI/tool defaults use `codex`, and unsupported agent values such as `gemini` and `copilot` are rejected by agent-selection entry points
+  * No Gemini/Copilot/generic bootstrap files or prompt-catalog entries remain
+  * Agent-support docs and skill manifests list only Codex and Claude Code
+  * `python3 -m pytest tests/workflow/test_bootstrap.py tests/workflow/test_prompt_flow_integrity.py tests/workflow/test_skill_tooling.py -v --capture=sys` passes
+  * `python3 tools/agentctl.py --repo-root . validate --strict` passes
+* **Demo commands:**
+  * `python3 -m pytest tests/workflow/test_bootstrap.py tests/workflow/test_prompt_flow_integrity.py tests/workflow/test_skill_tooling.py -v --capture=sys`
+  * `python3 tools/agentctl.py --repo-root . validate --strict`
+* **Evidence:**
+  * Test output showing unsupported-agent rejection and prompt/doc cleanup.
+  * Strict validation output.

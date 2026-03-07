@@ -167,10 +167,10 @@ python3 tools/bootstrap.py init-repo /path/to/your/repo --skillset vibe-core
 python3 tools/bootstrap.py install-skills --global --agent <agent_name>
 ```
 
-Supported agents: `codex`, `claude`, `gemini`, `copilot`.
+Supported agents: `codex`, `claude`.
 
-Codex is the reference implementation for continuous mode. Other agents rely on
-manual bootstraps found in `prompts/init/`.
+Codex is the reference implementation for continuous mode. Claude Code uses the
+manual bootstrap in `prompts/init/claude_bootstrap.md` or installed skill scripts.
 
 ## Single-loop vs continuous
 

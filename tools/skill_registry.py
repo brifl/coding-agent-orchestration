@@ -20,10 +20,9 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from path_utils import resolve_codex_home
+from constants import DEFAULT_AGENT, SUPPORTED_AGENTS, validate_agent_name
+from path_utils import resolve_claude_home, resolve_codex_home
 from skillset_utils import find_manifest, load_manifest
-
-from constants import DEFAULT_AGENT
 
 
 @dataclass(frozen=True)
@@ -60,15 +59,16 @@ def _repo_skill_roots(repo_root: Path) -> list[Path]:
 
 
 def _skill_paths(repo_root: Path, agent: str) -> list[tuple[str, Path]]:
+    normalized_agent = validate_agent_name(agent)
     paths: list[tuple[str, Path]] = []
     for root in _repo_skill_roots(repo_root):
         paths.append(("repo", root))
 
-    if agent == "codex":
+    if normalized_agent == "codex":
         paths.append(("global", resolve_codex_home() / "skills"))
         paths.append(("system", Path("/etc/codex/skills")))
     else:
-        paths.append(("global", Path.home() / f".{agent}" / "skills"))
+        paths.append(("global", resolve_claude_home() / "skills"))
 
     paths.append(("built_in", repo_root / "built_in" / "skills"))
     return paths
@@ -98,14 +98,15 @@ def _record_from_dir(skill_dir: Path, source: str) -> SkillRecord:
 
 
 def discover_skills(repo_root: Path, agent: str) -> list[SkillRecord]:
-    cache_key = (repo_root, agent)
+    normalized_agent = validate_agent_name(agent)
+    cache_key = (repo_root, normalized_agent)
     if cache_key in _CACHE:
         return _CACHE[cache_key]
 
     records: list[SkillRecord] = []
     seen: set[str] = set()
 
-    for source, base in _skill_paths(repo_root, agent):
+    for source, base in _skill_paths(repo_root, normalized_agent):
         if not base.exists():
             continue
         for entry in sorted(base.iterdir()):
@@ -167,7 +168,7 @@ def main() -> int:
     parser.add_argument("command", choices=["list", "info"], help="Command to run.")
     parser.add_argument("name", nargs="?", help="Skill name for info.")
     parser.add_argument("--format", choices=["json", "text"], default="text")
-    parser.add_argument("--agent", default=DEFAULT_AGENT, help="Agent name for global path.")
+    parser.add_argument("--agent", choices=SUPPORTED_AGENTS, default=DEFAULT_AGENT, help="Agent name for global path.")
 
     args = parser.parse_args()
     repo_root = _repo_root()

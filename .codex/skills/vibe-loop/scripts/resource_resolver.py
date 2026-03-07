@@ -4,7 +4,7 @@ resource_resolver.py
 
 Resolves resources (skills, prompts, etc.) by searching in a defined order of precedence:
 1. Repo-Local (`.codex/skills/*/resources/`)
-2. Global (`~/.codex/skills/*/resources/` or `$CODEX_HOME/skills/*/resources/`)
+2. Global (supported agent skill roots such as `~/.codex/skills/*/resources/` or `~/.claude/skills/*/resources/`)
 3. Built-in (`built_in/skills/*/resources/`)
 """
 
@@ -15,8 +15,9 @@ import os
 import re
 from pathlib import Path
 
-# Assume 'gemini' for the agent if not specified.
-DEFAULT_AGENT = "gemini"
+# Supported workflow agent identifiers.
+SUPPORTED_AGENTS = ("codex", "claude")
+DEFAULT_AGENT = "codex"
 PROMPT_SKILL_PRIORITY = (
     "vibe-prompts",
     "vibe-loop",
@@ -29,6 +30,15 @@ PROMPT_SKILL_PRIORITY = (
 
 _WSL_UNC_RE = re.compile(r"^//wsl(?:\.localhost)?/[^/]+/(.+)$", re.IGNORECASE)
 _WIN_DRIVE_RE = re.compile(r"^([A-Za-z]):/(.+)$")
+
+
+def _validate_agent_name(agent: str) -> str:
+    normalized = agent.strip().lower()
+    if normalized not in SUPPORTED_AGENTS:
+        supported = ", ".join(SUPPORTED_AGENTS)
+        raise ValueError(f"Unsupported agent '{agent}'. Supported agents: {supported}.")
+    return normalized
+
 
 def _normalize_home_path(raw: str) -> Path:
     value = raw.strip().strip('"').strip("'")
@@ -58,6 +68,19 @@ def _codex_home() -> Path:
     if env_home:
         return _normalize_home_path(env_home)
     return Path.home() / ".codex"
+
+
+def _claude_home() -> Path:
+    env_home = os.environ.get("AGENT_HOME")
+    if env_home:
+        return _normalize_home_path(env_home)
+    return Path.home() / ".claude"
+
+
+def _global_skills_root(agent_name: str) -> Path:
+    if agent_name == "codex":
+        return _codex_home() / "skills"
+    return _claude_home() / "skills"
 
 
 def _codex_repo_skill_roots(repo_root: Path) -> list[Path]:
@@ -103,7 +126,7 @@ def find_resource(resource_type: str, resource_name: str, agent: str | None = No
         The path to the resource, or None if not found.
     """
     repo_root = _get_repo_root()
-    agent_name = agent or DEFAULT_AGENT
+    agent_name = _validate_agent_name(agent or DEFAULT_AGENT)
 
     search_paths: list[Path] = []
 
@@ -117,10 +140,10 @@ def find_resource(resource_type: str, resource_name: str, agent: str | None = No
 
         # 2. Global
         if agent_name == "codex":
-            _append_path_if_new(search_paths, _codex_home() / "skills" / resource_name)
+            _append_path_if_new(search_paths, _global_skills_root(agent_name) / resource_name)
             _append_path_if_new(search_paths, Path("/etc/codex/skills") / resource_name)
         else:
-            _append_path_if_new(search_paths, Path.home() / f".{agent_name}" / "skills" / resource_name)
+            _append_path_if_new(search_paths, _global_skills_root(agent_name) / resource_name)
 
         # 3. Built-in
         _append_path_if_new(search_paths, repo_root / "built_in" / "skills" / resource_name)
@@ -134,12 +157,10 @@ def find_resource(resource_type: str, resource_name: str, agent: str | None = No
 
         # Global locations.
         if agent_name == "codex":
-            codex_home = _codex_home()
-            _append_prompt_catalog_candidates(search_paths, codex_home / "skills", resource_name)
+            _append_prompt_catalog_candidates(search_paths, _global_skills_root(agent_name), resource_name)
             _append_prompt_catalog_candidates(search_paths, Path("/etc/codex/skills"), resource_name)
         else:
-            agent_root = Path.home() / f".{agent_name}"
-            _append_prompt_catalog_candidates(search_paths, agent_root / "skills", resource_name)
+            _append_prompt_catalog_candidates(search_paths, _global_skills_root(agent_name), resource_name)
 
         # Built-in fallback location.
         _append_prompt_catalog_candidates(search_paths, repo_root / "built_in" / "skills", resource_name)
@@ -155,7 +176,7 @@ def main():
     parser = argparse.ArgumentParser(description="Find resources with precedence.")
     parser.add_argument("resource_type", choices=["skill", "prompt"], help="The type of resource to find.")
     parser.add_argument("resource_name", help="The name of the resource to find.")
-    parser.add_argument("--agent", help="The agent name for the global path.")
+    parser.add_argument("--agent", choices=SUPPORTED_AGENTS, help="The agent name for the global path.")
     parser.add_argument("--show-path", action="store_true", help="Show the path of the found resource.")
 
     args = parser.parse_args()

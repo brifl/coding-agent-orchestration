@@ -6,8 +6,19 @@ plan_pipeline.py, resource_resolver.py, and skill_registry.py.
 
 from __future__ import annotations
 
+# Supported workflow agent identifiers.
+SUPPORTED_AGENTS: tuple[str, ...] = ("codex", "claude")
+
 # Default agent identifier (used by skill_registry and resource_resolver).
-DEFAULT_AGENT: str = "gemini"
+DEFAULT_AGENT: str = "codex"
+
+
+def validate_agent_name(agent: str) -> str:
+    normalized = agent.strip().lower()
+    if normalized not in SUPPORTED_AGENTS:
+        supported = ", ".join(SUPPORTED_AGENTS)
+        raise ValueError(f"Unsupported agent '{agent}'. Supported agents: {supported}.")
+    return normalized
 
 # Ordered skill list for prompt-catalog resolution.
 PROMPT_SKILL_PRIORITY: tuple[str, ...] = (

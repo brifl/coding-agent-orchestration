@@ -42,7 +42,8 @@ Skills not in the base set follow semantic versioning:
 
 Extension skills live in:
 - `.codex/skills/<skill-name>/` — Repo-local Codex skills
-- `~/.codex/skills/<skill-name>/` or `$CODEX_HOME/skills/<skill-name>/` — User/global installs
+- `~/.codex/skills/<skill-name>/` or `$CODEX_HOME/skills/<skill-name>/` — User/global installs for Codex
+- `~/.claude/skills/<skill-name>/` or `$AGENT_HOME/skills/<skill-name>/` — User/global installs for Claude Code
 
 ## Adding a New Skill
 
@@ -54,7 +55,7 @@ Before adding a skill, it must pass ALL of these criteria:
 |-----------|-------------|-------------|
 | **Need** | Solves a real problem not covered by base skills | Review discussion |
 | **Scope** | Does one thing well; not a catch-all | Code review |
-| **Compatibility** | Works with at least 2 supported agents | Test transcript |
+| **Compatibility** | Works with both supported agents | Test transcript |
 | **Documentation** | Has SKILL.md with usage instructions | File check |
 | **No base conflicts** | Does not override or shadow base skill names | Name check |
 | **Testable** | Has demo commands that verify it works | Manual test |
@@ -78,7 +79,7 @@ Use this checklist when reviewing a new skill PR:
 
 ### Compatibility
 - [ ] Tested with Codex
-- [ ] Tested with at least one other agent (Claude/Gemini/Copilot)
+- [ ] Tested with Claude Code
 - [ ] Fails gracefully on unsupported agents
 
 ### Documentation

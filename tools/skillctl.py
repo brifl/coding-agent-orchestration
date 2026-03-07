@@ -15,9 +15,10 @@ from pathlib import Path
 from typing import Any
 
 from cli_error_utils import format_cli_error
-from path_utils import resolve_codex_home
+from constants import DEFAULT_AGENT, SUPPORTED_AGENTS, validate_agent_name
+from path_utils import resolve_claude_home, resolve_codex_home
 from resource_resolver import find_resource
-from skill_registry import DEFAULT_AGENT, discover_skills
+from skill_registry import discover_skills
 from skillset_utils import (
     find_manifest,
     find_skillset,
@@ -56,9 +57,10 @@ def _write_lock(payload: dict[str, Any]) -> None:
 
 
 def _agent_global_dir(agent: str) -> Path:
-    if agent == "codex":
+    normalized_agent = validate_agent_name(agent)
+    if normalized_agent == "codex":
         return resolve_codex_home() / "skills"
-    return Path.home() / f".{agent}" / "skills"
+    return resolve_claude_home() / "skills"
 
 
 def _repo_skill_source(name: str) -> Path:
@@ -92,6 +94,7 @@ def _manifest_dependencies(skill_name: str, agent: str) -> list[str]:
 
 
 def resolve_skillset(name: str, agent: str) -> dict[str, Any]:
+    agent = validate_agent_name(agent)
     visited: set[str] = set()
     resolving: set[str] = set()
     resolved: dict[str, str | None] = {}
@@ -356,31 +359,31 @@ def main(argv: list[str]) -> int:
 
     listp = sub.add_parser("list", help="List available skills")
     listp.add_argument("--format", choices=["json", "text"], default="text")
-    listp.add_argument("--agent", default=DEFAULT_AGENT)
+    listp.add_argument("--agent", choices=SUPPORTED_AGENTS, default=DEFAULT_AGENT)
 
     infop = sub.add_parser("info", help="Show skill metadata")
     infop.add_argument("name")
     infop.add_argument("--format", choices=["json", "text"], default="text")
-    infop.add_argument("--agent", default=DEFAULT_AGENT)
+    infop.add_argument("--agent", choices=SUPPORTED_AGENTS, default=DEFAULT_AGENT)
 
     instp = sub.add_parser("install", help="Install a skill")
     instp.add_argument("name")
     instp.add_argument("--global", dest="global_install", action="store_true")
     instp.add_argument("--repo", dest="repo_install", action="store_true", help="Install into .codex/skills in the repo")
-    instp.add_argument("--agent", default=DEFAULT_AGENT)
+    instp.add_argument("--agent", choices=SUPPORTED_AGENTS, default=DEFAULT_AGENT)
     instp.add_argument("--force", action="store_true")
 
     uninstp = sub.add_parser("uninstall", help="Remove a skill")
     uninstp.add_argument("name")
     uninstp.add_argument("--global", dest="global_install", action="store_true")
     uninstp.add_argument("--repo", dest="repo_install", action="store_true", help="Remove from .codex/skills in the repo")
-    uninstp.add_argument("--agent", default=DEFAULT_AGENT)
+    uninstp.add_argument("--agent", choices=SUPPORTED_AGENTS, default=DEFAULT_AGENT)
 
     updp = sub.add_parser("update", help="Reinstall a skill")
     updp.add_argument("name")
     updp.add_argument("--global", dest="global_install", action="store_true")
     updp.add_argument("--repo", dest="repo_install", action="store_true", help="Reinstall into .codex/skills in the repo")
-    updp.add_argument("--agent", default=DEFAULT_AGENT)
+    updp.add_argument("--agent", choices=SUPPORTED_AGENTS, default=DEFAULT_AGENT)
 
     valp = sub.add_parser("validate", help="Validate a skill manifest")
     valp.add_argument("path")
@@ -388,7 +391,7 @@ def main(argv: list[str]) -> int:
     rsvp = sub.add_parser("resolve-set", help="Resolve a skill set")
     rsvp.add_argument("name")
     rsvp.add_argument("--format", choices=["json", "text"], default="text")
-    rsvp.add_argument("--agent", default=DEFAULT_AGENT)
+    rsvp.add_argument("--agent", choices=SUPPORTED_AGENTS, default=DEFAULT_AGENT)
 
     subp = sub.add_parser("subscribe", help="Subscribe to an external skill")
     subp.add_argument("source")

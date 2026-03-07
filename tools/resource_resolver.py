@@ -4,7 +4,7 @@ resource_resolver.py
 
 Resolves resources (skills, prompts, etc.) by searching in a defined order of precedence:
 1. Repo-Local (`.codex/skills/*/resources/`)
-2. Global (`~/.codex/skills/*/resources/` or `$CODEX_HOME/skills/*/resources/`)
+2. Global (supported agent skill roots such as `~/.codex/skills/*/resources/` or `~/.claude/skills/*/resources/`)
 3. Built-in (`built_in/skills/*/resources/`)
 """
 
@@ -14,9 +14,8 @@ import argparse
 import os
 from pathlib import Path
 
-from path_utils import resolve_codex_home
-
-from constants import DEFAULT_AGENT, PROMPT_SKILL_PRIORITY
+from constants import DEFAULT_AGENT, PROMPT_SKILL_PRIORITY, SUPPORTED_AGENTS, validate_agent_name
+from path_utils import resolve_claude_home, resolve_codex_home
 
 def _get_repo_root() -> Path:
     """Gets the repository root by searching for the .git directory."""
@@ -27,6 +26,12 @@ def _get_repo_root() -> Path:
 
 def _codex_home() -> Path:
     return resolve_codex_home()
+
+
+def _global_skills_root(agent_name: str) -> Path:
+    if agent_name == "codex":
+        return _codex_home() / "skills"
+    return resolve_claude_home() / "skills"
 
 
 def _codex_repo_skill_roots(repo_root: Path) -> list[Path]:
@@ -72,7 +77,7 @@ def find_resource(resource_type: str, resource_name: str, agent: str | None = No
         The path to the resource, or None if not found.
     """
     repo_root = _get_repo_root()
-    agent_name = agent or DEFAULT_AGENT
+    agent_name = validate_agent_name(agent or DEFAULT_AGENT)
 
     search_paths: list[Path] = []
 
@@ -86,10 +91,10 @@ def find_resource(resource_type: str, resource_name: str, agent: str | None = No
 
         # 2. Global
         if agent_name == "codex":
-            _append_path_if_new(search_paths, _codex_home() / "skills" / resource_name)
+            _append_path_if_new(search_paths, _global_skills_root(agent_name) / resource_name)
             _append_path_if_new(search_paths, Path("/etc/codex/skills") / resource_name)
         else:
-            _append_path_if_new(search_paths, Path.home() / f".{agent_name}" / "skills" / resource_name)
+            _append_path_if_new(search_paths, _global_skills_root(agent_name) / resource_name)
 
         # 3. Built-in
         _append_path_if_new(search_paths, repo_root / "built_in" / "skills" / resource_name)
@@ -103,11 +108,10 @@ def find_resource(resource_type: str, resource_name: str, agent: str | None = No
 
         # Global locations.
         if agent_name == "codex":
-            _append_prompt_catalog_candidates(search_paths, _codex_home() / "skills", resource_name)
+            _append_prompt_catalog_candidates(search_paths, _global_skills_root(agent_name), resource_name)
             _append_prompt_catalog_candidates(search_paths, Path("/etc/codex/skills"), resource_name)
         else:
-            agent_root = Path.home() / f".{agent_name}"
-            _append_prompt_catalog_candidates(search_paths, agent_root / "skills", resource_name)
+            _append_prompt_catalog_candidates(search_paths, _global_skills_root(agent_name), resource_name)
 
         # Built-in fallback location.
         _append_prompt_catalog_candidates(search_paths, repo_root / "built_in" / "skills", resource_name)
@@ -123,7 +127,7 @@ def main():
     parser = argparse.ArgumentParser(description="Find resources with precedence.")
     parser.add_argument("resource_type", choices=["skill", "prompt"], help="The type of resource to find.")
     parser.add_argument("resource_name", help="The name of the resource to find.")
-    parser.add_argument("--agent", help="The agent name for the global path.")
+    parser.add_argument("--agent", choices=SUPPORTED_AGENTS, help="The agent name for the global path.")
     parser.add_argument("--show-path", action="store_true", help="Show the path of the found resource.")
 
     args = parser.parse_args()

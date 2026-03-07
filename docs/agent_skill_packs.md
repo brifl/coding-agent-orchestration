@@ -1,11 +1,10 @@
 # Agent skill packs
 
-This document describes the **base skill equivalents** for agents that do not use Codex
-skills directly. Each pack provides instructions, prompt locations, and invocation patterns.
+This document describes the supported skill-pack entrypoints for Codex and Claude Code.
 
 ## Shared prompt pack
 
-All agents use the same prompt catalog and bootstraps:
+Both supported agents use the same prompt catalog:
 - Bootstraps: `prompts/init/*.md`
 - Loop catalog: `.codex/skills/vibe-prompts/resources/template_prompts.md`
 
@@ -33,27 +32,9 @@ All agents use the same prompt catalog and bootstraps:
   2) Execute exactly one loop manually.
   3) Re-run the bootstrap for pseudo-continuous progress.
 
-## Gemini
-
-- **Instructions**: paste `prompts/init/gemini_bootstrap.md` into a new chat.
-- **Prompt pack**: `~/.gemini/skills/vibe-prompts/resources/template_prompts.md` (or repo-local `.codex/skills/vibe-prompts/resources/template_prompts.md`).
-- **Invocation pattern**:
-  1) Use the bootstrap to select the next loop.
-  2) Execute exactly one loop manually.
-  3) Re-run the bootstrap for pseudo-continuous progress.
-
-## Copilot
-
-- **Instructions**: paste `prompts/init/copilot_bootstrap.md` into a new chat.
-- **Prompt pack**: `~/.copilot/skills/vibe-prompts/resources/template_prompts.md` (or repo-local `.codex/skills/vibe-prompts/resources/template_prompts.md`).
-- **Invocation pattern**:
-  1) Use the bootstrap to select the next loop.
-  2) Execute exactly one loop manually.
-  3) Re-run the bootstrap for pseudo-continuous progress.
-
 ## Differences (explicit)
 
 - Codex supports continuous mode with `$vibe-run`, `$continuous-refactor`,
   `$continuous-test-generation`, and `$continuous-documentation`.
-- Other agents can use installed skill scripts in a tool-enabled environment,
+- Claude Code can use installed skill scripts in a tool-enabled environment,
   or fall back to manual prompt execution.

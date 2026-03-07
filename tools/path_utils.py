@@ -42,3 +42,10 @@ def resolve_codex_home() -> Path:
     if env_home:
         return normalize_home_path(env_home)
     return Path.home() / ".codex"
+
+
+def resolve_claude_home() -> Path:
+    env_home = os.environ.get("AGENT_HOME")
+    if env_home:
+        return normalize_home_path(env_home)
+    return Path.home() / ".claude"

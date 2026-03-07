@@ -5,8 +5,6 @@ version: "1.0.0"
 agents:
   - codex
   - claude
-  - gemini
-  - copilot
 dependencies:
   - vibe-run
 ---

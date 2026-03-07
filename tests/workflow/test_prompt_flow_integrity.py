@@ -78,9 +78,6 @@ def test_bootstrap_and_docs_use_issues_triage_role_name() -> None:
     targets = [
         repo_root / "prompts" / "init" / "codex_bootstrap.md",
         repo_root / "prompts" / "init" / "claude_bootstrap.md",
-        repo_root / "prompts" / "init" / "gemini_bootstrap.md",
-        repo_root / "prompts" / "init" / "copilot_bootstrap.md",
-        repo_root / "prompts" / "init" / "generic_bootstrap.md",
         repo_root / "docs" / "concepts.md",
     ]
 
@@ -88,6 +85,27 @@ def test_bootstrap_and_docs_use_issues_triage_role_name() -> None:
         text = path.read_text(encoding="utf-8")
         assert " / triage / " not in text
         assert "issues_triage" in text
+
+
+def test_only_supported_bootstrap_files_exist() -> None:
+    repo_root = Path(__file__).resolve().parents[2]
+    assert (repo_root / "prompts" / "init" / "codex_bootstrap.md").exists()
+    assert (repo_root / "prompts" / "init" / "claude_bootstrap.md").exists()
+    assert not (repo_root / "prompts" / "init" / "gemini_bootstrap.md").exists()
+    assert not (repo_root / "prompts" / "init" / "copilot_bootstrap.md").exists()
+    assert not (repo_root / "prompts" / "init" / "generic_bootstrap.md").exists()
+
+
+def test_prompt_catalog_excludes_removed_bootstraps() -> None:
+    repo_root = Path(__file__).resolve().parents[2]
+    catalog_text = (
+        repo_root / ".codex" / "skills" / "vibe-prompts" / "resources" / "template_prompts.md"
+    ).read_text(encoding="utf-8")
+
+    assert "init.codex_bootstrap" in catalog_text
+    assert "init.claude_bootstrap" in catalog_text
+    assert "init.gemini_bootstrap" not in catalog_text
+    assert "init.copilot_bootstrap" not in catalog_text
 
 
 def test_repo_workflow_prompt_ids_exist_and_are_mapped() -> None:

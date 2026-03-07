@@ -10,7 +10,10 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent / "tools"))
 
-from path_utils import normalize_home_path, resolve_codex_home  # type: ignore
+from constants import DEFAULT_AGENT, SUPPORTED_AGENTS  # type: ignore
+from path_utils import normalize_home_path, resolve_claude_home, resolve_codex_home  # type: ignore
+from resource_resolver import find_resource  # type: ignore
+from skill_registry import discover_skills  # type: ignore
 from skillctl import cmd_validate, resolve_skillset  # type: ignore
 
 
@@ -46,6 +49,34 @@ def test_bootstrap_global_skill_list_includes_continuous_refactor() -> None:
     assert "continuous-test-generation" in bootstrap_text
 
 
+def test_supported_agent_defaults_are_codex_and_claude_only() -> None:
+    assert DEFAULT_AGENT == "codex"
+    assert SUPPORTED_AGENTS == ("codex", "claude")
+
+
+def test_continuous_skill_manifests_only_list_supported_agents() -> None:
+    repo_root = Path(__file__).resolve().parents[2]
+    for path in (
+        repo_root / ".codex" / "skills" / "continuous-refactor" / "SKILL.md",
+        repo_root / ".codex" / "skills" / "continuous-test-generation" / "SKILL.md",
+        repo_root / ".codex" / "skills" / "continuous-documentation" / "SKILL.md",
+    ):
+        text = path.read_text(encoding="utf-8")
+        assert "gemini" not in text
+        assert "copilot" not in text
+
+
+def test_discover_skills_rejects_unsupported_agents() -> None:
+    repo_root = Path(__file__).resolve().parents[2]
+    with pytest.raises(ValueError, match="Unsupported agent 'gemini'"):
+        discover_skills(repo_root, "gemini")
+
+
+def test_find_resource_rejects_unsupported_agents() -> None:
+    with pytest.raises(ValueError, match="Unsupported agent 'copilot'"):
+        find_resource("skill", "vibe-loop", agent="copilot")
+
+
 @pytest.mark.skipif(os.name == "nt", reason="WSL/Windows path normalization is POSIX-specific")
 def test_normalize_home_path_converts_wsl_unc() -> None:
     raw = r"\\wsl.localhost\Ubuntu\home\alice\.codex"
@@ -62,3 +93,9 @@ def test_normalize_home_path_converts_windows_drive() -> None:
 def test_resolve_codex_home_uses_normalized_env(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("CODEX_HOME", r"\\wsl.localhost\Ubuntu\home\brifl\.codex")
     assert resolve_codex_home() == Path("/home/brifl/.codex")
+
+
+@pytest.mark.skipif(os.name == "nt", reason="WSL/Windows path normalization is POSIX-specific")
+def test_resolve_claude_home_uses_normalized_env(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("AGENT_HOME", r"\\wsl.localhost\Ubuntu\home\brifl\.claude")
+    assert resolve_claude_home() == Path("/home/brifl/.claude")

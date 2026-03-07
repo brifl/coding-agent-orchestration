@@ -22,8 +22,6 @@ All future skills must layer on top of this foundation without breaking it.
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | Codex | Full | Full | Full | Full | Full | Full | Full | Reference implementation for continuous mode. |
 | Claude Code | Manual/Tool-dependent | Manual/Tool-dependent | Manual/Tool-dependent | Manual/Tool-dependent | Manual/Tool-dependent | Manual/Tool-dependent | Manual/Tool-dependent | Use installed skill scripts or manual prompts. |
-| Gemini | Manual/Tool-dependent | Manual/Tool-dependent | Manual/Tool-dependent | Manual/Tool-dependent | Manual/Tool-dependent | Manual/Tool-dependent | Manual/Tool-dependent | Use installed skill scripts or manual prompts. |
-| Copilot | Manual/Tool-dependent | Manual/Tool-dependent | Manual/Tool-dependent | Manual/Tool-dependent | Manual/Tool-dependent | Manual/Tool-dependent | Manual/Tool-dependent | Use installed skill scripts or manual prompts. |
 
 ## Non-goals
 

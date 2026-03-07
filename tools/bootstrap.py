@@ -15,7 +15,7 @@ Commands:
       (defaults to "vibe-base", which includes continuous workflow runners).
 
   install-skills --global --agent <agent_name>
-    - Installs/updates skills for the specified agent into ~/.codex/skills (Codex) or ~/.<agent>/skills
+    - Installs/updates skills for the specified agent into ~/.codex/skills (Codex) or ~/.claude/skills (Claude Code)
     - Syncs template_prompts.md into every installed skill's resources directory.
     - Copies supporting scripts (agentctl.py, prompt_catalog.py) into skill scripts as needed.
 
@@ -40,20 +40,20 @@ _tools_dir = Path(__file__).parent.resolve()
 if str(_tools_dir) not in sys.path:
     sys.path.insert(0, str(_tools_dir))
 
-from path_utils import normalize_home_path, resolve_codex_home
+from constants import PROMPT_CATALOG_FILENAME, SUPPORTED_AGENTS, validate_agent_name
+from path_utils import resolve_claude_home, resolve_codex_home
 from resource_resolver import find_resource
 from cli_error_utils import format_cli_error
 from skillset_utils import find_skillset, load_skillset, parse_skillset_yaml  # noqa: F401
 
 # All supported agents for bulk installation
-ALL_AGENTS = ["codex", "claude", "gemini", "copilot"]
+ALL_AGENTS = list(SUPPORTED_AGENTS)
 
 
 # Canonical doc templates for init-repo
 CANONICAL_AGENTS_TEMPLATE = Path("templates/repo_root/AGENTS.md")
 CANONICAL_VIBE_TEMPLATE = Path("templates/repo_root/VIBE.md")
 DEFAULT_INIT_SKILLSET = "vibe-base"
-from constants import PROMPT_CATALOG_FILENAME
 
 
 def _repo_root_from_this_file() -> Path:
@@ -273,17 +273,12 @@ def _default_agent_global_dir(agent: str) -> Path:
     """
     Agent global skills directory. Default:
     - Codex: $CODEX_HOME/skills (fallback: ~/.codex/skills)
-    - Others: ~/.<agent>/skills
-
-    Note: Some non-Codex installations use AGENT_HOME. If set, use $AGENT_HOME/skills.
+    - Claude Code: $AGENT_HOME/skills when set, otherwise ~/.claude/skills
     """
-    if agent == "codex":
+    normalized_agent = validate_agent_name(agent)
+    if normalized_agent == "codex":
         return resolve_codex_home() / "skills"
-
-    agent_home = os.environ.get("AGENT_HOME")
-    if agent_home:
-        return normalize_home_path(agent_home) / "skills"
-    return Path.home() / f".{agent}" / "skills"
+    return resolve_claude_home() / "skills"
 
 
 def _resolve_skillset(repo_root: Path, name: str) -> list[dict[str, Any]]:
@@ -364,6 +359,7 @@ def _sync_dir(src_dir: Path, dst_dir: Path, *, force: bool = False) -> list[str]
 
 
 def install_skills_agent_global(agent: str, force: bool) -> int:
+    agent = validate_agent_name(agent)
     repo_root = _repo_root_from_this_file()
     dst_root = _default_agent_global_dir(agent)
     dst_root.mkdir(parents=True, exist_ok=True)
@@ -444,6 +440,7 @@ def install_skills_agent_global(agent: str, force: bool) -> int:
 
 
 def install_skills_agent_repo(agent: str, target_repo: Path, force: bool) -> int:
+    agent = validate_agent_name(agent)
     repo_root = _repo_root_from_this_file()
     src_skills_root = repo_root / ".codex" / "skills"
 
@@ -516,7 +513,7 @@ def _build_parser() -> argparse.ArgumentParser:
     isp = sub.add_parser("install-skills", help="Install skills for a given agent/tool")
     isp.add_argument("--global", dest="global_install", action="store_true", help="Install to user/global location")
     isp.add_argument("--repo", dest="repo_install", action="store_true", help="Install into .codex/skills in the repo")
-    isp.add_argument("--agent", choices=("all", "codex", "claude", "gemini", "copilot"), required=True, help="Which agent to install for (use 'all' to install for all agents)")
+    isp.add_argument("--agent", choices=("all", *SUPPORTED_AGENTS), required=True, help="Which agent to install for (use 'all' to install for all supported agents)")
     isp.add_argument("--force", action="store_true", help="Force overwrite of SKILL.md and other files")
     return p
 

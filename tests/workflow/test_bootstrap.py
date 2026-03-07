@@ -6,10 +6,12 @@ import sys
 from contextlib import redirect_stdout
 from pathlib import Path
 
+import pytest
+
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent / "tools"))
 
-from bootstrap import init_repo  # type: ignore
+from bootstrap import _build_parser, init_repo  # type: ignore
 
 
 def test_init_repo_overwrite_replaces_canonical_docs(tmp_path: Path) -> None:
@@ -47,3 +49,13 @@ def test_init_repo_installs_vibe_base_skills_by_default(tmp_path: Path) -> None:
 
     out = buffer.getvalue()
     assert "- Skillset installed: vibe-base" in out
+
+
+@pytest.mark.parametrize("agent", ["gemini", "copilot"])
+def test_install_skills_parser_rejects_removed_agents(agent: str) -> None:
+    parser = _build_parser()
+
+    with pytest.raises(SystemExit) as exc_info:
+        parser.parse_args(["install-skills", "--global", "--agent", agent])
+
+    assert exc_info.value.code == 2

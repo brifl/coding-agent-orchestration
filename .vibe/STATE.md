@@ -11,25 +11,28 @@
 
 ## Current focus
 
-- Stage: 25
-- Checkpoint: 25.5
+- Stage: 26
+- Checkpoint: 26.0
 - Status: DONE  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
 
 ## Objective (current checkpoint)
 
-Full test suite for dependency graph features and end-user documentation.
+Remove workflow support surfaces for all agent platforms except Codex and Claude Code.
 
 ## Deliverables (current checkpoint)
 
-- `tests/workflow/test_checkpoint_dag.py` covering all Stage 25 DAG features
-- `docs/checkpoint_dependencies.md` — dependency graph guide with syntax, validation, dag usage, and parallel dispatch
-- `docs/concepts.md` updated with DAG concepts
+- Tooling and embedded skill scripts only accept `codex` and `claude`, defaulting to `codex`
+- Gemini/Copilot/generic bootstrap prompts and prompt-catalog entries are removed
+- Agent-support docs and continuous workflow skill manifests only advertise Codex and Claude Code
+- Regression coverage proves unsupported agents are rejected and prompt/docs cleanup is complete
 
 ## Acceptance (current checkpoint)
 
-- All tests pass.
-- `agentctl validate --strict` passes.
-- Docs include a worked example of a diamond dependency.
+- CLI/tool defaults use `codex`, and unsupported agent values such as `gemini` and `copilot` are rejected by agent-selection entry points.
+- No Gemini/Copilot/generic bootstrap files or prompt-catalog entries remain.
+- Agent-support docs and skill manifests list only Codex and Claude Code.
+- `python3 -m pytest tests/workflow/test_bootstrap.py tests/workflow/test_prompt_flow_integrity.py tests/workflow/test_skill_tooling.py -v --capture=sys` passes.
+- `python3 tools/agentctl.py --repo-root . validate --strict` passes.
 
 ## Work log (current session)
 
@@ -61,6 +64,9 @@ Full test suite for dependency graph features and end-user documentation.
 - 2026-02-20: continuous-documentation stop gate — workflow stopped on minor-only documentation findings and exposed approval-required idea IDs 1-3 for optional follow-up execution.
 - 2026-02-23: continuous-refactor scan loop — deep codebase scan identified 10+ refactor candidates across 4 strategy families (maintainability, safety, testability, performance); top findings: agentctl.py god module (4438 LOC), duplicated constants/helpers across 6+ files, `_repo_root()=Path.cwd()` shared-state hazard, swallowed exceptions in 4 critical paths, 3 dead functions, and scattered env reads with no central config layer.
 - 2026-02-23: continuous-refactor execute loop (checkpoints A+B) — created `tools/constants.py` centralizing `COMPLEXITY_BUDGET`, `PROMPT_CATALOG_FILENAME`, `PROMPT_SKILL_PRIORITY`, `DEFAULT_AGENT`; updated 5 import sites (agentctl, plan_pipeline, resource_resolver, skill_registry, bootstrap); added stderr diagnostics to 4 swallowed-exception sites; removed 3 dead `_continuous_*_should_stop` wrappers and 2 redundant in-function `import re` statements; 241 tests pass, both strict validation entrypoints pass.
+- 2026-03-07: 26.0 planned and started — added Stage 26 to remove non-Codex/Claude platform support across tooling, prompts, docs, manifests, and regression coverage.
+- 2026-03-07: 26.0 implemented — restricted workflow agent identifiers to `codex`/`claude`, switched defaults to Codex, removed Gemini/Copilot/generic bootstrap surfaces, updated support docs and skill manifests, and synced the prompt catalog copies; targeted regression suite passed (22 tests).
+- 2026-03-07: 26.0 review PASS — `python3 tools/agentctl.py --repo-root . validate --strict` returned `ok: True`; unsupported-agent rejection and bootstrap cleanup are covered by tests; no follow-up checkpoint exists in PLAN order, so checkpoint 26.0 is marked DONE (plan exhausted).
 
 ## Workflow state
 
@@ -72,6 +78,9 @@ Full test suite for dependency graph features and end-user documentation.
 
 ## Evidence
 
+- `python3 -m pytest tests/workflow/test_bootstrap.py tests/workflow/test_prompt_flow_integrity.py tests/workflow/test_skill_tooling.py -v --capture=sys` -> 22 passed in 10.59s.
+- `python3 tools/agentctl.py --repo-root . validate --strict` -> `ok: True`.
+- `rg -n "Gemini|gemini|Copilot|copilot|generic_bootstrap|\\.gemini|\\.copilot|GitHub Copilot|Gemini Code|Claude \\(web\\)|Gemini \\(web\\)" README.md docs prompts tools .codex/skills -S -g '!tools/rlm/**'` -> no output.
 - `python3 -m pytest tests/workflow/test_checkpoint_dag.py -v --capture=sys` -> 11 passed.
 - `python3 tools/agentctl.py --repo-root . validate --strict` -> `ok: True`.
 - `python3 tools/agentctl.py --repo-root . --format json next` -> `recommended_role: review`.
