@@ -12,26 +12,26 @@
 ## Current focus
 
 - Stage: 27
-- Checkpoint: 27.0
-- Status: IN_REVIEW  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
+- Checkpoint: 27.1
+- Status: NOT_STARTED  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
 
 ## Objective (current checkpoint)
 
-Make core prompt catalog resolution single-source so repo tools stop depending on copied skill resource catalogs.
+Remove bootstrap/install behavior that copies the core prompt catalog into non-`vibe-prompts` skill resources.
 
 ## Deliverables (current checkpoint)
 
-- Canonical catalog resolution helper(s) in the repo tooling layer and mirrored skill-runtime entrypoint(s)
-- `tools/agentctl.py`, `tools/bootstrap.py`, `tools/clipper.py`, `.codex/skills/vibe-run/scripts/vibe_run.py`, and `.codex/skills/vibe-loop/scripts/vibe_next_and_print.py` updated to use the shared contract
-- Repo mode resolves `prompts/template_prompts.md`; installed-skill mode resolves the `vibe-prompts` resource copy
-- Regression coverage updated in prompt-catalog/runtime tests for repo and installed layouts
+- `tools/bootstrap.py` only syncs the core catalog into the installed `vibe-prompts` skill resource path
+- Repo-local `.codex/skills/*/resources/template_prompts.md` duplication is eliminated outside `vibe-prompts`
+- Runtime helpers that previously fell back to per-skill catalog copies are simplified
+- Regression coverage updated in bootstrap/install tests
 
 ## Acceptance (current checkpoint)
 
-- Repo-local workflow commands surface `prompts/template_prompts.md` as the active catalog path.
-- Installed runtime entrypoints still work when only the `vibe-prompts` resource copy is present.
-- No tool still requires non-`vibe-prompts` skill resource catalogs for prompt lookup.
-- `python3 -m pytest tests/workflow/test_prompt_catalog_validation.py tests/workflow/test_prompt_flow_integrity.py tests/workflow/test_vibe_run.py -v --capture=sys` passes.
+- Repo-local skill trees do not carry duplicated `template_prompts.md` files outside `vibe-prompts`.
+- Global install flow still yields a working `vibe-prompts/resources/template_prompts.md`.
+- Bootstrap/install tests cover the reduced sync behavior.
+- `python3 -m pytest tests/workflow/test_bootstrap.py tests/workflow/test_skill_tooling.py tests/workflow/test_vibe_run.py -v --capture=sys` passes.
 
 ## Work log (current session)
 
@@ -45,6 +45,7 @@ Make core prompt catalog resolution single-source so repo tools stop depending o
 - 2026-03-08: context_capture loop — refreshed `.vibe/CONTEXT.md` so the current Stage 27 work, Stage 31 completion, and Stage 32 backlog can be resumed without rediscovery; recorded `LOOP_RESULT`.
 - 2026-03-08: consolidation loop — archiving completed Stages 25, 26, and 31 into HISTORY, pruning them from PLAN, and trimming STATE work-log/evidence noise back to a current handoff set for 27.0.
 - 2026-03-08: 27.0 implemented — repo tooling now resolves `prompts/template_prompts.md` as the canonical repo catalog, packaged loop entrypoints fall back only to `vibe-prompts/resources/template_prompts.md`, and regression coverage now proves both repo and installed layouts.
+- 2026-03-08: 27.0 review PASS — demo commands and two adversarial probes passed, no additional code-review improvements were identified outside the existing Stage 27 backlog, and focus auto-advanced to 27.1 NOT_STARTED.
 
 ## Workflow state
 
@@ -65,6 +66,9 @@ Make core prompt catalog resolution single-source so repo tools stop depending o
 - `python3 tools/agentctl.py --repo-root . --format json next` -> `prompt_catalog_path: /mnt/c/src/coding-agent-orchestration/prompts/template_prompts.md`, `recommended_role: implement`, `checkpoint: 27.0`.
 - `python3 .codex/skills/vibe-loop/scripts/agentctl.py --repo-root . validate --strict` -> `ok: True`.
 - `python3 tools/agentctl.py --repo-root . validate --strict` -> `ok: True`.
+- `python3 -m pytest tests/workflow/test_prompt_catalog_validation.py tests/workflow/test_prompt_flow_integrity.py tests/workflow/test_vibe_run.py -v --capture=sys` -> `16 passed in 6.79s` during review re-check.
+- `python3 -m pytest tests/workflow/test_prompt_catalog_validation.py::test_rejects_duplicate_prompt_catalogs -v --capture=sys` -> `1 passed in 0.29s`.
+- `python3 -m pytest tests/workflow/test_vibe_run.py::test_vibe_run_falls_back_to_installed_vibe_prompts_catalog -v --capture=sys` -> `1 passed in 1.20s`.
 
 ## Active issues
 
