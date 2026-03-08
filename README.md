@@ -180,7 +180,8 @@ manual bootstrap in `prompts/init/claude_bootstrap.md` or installed skill script
   `$continuous-documentation`).
 
 Codex's `$vibe-run` skill implements continuous mode. It must keep looping until
-the dispatcher says stop--never just one cycle.
+the dispatcher says stop or a hard blocker requires human input; never stop
+just because one checkpoint completed, auto-advanced, or reached `IN_REVIEW`.
 For non-interactive dry-runs (no executor), use
 `--simulate-loop-result` to auto-acknowledge loop protocol and continue.
 

@@ -14,8 +14,10 @@ Both supported agents use the same prompt catalog:
 - **Prompt pack**: bundled into the Codex skill resources.
 - **Invocation pattern**:
   1) Run `$vibe-one-loop` for single-loop execution.
-  2) Run `$vibe-run` for continuous execution (do not stop after one loop;
-     it repeats until the dispatcher returns `recommended_role == "stop"`).
+  2) Run `$vibe-run` for continuous execution (do not stop after one loop or
+     one completed checkpoint; it repeats through review/consolidation until the
+     dispatcher returns `recommended_role == "stop"` or a hard blocker requires
+     human input).
   3) Run `$continuous-refactor` for continuous refactor-only execution
      (workflow pinned to `continuous-refactor`).
   4) Run `$continuous-test-generation` for continuous test-only execution
