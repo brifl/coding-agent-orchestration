@@ -35,8 +35,6 @@ Remove bootstrap/install behavior that copies the core prompt catalog into non-`
 
 ## Work log (current session)
 
-- 2026-03-07: Stage 27 designed — added a prompt-catalog canonicalization stage (27.0-27.2) aimed at making `prompts/template_prompts.md` the single repo authoring source and moved focus to 27.0 NOT_STARTED.
-- 2026-03-07: Backlog reprioritized — added Stages 28 and 29 behind Stage 27, prioritizing packaged-tool mirror elimination ahead of context/state hygiene automation.
 - 2026-03-07: Backlog expanded again — added Stage 30 to complement Codex's built-in thinking with execution briefs, invariant memory, and a falsification pass for planned work.
 - 2026-03-08: Stage 31 designed and started — added a Codex runtime self-sufficiency checkpoint to remove downstream patch requirements from installed/runtime helper layouts and dispatcher triage flow.
 - 2026-03-08: 31.0 implemented — added standalone fallbacks for `agentctl.py`/`resource_resolver.py`, synced runtime helper dependencies during init/install flows, and preserved triage acknowledgement across same-state loop-result updates.
@@ -46,6 +44,7 @@ Remove bootstrap/install behavior that copies the core prompt catalog into non-`
 - 2026-03-08: consolidation loop — archiving completed Stages 25, 26, and 31 into HISTORY, pruning them from PLAN, and trimming STATE work-log/evidence noise back to a current handoff set for 27.0.
 - 2026-03-08: 27.0 implemented — repo tooling now resolves `prompts/template_prompts.md` as the canonical repo catalog, packaged loop entrypoints fall back only to `vibe-prompts/resources/template_prompts.md`, and regression coverage now proves both repo and installed layouts.
 - 2026-03-08: 27.0 review PASS — demo commands and two adversarial probes passed, no additional code-review improvements were identified outside the existing Stage 27 backlog, and focus auto-advanced to 27.1 NOT_STARTED.
+- 2026-03-08: consolidation loop — trimmed the oldest stale work-log entries and cleared archived-stage evidence so Stage 27.1 can resume without immediately re-triggering housekeeping.
 
 ## Workflow state
 
@@ -57,11 +56,8 @@ Remove bootstrap/install behavior that copies the core prompt catalog into non-`
 
 ## Evidence
 
-- `python3 .codex/skills/vibe-loop/scripts/agentctl.py --repo-root . --format json validate` -> `ok: true` before consolidation; only warnings were oversized work log and optional evidence path.
-- `python3 .codex/skills/vibe-loop/scripts/agentctl.py --repo-root . --format json validate` -> `ok: true` after consolidation; the oversized work-log warning is gone.
-- `python3 tools/agentctl.py --repo-root . validate --strict` -> `ok: True` after consolidation.
-- `rg -n "## Stage 27|## Stage 28|## Stage 29|## Stage 30|## Stage 32" .vibe/PLAN.md` -> only active/future backlog stages remain in PLAN.
-- `rg -n "Stage 31:|Stage 26:|Stage 25:" .vibe/HISTORY.md` -> completed Stages 31, 26, and 25 archived into HISTORY.
+- `python3 .codex/skills/vibe-loop/scripts/agentctl.py --repo-root . --format json validate` -> `ok: true` before the current consolidation; warnings were the 11-entry work log and optional evidence path.
+- `python3 .codex/skills/vibe-loop/scripts/agentctl.py --repo-root . --format json validate` -> `ok: true` after the current consolidation; only the optional evidence-path warning remains.
 - `python3 -m pytest tests/workflow/test_prompt_catalog_validation.py tests/workflow/test_prompt_flow_integrity.py tests/workflow/test_vibe_run.py -v --capture=sys` -> `16 passed in 8.15s`.
 - `python3 tools/agentctl.py --repo-root . --format json next` -> `prompt_catalog_path: /mnt/c/src/coding-agent-orchestration/prompts/template_prompts.md`, `recommended_role: implement`, `checkpoint: 27.0`.
 - `python3 .codex/skills/vibe-loop/scripts/agentctl.py --repo-root . validate --strict` -> `ok: True`.
