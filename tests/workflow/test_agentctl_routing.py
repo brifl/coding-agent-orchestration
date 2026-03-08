@@ -1,8 +1,9 @@
 """Tests for agentctl next-role routing extensions."""
 from __future__ import annotations
 
-import os
+import hashlib
 import json
+import os
 import sys
 import time
 from pathlib import Path
@@ -68,6 +69,23 @@ def _write_loop_result(repo_root: Path, findings: list[dict[str, str]], *, loop:
                 "next_role_hint": "review|issues_triage",
             },
         },
+    }
+    path = repo_root / ".vibe" / "LOOP_RESULT.json"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8")
+
+
+def _write_triage_ack_loop_result(repo_root: Path) -> None:
+    state_text = (repo_root / ".vibe" / "STATE.md").read_text(encoding="utf-8")
+    payload = {
+        "loop": "issues_triage",
+        "result": "resolved",
+        "stage": "1",
+        "checkpoint": "1.0",
+        "status": "IN_PROGRESS",
+        "next_role_hint": "implement",
+        "state_sha256": hashlib.sha256(state_text.encode("utf-8")).hexdigest(),
+        "triage_acknowledged_for_state": True,
     }
     path = repo_root / ".vibe" / "LOOP_RESULT.json"
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -1101,6 +1119,37 @@ def test_major_issue_in_progress_routes_to_implement(temp_repo: Path) -> None:
         issue_id="ISSUE-400",
         owner="agent",
         status="IN_PROGRESS",
+        unblock_condition="Implement and test strict checks",
+        evidence_needed="Targeted tests pass",
+        checked=False,
+        impact_specified=True,
+    )
+    state = StateInfo(stage="1", checkpoint="1.0", status="IN_PROGRESS", evidence_path=None, issues=(issue,))
+    role, reason, _ = _recommend_next(state, temp_repo)
+    assert role == "implement", reason
+
+
+def test_recently_resolved_triage_allows_implementation(temp_repo: Path) -> None:
+    from agentctl import Issue  # type: ignore
+
+    _write_state(
+        temp_repo,
+        """# STATE
+
+## Current focus
+- Stage: 1
+- Checkpoint: 1.0
+- Status: IN_PROGRESS
+""",
+    )
+    _write_triage_ack_loop_result(temp_repo)
+    issue = Issue(
+        impact="MAJOR",
+        title="Harden contract validation",
+        line="- [ ] ISSUE-401: Harden contract validation",
+        issue_id="ISSUE-401",
+        owner="agent",
+        status="OPEN",
         unblock_condition="Implement and test strict checks",
         evidence_needed="Targeted tests pass",
         checked=False,

@@ -493,3 +493,40 @@ Add deterministic guidance artifacts that complement Codex's built-in reasoning 
 * **Evidence:**
   * Example preflight challenge output for a checkpoint.
   * Tests showing the challenge pass stays deterministic and actionable.
+
+---
+
+## Stage 31 — Codex Runtime Self-Sufficiency
+
+**Stage objective:**
+Eliminate downstream Codex-specific patching by making the workflow runtime/install surface self-contained, predictable, and aligned with the intended dispatcher behavior.
+
+### Stage invariants (apply to all checkpoints)
+
+- **No downstream patching required:** A Codex user following the documented install/bootstrap flow should not need to edit vendored runtime scripts.
+- **Installed layouts remain supported:** Repo-local and installed skill layouts must both work with the same runtime contract.
+- **Codex/Claude scope preserved:** This stage improves runtime packaging/behavior, not agent-platform scope.
+- **Behavioral fixes need regression coverage:** Any runtime-routing or install-layout fix added here must be locked in with tests.
+
+---
+
+### (DONE) 31.0 — Remove hidden runtime patch requirements
+
+* **Objective:**
+  Make the shipped workflow tooling work in repo and installed Codex layouts without local `agentctl.py`/`resource_resolver.py` patching.
+* **Deliverables:**
+  * `tools/agentctl.py` and `tools/resource_resolver.py` tolerate standalone/runtime-script layouts that do not include the full repo `tools/` module set
+  * `tools/bootstrap.py` installs the helper-script dependencies required by packaged `vibe-loop`/`vibe-prompts` runtimes instead of assuming repo-only siblings exist
+  * Dispatcher/loop-result handling no longer bounces immediately back into `issues_triage` after the current checkpoint/state just resolved a triage loop
+  * Regression coverage added in `tests/workflow/test_bootstrap.py`, `tests/workflow/test_agentctl_routing.py`, and `tests/workflow/test_loop_result_protocol.py`
+* **Acceptance:**
+  * Installed/runtime helper layouts do not require a downstream `constants.py` patch to run.
+  * A recently resolved `issues_triage` loop for the active state does not immediately re-route back to triage with no intervening work.
+  * `python3 -m pytest tests/workflow/test_bootstrap.py tests/workflow/test_agentctl_routing.py tests/workflow/test_loop_result_protocol.py -v --capture=sys` passes.
+  * `python3 tools/agentctl.py --repo-root . validate --strict` passes.
+* **Demo commands:**
+  * `python3 -m pytest tests/workflow/test_bootstrap.py tests/workflow/test_agentctl_routing.py tests/workflow/test_loop_result_protocol.py -v --capture=sys`
+  * `python3 tools/agentctl.py --repo-root . validate --strict`
+* **Evidence:**
+  * Test output showing installed-layout helper coverage and triage acknowledgement behavior.
+  * Strict validation output.

@@ -244,3 +244,47 @@ def test_loop_result_accepts_low_confidence_with_triage_route(
     )
     assert rc == 0
     _ = capsys.readouterr()
+
+
+def test_loop_result_preserves_triage_ack_for_same_state(
+    vibe_state: Path, vibe_plan: Path, capsys
+) -> None:
+    repo_root = vibe_state.parent.parent
+    _ = vibe_plan
+    _set_state_status(repo_root, "IN_PROGRESS")
+
+    triage_rc = cmd_loop_result(
+        _loop_result_args(
+            repo_root,
+            _loop_result_line(
+                loop="issues_triage",
+                result="resolved",
+                stage="1",
+                checkpoint="1.0",
+                status="IN_PROGRESS",
+                next_role_hint="implement",
+            ),
+        )
+    )
+    assert triage_rc == 0
+    _ = capsys.readouterr()
+    triage_payload = json.loads((repo_root / ".vibe" / "LOOP_RESULT.json").read_text(encoding="utf-8"))
+    assert triage_payload["triage_acknowledged_for_state"] is True
+
+    implement_rc = cmd_loop_result(
+        _loop_result_args(
+            repo_root,
+            _loop_result_line(
+                loop="implement",
+                result="ready",
+                stage="1",
+                checkpoint="1.0",
+                status="IN_PROGRESS",
+                next_role_hint="review",
+            ),
+        )
+    )
+    assert implement_rc == 0
+    _ = capsys.readouterr()
+    implement_payload = json.loads((repo_root / ".vibe" / "LOOP_RESULT.json").read_text(encoding="utf-8"))
+    assert implement_payload["triage_acknowledged_for_state"] is True

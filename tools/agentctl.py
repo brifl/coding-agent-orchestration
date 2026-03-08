@@ -34,11 +34,32 @@ if str(_tools_dir) not in sys.path:
     sys.path.insert(0, str(_tools_dir))
 
 import checkpoint_templates
-from constants import (
-    COMPLEXITY_BUDGET,
-    PROMPT_CATALOG_FILENAME,
-    PROMPT_SKILL_PRIORITY,
-)
+try:
+    from constants import (
+        COMPLEXITY_BUDGET,
+        PROMPT_CATALOG_FILENAME,
+        PROMPT_SKILL_PRIORITY,
+    )
+except ModuleNotFoundError as exc:
+    if exc.name != "constants":
+        raise
+    # Standalone runtime-script layouts may vendor this file without the full
+    # repo-local tools module set.
+    COMPLEXITY_BUDGET: dict[str, int] = {
+        "Deliverables": 5,
+        "Acceptance": 6,
+        "Demo commands": 4,
+    }
+    PROMPT_CATALOG_FILENAME = "template_prompts.md"
+    PROMPT_SKILL_PRIORITY = (
+        "vibe-prompts",
+        "vibe-loop",
+        "vibe-run",
+        "vibe-one-loop",
+        "continuous-refactor",
+        "continuous-test-generation",
+        "continuous-documentation",
+    )
 from resource_resolver import find_resource
 from stage_ordering import (
     CHECKPOINT_ID_PATTERN,
@@ -2501,10 +2522,29 @@ class _DecisionContext:
     workflow_flags: dict[str, bool]
     plan_text: str
     smoke_gate_result: tuple[bool, str] | None  # Set only when state is IN_REVIEW
+    recent_resolved_triage_for_current_state: bool
     context_capture_reason: str | None
     consolidation_reason: str | None
     process_improvements_reason: str | None
     unprocessed_feedback_reason: str | None
+
+
+def _recent_resolved_triage_for_current_state(repo_root: Path) -> bool:
+    payload, error = _load_loop_result_record(repo_root)
+    if error or not isinstance(payload, dict):
+        return False
+    recorded_hash = str(payload.get("state_sha256", "")).strip()
+    if not recorded_hash:
+        return False
+    if recorded_hash != _state_sha256(repo_root):
+        return False
+    if payload.get("triage_acknowledged_for_state") is True:
+        return True
+    if str(payload.get("loop", "")).strip() != "issues_triage":
+        return False
+    if str(payload.get("result", "")).strip().lower() != "resolved":
+        return False
+    return True
 
 
 def _gather_decision_context(state: StateInfo, repo_root: Path) -> _DecisionContext:
@@ -2521,6 +2561,7 @@ def _gather_decision_context(state: StateInfo, repo_root: Path) -> _DecisionCont
         workflow_flags=workflow_flags,
         plan_text=plan_text,
         smoke_gate_result=smoke_gate_result,
+        recent_resolved_triage_for_current_state=_recent_resolved_triage_for_current_state(repo_root),
         context_capture_reason=_context_capture_trigger_reason(repo_root, workflow_flags),
         consolidation_reason=_consolidation_trigger_reason(repo_root),
         process_improvements_reason=_process_improvements_trigger_reason(
@@ -2650,7 +2691,10 @@ def _decide_role(state: StateInfo, ctx: _DecisionContext) -> tuple[Role, str, st
     if state.status in {"NOT_STARTED", "IN_PROGRESS"}:
         # Route to triage only for high-impact issues still pending triage.
         pending_triage_top = _top_pending_triage_issue_impact(state.issues)
-        if pending_triage_top in {"MAJOR", "QUESTION"}:
+        if (
+            pending_triage_top in {"MAJOR", "QUESTION"}
+            and not ctx.recent_resolved_triage_for_current_state
+        ):
             return (
                 "issues_triage",
                 f"Active issues present (top impact: {pending_triage_top}).",
@@ -3183,8 +3227,8 @@ def _load_workflow_selector(repo_root: Path):
     try:
         from workflow_engine import select_next_prompt
         return select_next_prompt
-    except Exception as exc:
-        print(f"[agentctl] workflow_engine direct import failed: {exc}", file=sys.stderr)
+    except Exception:
+        pass
 
     tool_candidates = [
         (repo_root / "tools").resolve(),
@@ -3203,8 +3247,7 @@ def _load_workflow_selector(repo_root: Path):
         try:
             from workflow_engine import select_next_prompt
             return select_next_prompt
-        except Exception as exc:
-            print(f"[agentctl] workflow_engine import from {tools_dir} failed: {exc}", file=sys.stderr)
+        except Exception:
             continue
 
     try:
@@ -3703,6 +3746,7 @@ def cmd_next(args: argparse.Namespace) -> int:
 def cmd_loop_result(args: argparse.Namespace) -> int:
     repo_root = Path(args.repo_root)
     state = load_state(repo_root)
+    existing_payload, _ = _load_loop_result_record(repo_root)
     raw_payload = ""
     sources = 0
 
@@ -3747,6 +3791,19 @@ def cmd_loop_result(args: argparse.Namespace) -> int:
     normalized["protocol_version"] = LOOP_RESULT_PROTOCOL_VERSION
     normalized["recorded_at"] = datetime.now(timezone.utc).isoformat()
     normalized["state_sha256"] = _state_sha256(repo_root)
+    triage_ack = (
+        normalized["loop"] == "issues_triage"
+        and normalized["result"].lower() == "resolved"
+    )
+    if (
+        not triage_ack
+        and isinstance(existing_payload, dict)
+        and existing_payload.get("triage_acknowledged_for_state") is True
+        and str(existing_payload.get("state_sha256", "")).strip() == normalized["state_sha256"]
+    ):
+        triage_ack = True
+    if triage_ack:
+        normalized["triage_acknowledged_for_state"] = True
 
     path = _loop_result_path(repo_root)
     path.parent.mkdir(parents=True, exist_ok=True)

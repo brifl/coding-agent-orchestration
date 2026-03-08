@@ -12,10 +12,69 @@ from __future__ import annotations
 
 import argparse
 import os
+import re
 from pathlib import Path
 
-from constants import DEFAULT_AGENT, PROMPT_SKILL_PRIORITY, SUPPORTED_AGENTS, validate_agent_name
-from path_utils import resolve_claude_home, resolve_codex_home
+try:
+    from constants import DEFAULT_AGENT, PROMPT_SKILL_PRIORITY, SUPPORTED_AGENTS, validate_agent_name
+except ModuleNotFoundError as exc:
+    if exc.name != "constants":
+        raise
+    # Standalone runtime-script layouts may vendor this file without the full
+    # repo-local tools module set.
+    SUPPORTED_AGENTS: tuple[str, ...] = ("codex", "claude")
+    DEFAULT_AGENT: str = "codex"
+    PROMPT_SKILL_PRIORITY: tuple[str, ...] = (
+        "vibe-prompts",
+        "vibe-loop",
+        "vibe-run",
+        "vibe-one-loop",
+        "continuous-refactor",
+        "continuous-test-generation",
+        "continuous-documentation",
+    )
+
+    def validate_agent_name(agent: str) -> str:
+        normalized = agent.strip().lower()
+        if normalized not in SUPPORTED_AGENTS:
+            supported = ", ".join(SUPPORTED_AGENTS)
+            raise ValueError(f"Unsupported agent '{agent}'. Supported agents: {supported}.")
+        return normalized
+
+try:
+    from path_utils import resolve_claude_home, resolve_codex_home
+except ModuleNotFoundError as exc:
+    if exc.name != "path_utils":
+        raise
+    _WSL_UNC_RE = re.compile(r"^//wsl(?:\.localhost)?/[^/]+/(.+)$", re.IGNORECASE)
+    _WIN_DRIVE_RE = re.compile(r"^([A-Za-z]):/(.+)$")
+
+    def _normalize_home_path(raw: str) -> Path:
+        value = raw.strip().strip('"').strip("'")
+        if os.name != "nt":
+            value = value.replace("\\", "/")
+            unc_match = _WSL_UNC_RE.match(value)
+            if unc_match:
+                value = "/" + unc_match.group(1).lstrip("/")
+            else:
+                drive_match = _WIN_DRIVE_RE.match(value)
+                if drive_match:
+                    drive = drive_match.group(1).lower()
+                    tail = drive_match.group(2)
+                    value = f"/mnt/{drive}/{tail}"
+        return Path(value).expanduser().resolve()
+
+    def resolve_codex_home() -> Path:
+        env_home = os.environ.get("CODEX_HOME")
+        if env_home:
+            return _normalize_home_path(env_home)
+        return Path.home() / ".codex"
+
+    def resolve_claude_home() -> Path:
+        env_home = os.environ.get("AGENT_HOME")
+        if env_home:
+            return _normalize_home_path(env_home)
+        return Path.home() / ".claude"
 
 def _get_repo_root() -> Path:
     """Gets the repository root by searching for the .git directory."""

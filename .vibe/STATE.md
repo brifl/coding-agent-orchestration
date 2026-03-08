@@ -69,6 +69,9 @@ Make core prompt catalog resolution single-source so repo tools stop depending o
 - 2026-03-07: Stage 27 designed — added a prompt-catalog canonicalization stage (27.0-27.2) aimed at making `prompts/template_prompts.md` the single repo authoring source and moved focus to 27.0 NOT_STARTED.
 - 2026-03-07: Backlog reprioritized — added Stages 28 and 29 behind Stage 27, prioritizing packaged-tool mirror elimination ahead of context/state hygiene automation.
 - 2026-03-07: Backlog expanded again — added Stage 30 to complement Codex's built-in thinking with execution briefs, invariant memory, and a falsification pass for planned work.
+- 2026-03-08: Stage 31 designed and started — added a Codex runtime self-sufficiency checkpoint to remove downstream patch requirements from installed/runtime helper layouts and dispatcher triage flow.
+- 2026-03-08: 31.0 implemented — added standalone fallbacks for `agentctl.py`/`resource_resolver.py`, synced runtime helper dependencies during init/install flows, and preserved triage acknowledgement across same-state loop-result updates.
+- 2026-03-08: 31.0 review PASS — `python3 -m pytest tests/workflow/test_bootstrap.py tests/workflow/test_agentctl_routing.py tests/workflow/test_loop_result_protocol.py -v --capture=sys` passed (64 tests) and `python3 tools/agentctl.py --repo-root . validate --strict` returned `ok: True`; checkpoint marked `(DONE)` in PLAN and focus returned to 27.0 NOT_STARTED.
 
 ## Workflow state
 
@@ -80,6 +83,8 @@ Make core prompt catalog resolution single-source so repo tools stop depending o
 
 ## Evidence
 
+- `python3 -m pytest tests/workflow/test_bootstrap.py tests/workflow/test_agentctl_routing.py tests/workflow/test_loop_result_protocol.py -v --capture=sys` -> 64 passed in 20.05s.
+- `python3 tools/agentctl.py --repo-root . validate --strict` -> `ok: True`.
 - `rg -n "## Stage 30|### 30\\.0|### 30\\.1|### 30\\.2" .vibe/PLAN.md` -> Stage 30 plus checkpoints 30.0, 30.1, and 30.2 present.
 - `python3 tools/agentctl.py --repo-root . --format json validate` -> `ok: true` after expanding the backlog through Stages 27, 28, and 29.
 - `rg -n "## Stage 27|## Stage 28|## Stage 29" .vibe/PLAN.md` -> Stage 27, Stage 28, and Stage 29 all present in PLAN order.

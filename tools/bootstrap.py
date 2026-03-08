@@ -246,6 +246,7 @@ def init_repo(target_repo: Path, skillset: str | None = None, overwrite: bool = 
     created.extend(
         _sync_prompt_catalog_to_skills(catalog_path, dst_root, installed_skill_names, force=False)
     )
+    created.extend(_sync_runtime_helpers(repo_root, dst_root, force=True))
 
     # Summary
     print("init-repo summary")
@@ -358,6 +359,28 @@ def _sync_dir(src_dir: Path, dst_dir: Path, *, force: bool = False) -> list[str]
     return updated
 
 
+def _runtime_helper_pairs(repo_root: Path, skills_root: Path) -> list[tuple[Path, Path]]:
+    vibe_loop_scripts = skills_root / "vibe-loop" / "scripts"
+    vibe_prompts_scripts = skills_root / "vibe-prompts" / "scripts"
+    return [
+        (repo_root / "tools" / "agentctl.py", vibe_loop_scripts / "agentctl.py"),
+        (repo_root / "tools" / "checkpoint_templates.py", vibe_loop_scripts / "checkpoint_templates.py"),
+        (repo_root / "tools" / "constants.py", vibe_loop_scripts / "constants.py"),
+        (repo_root / "tools" / "path_utils.py", vibe_loop_scripts / "path_utils.py"),
+        (repo_root / "tools" / "resource_resolver.py", vibe_loop_scripts / "resource_resolver.py"),
+        (repo_root / "tools" / "stage_ordering.py", vibe_loop_scripts / "stage_ordering.py"),
+        (repo_root / "tools" / "prompt_catalog.py", vibe_prompts_scripts / "prompt_catalog.py"),
+    ]
+
+
+def _sync_runtime_helpers(repo_root: Path, skills_root: Path, *, force: bool) -> list[str]:
+    updated: list[str] = []
+    for src, dst in _runtime_helper_pairs(repo_root, skills_root):
+        if _copy_file(src, dst, force=force):
+            updated.append(str(dst))
+    return updated
+
+
 def install_skills_agent_global(agent: str, force: bool) -> int:
     agent = validate_agent_name(agent)
     repo_root = _repo_root_from_this_file()
@@ -412,17 +435,8 @@ def install_skills_agent_global(agent: str, force: bool) -> int:
         _sync_prompt_catalog_to_skills(canonical_catalog, dst_root, skill_names, force=True)
     )
 
-    # 5) Ensure key helper scripts are present inside skills (force refresh)
-    helper_pairs = [
-        (repo_root / "tools" / "agentctl.py", dst_root / "vibe-loop" / "scripts" / "agentctl.py"),
-        (repo_root / "tools" / "checkpoint_templates.py", dst_root / "vibe-loop" / "scripts" / "checkpoint_templates.py"),
-        (repo_root / "tools" / "resource_resolver.py", dst_root / "vibe-loop" / "scripts" / "resource_resolver.py"),
-        (repo_root / "tools" / "stage_ordering.py", dst_root / "vibe-loop" / "scripts" / "stage_ordering.py"),
-        (repo_root / "tools" / "prompt_catalog.py", dst_root / "vibe-prompts" / "scripts" / "prompt_catalog.py"),
-    ]
-    for src, dst in helper_pairs:
-        if _copy_file(src, dst, force=True):
-            updated.append(str(dst))
+    # 5) Ensure runtime helper scripts are present inside skills (force refresh).
+    updated.extend(_sync_runtime_helpers(repo_root, dst_root, force=True))
 
     print(f"install-skills summary ({agent} global)")
     print(f"- Destination: {dst_root}")
@@ -472,6 +486,7 @@ def install_skills_agent_repo(agent: str, target_repo: Path, force: bool) -> int
     updated.extend(
         _sync_prompt_catalog_to_skills(canonical_catalog, dst_root, skill_names, force=True)
     )
+    updated.extend(_sync_runtime_helpers(repo_root, dst_root, force=True))
 
     print(f"install-skills summary ({agent} repo-local)")
     print(f"- Repo: {target_repo}")
