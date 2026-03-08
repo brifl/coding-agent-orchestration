@@ -145,6 +145,26 @@ def test_done_stage_transition_routes_to_consolidation(temp_repo: Path) -> None:
     assert "Stage transition detected" in reason
 
 
+def test_done_stage_transition_with_checkpoint_prefix_routes_to_consolidation(
+    temp_repo: Path,
+) -> None:
+    _write_plan(
+        temp_repo,
+        """# PLAN
+
+## Stage 37 — Demo
+### Checkpoint 37.8: robot1-x Brain End-to-End Turn
+
+## Stage 38 — Demo
+### Checkpoint 38.0: Role Provider Contract
+""",
+    )
+    state = StateInfo(stage="37", checkpoint="37.8", status="DONE", evidence_path=None, issues=())
+    role, reason, _ = _recommend_next(state, temp_repo)
+    assert role == "consolidation"
+    assert "Stage transition detected" in reason
+
+
 def test_done_same_stage_routes_to_advance(temp_repo: Path) -> None:
     _write_plan(
         temp_repo,

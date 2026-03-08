@@ -55,6 +55,15 @@ class TestParsePlanCheckpointIds:
         ids = _parse_plan_checkpoint_ids(plan)
         assert ids == ["1.0", "1.1", "2.0"]
 
+    def test_with_checkpoint_prefix_and_colon(self):
+        plan = """
+### Checkpoint 37.8: robot1-x Brain End-to-End Turn
+
+### Checkpoint 38.0: Role Provider Contract
+"""
+        ids = _parse_plan_checkpoint_ids(plan)
+        assert ids == ["37.8", "38.0"]
+
     def test_empty_plan(self):
         ids = _parse_plan_checkpoint_ids("")
         assert ids == []
@@ -121,6 +130,19 @@ class TestGetStageForCheckpoint:
 ### (SKIPPED) 1.0 — Skipped checkpoint
 """
         assert _get_stage_for_checkpoint(plan, "1.0") == "1"
+
+    def test_with_checkpoint_prefix_and_colon(self):
+        plan = """
+## Stage 37 — Demo
+
+### Checkpoint 37.8: robot1-x Brain End-to-End Turn
+
+## Stage 38 — Demo
+
+### Checkpoint 38.0: Role Provider Contract
+"""
+        assert _get_stage_for_checkpoint(plan, "37.8") == "37"
+        assert _get_stage_for_checkpoint(plan, "38.0") == "38"
 
 
 class TestDetectStageTransition:

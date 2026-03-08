@@ -232,7 +232,7 @@ def _parse_plan_checkpoint_ids(plan_text: str) -> list[str]:
     ids: list[str] = []
     # capture (DONE), (SKIPPED), or (SKIP) optionally, then capture the checkpoint id X.Y (with optional stage suffix)
     pat = re.compile(
-        rf"^\s*#{{3,6}}\s+(?:\(\s*(?:DONE|SKIPPED|SKIP)\s*\)\s+)?(?P<id>{CHECKPOINT_ID_PATTERN})\b"
+        rf"^\s*#{{3,6}}\s+(?:\(\s*(?:DONE|SKIPPED|SKIP)\s*\)\s+)?(?:Checkpoint\s+)?(?P<id>{CHECKPOINT_ID_PATTERN})\b"
     )
     for _, line, is_visible in _iter_visible_markdown_lines(plan_text):
         if not is_visible:
@@ -264,7 +264,7 @@ def _parse_checkpoint_dependencies(plan_text: str) -> tuple[dict[str, list[str]]
     parse_errors: list[str] = []
 
     checkpoint_pat = re.compile(
-        rf"^\s*#{{3,6}}\s+(?:\(\s*(?:DONE|SKIPPED|SKIP)\s*\)\s+)?(?P<id>{CHECKPOINT_ID_PATTERN})\b"
+        rf"^\s*#{{3,6}}\s+(?:\(\s*(?:DONE|SKIPPED|SKIP)\s*\)\s+)?(?:Checkpoint\s+)?(?P<id>{CHECKPOINT_ID_PATTERN})\b"
     )
     depends_pat = re.compile(r"^\s*depends_on:\s*(?P<rest>.*)$", re.IGNORECASE)
     list_pat = re.compile(r"^\[(?P<inner>[^\]]*)\]$")
@@ -486,7 +486,7 @@ def _get_stage_for_checkpoint(plan_text: str, checkpoint_id: str) -> str | None:
     except ValueError:
         checkpoint_norm = checkpoint_id
     checkpoint_pat = re.compile(
-        rf"^\s*#{{3,6}}\s+(?:\(\s*(?:DONE|SKIPPED|SKIP)\s*\)\s+)?{re.escape(checkpoint_norm)}\b"
+        rf"^\s*#{{3,6}}\s+(?:\(\s*(?:DONE|SKIPPED|SKIP)\s*\)\s+)?(?:Checkpoint\s+)?{re.escape(checkpoint_norm)}\b"
     )
 
     for _, line, is_visible in _iter_visible_markdown_lines(plan_text):
@@ -533,7 +533,7 @@ def _is_checkpoint_marked_done(plan_text: str, checkpoint_id: str) -> bool:
 
     Note: (SKIP) is intentionally NOT matched here — skipped-for-later
     checkpoints are not considered done."""
-    pat = re.compile(rf"^\s*#{{3,6}}\s+\(\s*(?:DONE|SKIPPED)\s*\)\s+{re.escape(checkpoint_id)}\b")
+    pat = re.compile(rf"^\s*#{{3,6}}\s+\(\s*(?:DONE|SKIPPED)\s*\)\s+(?:Checkpoint\s+)?{re.escape(checkpoint_id)}\b")
     for _, line, is_visible in _iter_visible_markdown_lines(plan_text):
         if is_visible and pat.match(line):
             return True
@@ -545,7 +545,7 @@ def _is_checkpoint_skipped(plan_text: str, checkpoint_id: str) -> bool:
 
     (SKIP) checkpoints are deferred — bypassed during advance but preserved
     during consolidation.  Removing the marker reactivates the checkpoint."""
-    pat = re.compile(rf"^\s*#{{3,6}}\s+\(\s*SKIP\s*\)\s+{re.escape(checkpoint_id)}\b")
+    pat = re.compile(rf"^\s*#{{3,6}}\s+\(\s*SKIP\s*\)\s+(?:Checkpoint\s+)?{re.escape(checkpoint_id)}\b")
     for _, line, is_visible in _iter_visible_markdown_lines(plan_text):
         if is_visible and pat.match(line):
             return True
@@ -2388,7 +2388,7 @@ def _extract_demo_commands(plan_text: str, checkpoint_id: str) -> list[str]:
     """
     # Find the checkpoint heading
     heading_pat = re.compile(
-        rf"^\s*#{{3,6}}\s+(?:\(\s*(?:DONE|SKIPPED|SKIP)\s*\)\s+)?"
+        rf"^\s*#{{3,6}}\s+(?:\(\s*(?:DONE|SKIPPED|SKIP)\s*\)\s+)?(?:Checkpoint\s+)?"
         + re.escape(checkpoint_id) + r"\b"
     )
     lines = plan_text.splitlines()
@@ -2402,7 +2402,7 @@ def _extract_demo_commands(plan_text: str, checkpoint_id: str) -> list[str]:
 
     # Find the next checkpoint heading (end boundary)
     next_heading_pat = re.compile(
-        rf"^\s*#{{3,6}}\s+(?:\(\s*(?:DONE|SKIPPED|SKIP)\s*\)\s+)?{CHECKPOINT_ID_PATTERN}\b"
+        rf"^\s*#{{3,6}}\s+(?:\(\s*(?:DONE|SKIPPED|SKIP)\s*\)\s+)?(?:Checkpoint\s+)?{CHECKPOINT_ID_PATTERN}\b"
     )
     end_idx = len(lines)
     for idx in range(start_idx + 1, len(lines)):
@@ -4156,8 +4156,8 @@ def _parse_checkpoint_titles(plan_text: str) -> dict[str, str]:
     """
     titles: dict[str, str] = {}
     pat = re.compile(
-        rf"^\s*#{{3,6}}\s+(?:\(\s*(?:DONE|SKIPPED|SKIP)\s*\)\s+)?(?P<id>{CHECKPOINT_ID_PATTERN})"
-        r"(?:\s*[\u2014\-]+\s*(?P<title>.+?))?\s*$"
+        rf"^\s*#{{3,6}}\s+(?:\(\s*(?:DONE|SKIPPED|SKIP)\s*\)\s+)?(?:Checkpoint\s+)?(?P<id>{CHECKPOINT_ID_PATTERN})"
+        r"(?::|\s*[\u2014\-]+)?\s*(?P<title>.+?)?\s*$"
     )
     for _, line, is_visible in _iter_visible_markdown_lines(plan_text):
         if not is_visible:
