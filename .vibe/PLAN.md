@@ -175,3 +175,85 @@ Remove workflow support surfaces for all agent platforms except Codex and Claude
 * **Evidence:**
   * Test output showing unsupported-agent rejection and prompt/doc cleanup.
   * Strict validation output.
+
+---
+
+## Stage 27 — Core Prompt Catalog Canonicalization
+
+**Stage objective:**
+Collapse duplicated core prompt catalogs into a single repo-authoring source so prompt changes stop creating multi-file churn across the Codex/Claude workflow stack.
+
+### Stage invariants (apply to all checkpoints)
+
+- **Single repo authoring source:** `prompts/template_prompts.md` is the only human-edited core prompt catalog in the repo.
+- **Runtime compatibility preserved:** Codex and Claude runtime entrypoints must still resolve a usable catalog in both repo-local and global-install layouts.
+- **No prompt semantics drift:** Prompt IDs and prompt bodies stay behaviorally equivalent; this stage changes location/resolution, not the workflow contract.
+- **Generated copies are minimized:** Any installed skill-resource copy must be derived from the canonical source, not treated as a second source of truth.
+
+---
+
+### 27.0 — Define canonical catalog resolution contract
+
+* **Objective:**
+  Make repo tools and runtime entrypoints resolve the core prompt catalog from one canonical source instead of probing multiple duplicated skill-resource copies.
+* **Deliverables:**
+  * Canonical catalog resolution helper(s) in the repo tooling layer and mirrored skill-runtime entrypoint(s)
+  * `tools/agentctl.py`, `tools/bootstrap.py`, `tools/clipper.py`, `.codex/skills/vibe-run/scripts/vibe_run.py`, and `.codex/skills/vibe-loop/scripts/vibe_next_and_print.py` updated to use the shared contract
+  * Repo mode resolves `prompts/template_prompts.md`; installed-skill mode resolves the `vibe-prompts` resource copy
+  * Regression coverage updated in prompt-catalog/runtime tests for repo and installed layouts
+* **Acceptance:**
+  * Repo-local workflow commands surface `prompts/template_prompts.md` as the active catalog path.
+  * Installed runtime entrypoints still work when only the `vibe-prompts` resource copy is present.
+  * No tool still requires non-`vibe-prompts` skill resource catalogs for prompt lookup.
+  * `python3 -m pytest tests/workflow/test_prompt_catalog_validation.py tests/workflow/test_prompt_flow_integrity.py tests/workflow/test_vibe_run.py -v --capture=sys` passes.
+* **Demo commands:**
+  * `python3 -m pytest tests/workflow/test_prompt_catalog_validation.py tests/workflow/test_prompt_flow_integrity.py tests/workflow/test_vibe_run.py -v --capture=sys`
+  * `python3 tools/agentctl.py --repo-root . --format json next`
+* **Evidence:**
+  * Test output showing repo and installed catalog resolution both work.
+  * `agentctl next` output showing the canonical repo prompt catalog path.
+
+---
+
+### 27.1 — Stop syncing the core catalog into every skill
+
+* **Objective:**
+  Remove bootstrap/install behavior that copies the core prompt catalog into non-`vibe-prompts` skill resources.
+* **Deliverables:**
+  * `tools/bootstrap.py` only syncs the core catalog into the installed `vibe-prompts` skill resource path
+  * Repo-local `.codex/skills/*/resources/template_prompts.md` duplication is eliminated outside `vibe-prompts`
+  * Runtime helpers that previously fell back to per-skill catalog copies are simplified
+  * Regression coverage updated in bootstrap/install tests
+* **Acceptance:**
+  * Repo-local skill trees do not carry duplicated `template_prompts.md` files outside `vibe-prompts`.
+  * Global install flow still yields a working `vibe-prompts/resources/template_prompts.md`.
+  * Bootstrap/install tests cover the reduced sync behavior.
+  * `python3 -m pytest tests/workflow/test_bootstrap.py tests/workflow/test_skill_tooling.py tests/workflow/test_vibe_run.py -v --capture=sys` passes.
+* **Demo commands:**
+  * `python3 -m pytest tests/workflow/test_bootstrap.py tests/workflow/test_skill_tooling.py tests/workflow/test_vibe_run.py -v --capture=sys`
+  * `rg --files .codex/skills | rg 'template_prompts\\.md$'`
+* **Evidence:**
+  * Test output showing install behavior still works.
+  * File inventory proving only the intended core catalog copy remains under `.codex/skills`.
+
+---
+
+### 27.2 — Document and validate the single-source catalog model
+
+* **Objective:**
+  Update docs and validation so the canonical prompt-catalog model is explicit and future duplicate copies are caught early.
+* **Deliverables:**
+  * Documentation updates in `README.md`, `docs/resource_model.md`, `docs/agent_skill_packs.md`, and prompt-catalog/skill docs that describe the single-source + derived-copy model
+  * Validation/test guardrails that fail when duplicate core catalog copies reappear in repo-authoring paths
+  * Cleanup of stale wording that still describes copied skill-resource catalogs as canonical in repo mode
+* **Acceptance:**
+  * Docs consistently identify `prompts/template_prompts.md` as the repo authoring source and `vibe-prompts/resources/template_prompts.md` as the installed runtime copy.
+  * Validation/tests catch duplicate core catalog drift.
+  * `python3 tools/agentctl.py --repo-root . validate --strict` passes.
+  * `python3 -m pytest tests/workflow/test_prompt_catalog_validation.py tests/workflow/test_prompt_flow_integrity.py -v --capture=sys` passes.
+* **Demo commands:**
+  * `python3 tools/agentctl.py --repo-root . validate --strict`
+  * `python3 -m pytest tests/workflow/test_prompt_catalog_validation.py tests/workflow/test_prompt_flow_integrity.py -v --capture=sys`
+* **Evidence:**
+  * Strict validation output.
+  * Tests showing duplicate-catalog guardrails and doc assumptions are enforced.

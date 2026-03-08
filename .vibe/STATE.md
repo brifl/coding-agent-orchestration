@@ -11,28 +11,27 @@
 
 ## Current focus
 
-- Stage: 26
-- Checkpoint: 26.0
-- Status: DONE  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
+- Stage: 27
+- Checkpoint: 27.0
+- Status: NOT_STARTED  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
 
 ## Objective (current checkpoint)
 
-Remove workflow support surfaces for all agent platforms except Codex and Claude Code.
+Make core prompt catalog resolution single-source so repo tools stop depending on copied skill resource catalogs.
 
 ## Deliverables (current checkpoint)
 
-- Tooling and embedded skill scripts only accept `codex` and `claude`, defaulting to `codex`
-- Gemini/Copilot/generic bootstrap prompts and prompt-catalog entries are removed
-- Agent-support docs and continuous workflow skill manifests only advertise Codex and Claude Code
-- Regression coverage proves unsupported agents are rejected and prompt/docs cleanup is complete
+- Canonical catalog resolution helper(s) in the repo tooling layer and mirrored skill-runtime entrypoint(s)
+- `tools/agentctl.py`, `tools/bootstrap.py`, `tools/clipper.py`, `.codex/skills/vibe-run/scripts/vibe_run.py`, and `.codex/skills/vibe-loop/scripts/vibe_next_and_print.py` updated to use the shared contract
+- Repo mode resolves `prompts/template_prompts.md`; installed-skill mode resolves the `vibe-prompts` resource copy
+- Regression coverage updated in prompt-catalog/runtime tests for repo and installed layouts
 
 ## Acceptance (current checkpoint)
 
-- CLI/tool defaults use `codex`, and unsupported agent values such as `gemini` and `copilot` are rejected by agent-selection entry points.
-- No Gemini/Copilot/generic bootstrap files or prompt-catalog entries remain.
-- Agent-support docs and skill manifests list only Codex and Claude Code.
-- `python3 -m pytest tests/workflow/test_bootstrap.py tests/workflow/test_prompt_flow_integrity.py tests/workflow/test_skill_tooling.py -v --capture=sys` passes.
-- `python3 tools/agentctl.py --repo-root . validate --strict` passes.
+- Repo-local workflow commands surface `prompts/template_prompts.md` as the active catalog path.
+- Installed runtime entrypoints still work when only the `vibe-prompts` resource copy is present.
+- No tool still requires non-`vibe-prompts` skill resource catalogs for prompt lookup.
+- `python3 -m pytest tests/workflow/test_prompt_catalog_validation.py tests/workflow/test_prompt_flow_integrity.py tests/workflow/test_vibe_run.py -v --capture=sys` passes.
 
 ## Work log (current session)
 
@@ -67,6 +66,7 @@ Remove workflow support surfaces for all agent platforms except Codex and Claude
 - 2026-03-07: 26.0 planned and started — added Stage 26 to remove non-Codex/Claude platform support across tooling, prompts, docs, manifests, and regression coverage.
 - 2026-03-07: 26.0 implemented — restricted workflow agent identifiers to `codex`/`claude`, switched defaults to Codex, removed Gemini/Copilot/generic bootstrap surfaces, updated support docs and skill manifests, and synced the prompt catalog copies; targeted regression suite passed (22 tests).
 - 2026-03-07: 26.0 review PASS — `python3 tools/agentctl.py --repo-root . validate --strict` returned `ok: True`; unsupported-agent rejection and bootstrap cleanup are covered by tests; no follow-up checkpoint exists in PLAN order, so checkpoint 26.0 is marked DONE (plan exhausted).
+- 2026-03-07: Stage 27 designed — added a prompt-catalog canonicalization stage (27.0-27.2) aimed at making `prompts/template_prompts.md` the single repo authoring source and moved focus to 27.0 NOT_STARTED.
 
 ## Workflow state
 
@@ -78,6 +78,8 @@ Remove workflow support surfaces for all agent platforms except Codex and Claude
 
 ## Evidence
 
+- `python3 tools/agentctl.py --repo-root . --format json validate` -> `ok: true` with Stage 27 / checkpoint 27.0 found and no validation errors.
+- `rg -n "## Stage 27|### 27\\.0|### 27\\.1|### 27\\.2" .vibe/PLAN.md` -> Stage 27 plus checkpoints 27.0, 27.1, and 27.2 present.
 - `python3 -m pytest tests/workflow/test_bootstrap.py tests/workflow/test_prompt_flow_integrity.py tests/workflow/test_skill_tooling.py -v --capture=sys` -> 22 passed in 10.59s.
 - `python3 tools/agentctl.py --repo-root . validate --strict` -> `ok: True`.
 - `rg -n "Gemini|gemini|Copilot|copilot|generic_bootstrap|\\.gemini|\\.copilot|GitHub Copilot|Gemini Code|Claude \\(web\\)|Gemini \\(web\\)" README.md docs prompts tools .codex/skills -S -g '!tools/rlm/**'` -> no output.
