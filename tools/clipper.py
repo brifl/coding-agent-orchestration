@@ -16,6 +16,7 @@ from pathlib import Path
 from typing import List
 
 from prompt_catalog import CatalogEntry, load_catalog  # type: ignore
+from prompt_catalog_paths import canonical_repo_prompt_catalog_path, resolve_prompt_catalog_path
 
 
 def _repo_root_from_this_file() -> Path:
@@ -25,7 +26,7 @@ def _repo_root_from_this_file() -> Path:
 
 def _default_catalog_path() -> Path:
     repo_root = _repo_root_from_this_file()
-    return repo_root / ".codex" / "skills" / "vibe-prompts" / "resources" / "template_prompts.md"
+    return resolve_prompt_catalog_path(repo_root) or canonical_repo_prompt_catalog_path(repo_root)
 
 
 class ClipperApp:

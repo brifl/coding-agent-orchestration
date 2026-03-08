@@ -230,20 +230,24 @@ def _resolve_tool_paths(repo_root: Path) -> tuple[Path, Path]:
     return agentctl_path, prompt_catalog_path
 
 
+def _default_catalog_candidates(repo_root: Path, skills_root: Path) -> list[Path]:
+    return [
+        repo_root / "prompts" / "template_prompts.md",
+        repo_root / ".codex" / "skills" / "vibe-prompts" / "resources" / "template_prompts.md",
+        repo_root / "skills" / "vibe-prompts" / "resources" / "template_prompts.md",
+        skills_root / "vibe-prompts" / "resources" / "template_prompts.md",
+    ]
+
+
 def _resolve_catalog_path(repo_root: Path, decision: dict, user_catalog: str) -> Path:
     decision_catalog = decision.get("prompt_catalog_path")
     if isinstance(decision_catalog, str) and decision_catalog:
-        return Path(decision_catalog)
+        return Path(decision_catalog).expanduser().resolve()
     if user_catalog:
         return Path(user_catalog).expanduser().resolve()
 
     skills_root = _skills_root_from_this_script()
-    candidates = [
-        repo_root / ".codex" / "skills" / "vibe-run" / "resources" / "template_prompts.md",
-        repo_root / ".codex" / "skills" / "vibe-prompts" / "resources" / "template_prompts.md",
-        skills_root / "vibe-run" / "resources" / "template_prompts.md",
-        skills_root / "vibe-prompts" / "resources" / "template_prompts.md",
-    ]
+    candidates = _default_catalog_candidates(repo_root, skills_root)
     return next((path for path in candidates if path.exists()), candidates[0])
 
 

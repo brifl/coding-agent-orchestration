@@ -149,13 +149,22 @@ def _print_prompt(prompt_catalog_path: Path, catalog_path: Path, prompt_id: str)
     sys.stdout.write(p.stdout)
 
 
+def _default_catalog_candidates(repo_root: Path, skills_root: Path) -> list[Path]:
+    return [
+        repo_root / "prompts" / "template_prompts.md",
+        repo_root / ".codex" / "skills" / "vibe-prompts" / "resources" / "template_prompts.md",
+        repo_root / "skills" / "vibe-prompts" / "resources" / "template_prompts.md",
+        skills_root / "vibe-prompts" / "resources" / "template_prompts.md",
+    ]
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(prog="vibe_next_and_print.py")
     ap.add_argument("--repo-root", default=".", help="Target repo root (default: .)")
     ap.add_argument(
         "--catalog",
         default="",
-        help="Optional path to template_prompts.md. If omitted, uses sibling vibe-prompts resources.",
+        help="Optional path to template_prompts.md. If omitted, uses repo prompts/template_prompts.md or vibe-prompts resources.",
     )
     ap.add_argument(
         "--show-decision",
@@ -228,20 +237,11 @@ def main() -> int:
 
     catalog_path_str = decision.get("prompt_catalog_path")
     if catalog_path_str:
-        catalog_path = Path(catalog_path_str)
+        catalog_path = Path(catalog_path_str).expanduser().resolve()
     elif args.catalog:
         catalog_path = Path(args.catalog).expanduser().resolve()
     else:
-        catalog_candidates = [
-            repo_root / ".codex" / "skills" / "vibe-loop" / "resources" / "template_prompts.md",
-            repo_root / ".codex" / "skills" / "vibe-prompts" / "resources" / "template_prompts.md",
-        ]
-        vibe_loop_dir = next(skills_root.glob("**/vibe-loop"), None)
-        if vibe_loop_dir:
-            catalog_candidates.append(vibe_loop_dir / "resources" / "template_prompts.md")
-        vibe_prompts_dir = next(skills_root.glob("**/vibe-prompts"), None)
-        if vibe_prompts_dir:
-            catalog_candidates.append(vibe_prompts_dir / "resources" / "template_prompts.md")
+        catalog_candidates = _default_catalog_candidates(repo_root, skills_root)
         catalog_path = next((path for path in catalog_candidates if path.exists()), catalog_candidates[0])
 
     if not catalog_path.exists():

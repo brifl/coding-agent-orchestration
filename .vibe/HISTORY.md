@@ -13,6 +13,18 @@
 
 ## Completed stages
 
+### 2026-03-08 — Stage 31: Codex Runtime Self-Sufficiency (completed)
+
+Removed downstream Codex patch requirements by making runtime/helper installs self-sufficient, adding standalone import fallbacks for vendored tooling, and preserving triage acknowledgement across same-state loop results (checkpoint 31.0).
+
+### 2026-03-07 — Stage 26: Agent Platform Simplification (completed)
+
+Removed workflow support surfaces for non-Codex/Claude platforms, switched defaults to Codex, trimmed prompt/bootstrap/docs/manifests, and locked the reduced surface with targeted regression coverage (checkpoint 26.0).
+
+### 2026-02-19 — Stage 25: Checkpoint Dependency Graph (completed)
+
+Added checkpoint dependencies, DAG validation, dep-aware dispatch, `agentctl dag`, parallel-ready recommendations, and the accompanying tests/docs for dependency-aware planning (checkpoints 25.0–25.5).
+
 ### 2026-02-19 — Stage 24: Structured Human Feedback Channel (completed)
 
 Implemented a validated human feedback protocol: `FeedbackEntry` dataclass + `_parse_feedback_file` schema parser, `agentctl feedback validate/inject/ack` subcommands, dispatcher feedback gate routing to `issues_triage` when unprocessed entries exist, `validate()` warning integration, and 34-test `test_feedback_channel.py` with `docs/feedback_channel.md` user guide (checkpoints 24.0–24.4).
@@ -133,6 +145,7 @@ Introduced stable prompt IDs with a shared catalog and updated agent control too
 
 ### Work log (archived)
 
+- 2026-03-08 — Consolidation at checkpoint 27.0 archived completed Stages 25, 26, and 31 into HISTORY, removed them from PLAN.md, and pruned STATE work-log/evidence noise to restore a clean active handoff.
 - 2026-02-19 — Consolidation at checkpoint 25.5 pruned STATE work log from 12 to 10 entries (removed oldest stage-transition/setup notes).
 - 2026-02-06 — Consolidation at checkpoint 21.6 pruned STATE work log from 11 to 10 entries and cleared stale checkpoint 21.5 evidence.
 - 2026-02-06 — Pruned STATE work log from 32 to 10 entries (2026-02-03 through 2026-02-05 entries covering Stages 19/19A/20.0 implementation, review, and issue resolution).

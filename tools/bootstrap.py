@@ -16,7 +16,7 @@ Commands:
 
   install-skills --global --agent <agent_name>
     - Installs/updates skills for the specified agent into ~/.codex/skills (Codex) or ~/.claude/skills (Claude Code)
-    - Syncs template_prompts.md into every installed skill's resources directory.
+    - Syncs the canonical prompt catalog into installed skill resource directories.
     - Copies supporting scripts (agentctl.py, prompt_catalog.py) into skill scripts as needed.
 
 Design:
@@ -42,6 +42,7 @@ if str(_tools_dir) not in sys.path:
 
 from constants import PROMPT_CATALOG_FILENAME, SUPPORTED_AGENTS, validate_agent_name
 from path_utils import resolve_claude_home, resolve_codex_home
+from prompt_catalog_paths import canonical_repo_prompt_catalog_path
 from resource_resolver import find_resource
 from cli_error_utils import format_cli_error
 from skillset_utils import find_skillset, load_skillset, parse_skillset_yaml  # noqa: F401
@@ -75,15 +76,11 @@ def _write_text(path: Path, content: str) -> None:
 
 
 def _resolve_canonical_prompt_catalog(repo_root: Path) -> Path:
-    candidates = [
-        repo_root / ".codex" / "skills" / "vibe-prompts" / "resources" / PROMPT_CATALOG_FILENAME,
-        repo_root / "skills" / "vibe-prompts" / "resources" / PROMPT_CATALOG_FILENAME,
-    ]
-    for path in candidates:
-        if path.exists():
-            return path
+    catalog_path = canonical_repo_prompt_catalog_path(repo_root)
+    if catalog_path.exists():
+        return catalog_path
     raise FileNotFoundError(
-        "Canonical catalog missing (expected .codex/skills/vibe-prompts/resources/template_prompts.md)."
+        "Canonical catalog missing (expected prompts/template_prompts.md)."
     )
 
 
