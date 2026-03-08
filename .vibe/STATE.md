@@ -72,6 +72,7 @@ Make core prompt catalog resolution single-source so repo tools stop depending o
 - 2026-03-08: Stage 31 designed and started — added a Codex runtime self-sufficiency checkpoint to remove downstream patch requirements from installed/runtime helper layouts and dispatcher triage flow.
 - 2026-03-08: 31.0 implemented — added standalone fallbacks for `agentctl.py`/`resource_resolver.py`, synced runtime helper dependencies during init/install flows, and preserved triage acknowledgement across same-state loop-result updates.
 - 2026-03-08: 31.0 review PASS — `python3 -m pytest tests/workflow/test_bootstrap.py tests/workflow/test_agentctl_routing.py tests/workflow/test_loop_result_protocol.py -v --capture=sys` passed (64 tests) and `python3 tools/agentctl.py --repo-root . validate --strict` returned `ok: True`; checkpoint marked `(DONE)` in PLAN and focus returned to 27.0 NOT_STARTED.
+- 2026-03-08: Backlog expanded again — added Stage 32 to make the system actively handle overwhelming project complexity through working-set derivation, pressure-triggered decomposition, explicit fork tracking, and resume packets.
 
 ## Workflow state
 
@@ -83,6 +84,7 @@ Make core prompt catalog resolution single-source so repo tools stop depending o
 
 ## Evidence
 
+- `rg -n "## Stage 32|### 32\\.0|### 32\\.1|### 32\\.2|### 32\\.3" .vibe/PLAN.md` -> Stage 32 plus checkpoints 32.0, 32.1, 32.2, and 32.3 present.
 - `python3 -m pytest tests/workflow/test_bootstrap.py tests/workflow/test_agentctl_routing.py tests/workflow/test_loop_result_protocol.py -v --capture=sys` -> 64 passed in 20.05s.
 - `python3 tools/agentctl.py --repo-root . validate --strict` -> `ok: True`.
 - `rg -n "## Stage 30|### 30\\.0|### 30\\.1|### 30\\.2" .vibe/PLAN.md` -> Stage 30 plus checkpoints 30.0, 30.1, and 30.2 present.

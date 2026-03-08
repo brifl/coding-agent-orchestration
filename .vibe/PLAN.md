@@ -530,3 +530,105 @@ Eliminate downstream Codex-specific patching by making the workflow runtime/inst
 * **Evidence:**
   * Test output showing installed-layout helper coverage and triage acknowledgement behavior.
   * Strict validation output.
+
+---
+
+## Stage 32 — Complexity Control And Focus Retention
+
+**Stage objective:**
+Make the orchestration system actively reduce cognitive load during large vibecoding efforts by constraining the working set, detecting overload early, isolating unresolved forks, and making interruption recovery cheap.
+
+### Stage invariants (apply to all checkpoints)
+
+- **Focus over exhaustiveness:** The system should surface the minimum context needed to make the next correct move, not the maximum context available.
+- **Complexity must be compressed:** Large plans and repos are normal; the workflow should continuously shrink them into a tractable active slice.
+- **Ambiguity must be isolated:** Open forks, assumptions, and non-decisions should be tracked explicitly instead of leaking into implementation loops.
+- **Resumption must be fast:** Losing session context should cost minutes, not hours.
+
+---
+
+### 32.0 — Derive an active working set for the current checkpoint
+
+* **Objective:**
+  Generate a compact, deterministic working set so the active checkpoint starts from the files, tests, commands, and constraints that matter now.
+* **Deliverables:**
+  * A helper or command that derives the active working set from STATE, PLAN, recent loop evidence, and repo structure
+  * Working-set output that includes hot files, likely tests, immediate commands, and excluded distractions
+  * Integration path for surfacing the working set through status/briefing flows without re-reading broad repo context
+  * Regression coverage for working-set generation on representative checkpoints
+* **Acceptance:**
+  * The active checkpoint can be rendered as a bounded working set directly from repo state.
+  * The working set favors the highest-signal files/tests and explicitly excludes irrelevant backlog noise.
+  * `python3 -m pytest tests/workflow/test_agentctl.py tests/workflow/test_prompt_flow_integrity.py -v --capture=sys` passes.
+* **Demo commands:**
+  * `python3 -m pytest tests/workflow/test_agentctl.py tests/workflow/test_prompt_flow_integrity.py -v --capture=sys`
+  * `python3 tools/agentctl.py --repo-root . status --with-context`
+* **Evidence:**
+  * Example working-set output for the active checkpoint.
+  * Tests showing deterministic file/test selection.
+
+---
+
+### 32.1 — Detect checkpoint pressure and force decomposition before thrash
+
+* **Objective:**
+  Detect when a checkpoint has grown beyond a sane working set and route back to decomposition before implementation quality collapses.
+* **Deliverables:**
+  * Pressure heuristics based on scope size, file spread, unresolved issues, and acceptance breadth
+  * Dispatcher or tooling behavior that recommends design/decomposition when the active checkpoint is overloaded
+  * Clear operator feedback explaining why the checkpoint is considered too broad
+  * Regression coverage for pressure detection and decomposition routing
+* **Acceptance:**
+  * Oversized checkpoints are surfaced before prolonged implementation churn.
+  * The system can distinguish healthy complexity from genuine checkpoint overload.
+  * `python3 -m pytest tests/workflow/test_agentctl_routing.py tests/workflow/test_plan_pipeline.py -v --capture=sys` passes.
+* **Demo commands:**
+  * `python3 -m pytest tests/workflow/test_agentctl_routing.py tests/workflow/test_plan_pipeline.py -v --capture=sys`
+  * `python3 tools/agentctl.py --repo-root . --format json next`
+* **Evidence:**
+  * Tests showing overloaded checkpoints route to decomposition-oriented handling.
+  * Example dispatcher output explaining pressure-based intervention.
+
+---
+
+### 32.2 — Add an explicit fork and assumption ledger
+
+* **Objective:**
+  Keep unresolved architectural forks and working assumptions visible but quarantined so implementation loops can stay on one chosen path at a time.
+* **Deliverables:**
+  * A structured fork/assumption ledger for active work
+  * Support for marking one branch as the current execution path while retaining alternatives and evidence
+  * Integration into briefing/status flows so the current path and unresolved forks are obvious
+  * Regression coverage for parsing/rendering fork state
+* **Acceptance:**
+  * The repo can show the chosen path, open alternatives, and required evidence without burying them in prose.
+  * Implementation loops no longer need to rediscover unresolved forks from scattered notes.
+  * `python3 -m pytest tests/workflow/test_state_parsing.py tests/workflow/test_agentctl_routing.py -v --capture=sys` passes.
+* **Demo commands:**
+  * `python3 -m pytest tests/workflow/test_state_parsing.py tests/workflow/test_agentctl_routing.py -v --capture=sys`
+  * `python3 tools/agentctl.py --repo-root . status --with-context`
+* **Evidence:**
+  * Example fork/assumption ledger for a checkpoint.
+  * Tests showing stable parsing and display of branch choices.
+
+---
+
+### 32.3 — Generate resume packets after each meaningful loop
+
+* **Objective:**
+  Make interruptions cheap by emitting a compact resume packet that tells the next Codex session exactly where to restart.
+* **Deliverables:**
+  * A generated resume packet sourced from the latest real loop result, state, and working set
+  * Resume content covering last completed action, next best move, hot files, proof of progress, and immediate risk
+  * Integration path for surfacing the packet in status/dispatch flows
+  * Regression coverage for resume-packet generation and stale-session recovery
+* **Acceptance:**
+  * The repo can render a high-signal “resume now” packet for the current work.
+  * Losing chat/session context no longer requires reconstructing intent from raw history.
+  * `python3 -m pytest tests/workflow/test_loop_result_protocol.py tests/workflow/test_agentctl_routing.py -v --capture=sys` passes.
+* **Demo commands:**
+  * `python3 -m pytest tests/workflow/test_loop_result_protocol.py tests/workflow/test_agentctl_routing.py -v --capture=sys`
+  * `python3 tools/agentctl.py --repo-root . status --with-context`
+* **Evidence:**
+  * Example resume packet derived from a real loop result.
+  * Tests showing deterministic recovery output.
