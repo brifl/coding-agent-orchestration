@@ -68,6 +68,7 @@ Make core prompt catalog resolution single-source so repo tools stop depending o
 - 2026-03-07: 26.0 review PASS — `python3 tools/agentctl.py --repo-root . validate --strict` returned `ok: True`; unsupported-agent rejection and bootstrap cleanup are covered by tests; no follow-up checkpoint exists in PLAN order, so checkpoint 26.0 is marked DONE (plan exhausted).
 - 2026-03-07: Stage 27 designed — added a prompt-catalog canonicalization stage (27.0-27.2) aimed at making `prompts/template_prompts.md` the single repo authoring source and moved focus to 27.0 NOT_STARTED.
 - 2026-03-07: Backlog reprioritized — added Stages 28 and 29 behind Stage 27, prioritizing packaged-tool mirror elimination ahead of context/state hygiene automation.
+- 2026-03-07: Backlog expanded again — added Stage 30 to complement Codex's built-in thinking with execution briefs, invariant memory, and a falsification pass for planned work.
 
 ## Workflow state
 
@@ -79,6 +80,7 @@ Make core prompt catalog resolution single-source so repo tools stop depending o
 
 ## Evidence
 
+- `rg -n "## Stage 30|### 30\\.0|### 30\\.1|### 30\\.2" .vibe/PLAN.md` -> Stage 30 plus checkpoints 30.0, 30.1, and 30.2 present.
 - `python3 tools/agentctl.py --repo-root . --format json validate` -> `ok: true` after expanding the backlog through Stages 27, 28, and 29.
 - `rg -n "## Stage 27|## Stage 28|## Stage 29" .vibe/PLAN.md` -> Stage 27, Stage 28, and Stage 29 all present in PLAN order.
 - `python3 tools/agentctl.py --repo-root . --format json validate` -> `ok: true` with Stage 27 / checkpoint 27.0 found and no validation errors.

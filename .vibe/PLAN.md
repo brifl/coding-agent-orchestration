@@ -413,3 +413,83 @@ Reduce friction from stale context snapshots and bloated work logs so long-runni
 * **Evidence:**
   * Tests showing actionable blocker output.
   * Example `agentctl next` payloads for the main housekeeping stops.
+
+---
+
+## Stage 30 — Codex Guidance Primitives
+
+**Stage objective:**
+Add deterministic guidance artifacts that complement Codex's built-in reasoning by giving it tighter task packets, durable constraint memory, and an explicit falsification step before implementation.
+
+### Stage invariants (apply to all checkpoints)
+
+- **Guide, do not replace:** These primitives should sharpen native model reasoning, not introduce a second planner that competes with it.
+- **Low-token, high-signal:** Guidance artifacts must compress intent, constraints, and risks instead of restating the entire repo.
+- **Deterministic from repo state:** Generated guidance must derive from STATE/PLAN/code, not ad-hoc chat memory.
+- **Optional but composable:** Each primitive should be usable independently, while also fitting into the main loop when enabled.
+
+---
+
+### 30.0 — Compile a checkpoint execution brief
+
+* **Objective:**
+  Generate a compact, deterministic execution brief for the active checkpoint so Codex starts with the exact scope, files, commands, and stop conditions that matter.
+* **Deliverables:**
+  * A tooling command or helper that compiles the active checkpoint into a concise execution brief
+  * Brief structure covering objective, deliverables, acceptance, hot files, demo commands, and immediate risks
+  * Integration path for using the brief from implementation/review loops without copying large prompt text
+  * Regression coverage for brief generation on representative checkpoints
+* **Acceptance:**
+  * The active checkpoint can be rendered as a compact execution brief directly from repo state.
+  * The brief excludes irrelevant backlog/context while preserving enough detail to act correctly.
+  * `python3 -m pytest tests/workflow/test_agentctl.py tests/workflow/test_prompt_flow_integrity.py -v --capture=sys` passes.
+* **Demo commands:**
+  * `python3 -m pytest tests/workflow/test_agentctl.py tests/workflow/test_prompt_flow_integrity.py -v --capture=sys`
+  * `python3 tools/agentctl.py --repo-root . status --with-context`
+* **Evidence:**
+  * Example execution brief for the active checkpoint.
+  * Tests showing deterministic brief generation.
+
+---
+
+### 30.1 — Add a durable invariant and decision ledger
+
+* **Objective:**
+  Give Codex a stable, compact memory of non-negotiable constraints and architectural decisions so each loop starts from the right frame without re-reading everything.
+* **Deliverables:**
+  * A structured invariant/decision artifact derived from STATE, PLAN, and selected docs
+  * Support for capturing constraints such as forbidden scope, required compatibility, acceptance-critical files, and architectural non-goals
+  * Guidance for when invariants should be refreshed versus reused
+  * Regression coverage for parsing/rendering invariant memory
+* **Acceptance:**
+  * The repo can surface a compact invariant/decision ledger for the active work without requiring a full document reread.
+  * Critical constraints and non-goals are represented in a structured, machine-readable way.
+  * `python3 -m pytest tests/workflow/test_state_parsing.py tests/workflow/test_agentctl_routing.py -v --capture=sys` passes.
+* **Demo commands:**
+  * `python3 -m pytest tests/workflow/test_state_parsing.py tests/workflow/test_agentctl_routing.py -v --capture=sys`
+  * `python3 tools/agentctl.py --repo-root . status --with-context`
+* **Evidence:**
+  * Example invariant/decision ledger for the current checkpoint.
+  * Tests showing stable rendering/parsing behavior.
+
+---
+
+### 30.2 — Add a preflight challenge and falsification pass
+
+* **Objective:**
+  Require a short adversarial check before implementation so Codex actively looks for scope mistakes, hidden dependencies, missing tests, and likely failure modes.
+* **Deliverables:**
+  * A deterministic preflight challenge helper or loop adjunct that asks targeted “what could make this wrong?” questions for the active checkpoint
+  * Challenge output covering dependency conflicts, ambiguous acceptance, rollback risk, and test blind spots
+  * Integration path for using the challenge results in implementation/review loops
+  * Regression coverage for challenge routing or output contracts
+* **Acceptance:**
+  * The active checkpoint can be evaluated through a compact falsification pass before edits begin.
+  * The challenge output is actionable and tied to concrete repo files/tests, not generic advice.
+  * `python3 -m pytest tests/workflow/test_agentctl_routing.py tests/workflow/test_vibe_troubleshoot.py -v --capture=sys` passes.
+* **Demo commands:**
+  * `python3 -m pytest tests/workflow/test_agentctl_routing.py tests/workflow/test_vibe_troubleshoot.py -v --capture=sys`
+  * `python3 tools/agentctl.py --repo-root . --format json next`
+* **Evidence:**
+  * Example preflight challenge output for a checkpoint.
+  * Tests showing the challenge pass stays deterministic and actionable.
