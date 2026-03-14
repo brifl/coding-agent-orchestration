@@ -14,6 +14,7 @@ from agentctl import (  # type: ignore
     _role_for_prompt_id,
     validate,
 )
+from prompt_catalog_paths import resolve_prompt_catalog_path  # type: ignore
 
 
 CORE_PROMPT_IDS = [
@@ -132,6 +133,35 @@ def test_repo_prompt_catalog_is_canonical_source() -> None:
     assert installed_copy.exists()
     assert expected_catalog.read_text(encoding="utf-8") == installed_copy.read_text(encoding="utf-8")
     assert "prompt.stage_design" in catalog_index
+
+
+def test_repo_shipped_skill_prompt_catalog_is_only_in_vibe_prompts() -> None:
+    repo_root = Path(__file__).resolve().parents[2]
+    canonical = (repo_root / "prompts" / "template_prompts.md").read_text(encoding="utf-8")
+    canonical_copy = repo_root / ".codex" / "skills" / "vibe-prompts" / "resources" / "template_prompts.md"
+    assert canonical_copy.exists()
+    assert canonical_copy.read_text(encoding="utf-8") == canonical
+
+    absent_targets = [
+        repo_root / ".codex" / "skills" / "vibe-loop" / "resources" / "template_prompts.md",
+        repo_root / ".codex" / "skills" / "vibe-run" / "resources" / "template_prompts.md",
+        repo_root / ".codex" / "skills" / "continuous-refactor" / "resources" / "template_prompts.md",
+        repo_root / ".codex" / "skills" / "continuous-test-generation" / "resources" / "template_prompts.md",
+        repo_root / ".codex" / "skills" / "continuous-documentation" / "resources" / "template_prompts.md",
+    ]
+    for path in absent_targets:
+        assert not path.exists(), path
+
+
+def test_resolve_prompt_catalog_supports_repo_local_skill_layout(tmp_path: Path) -> None:
+    repo_root = tmp_path
+    catalog = repo_root / ".codex" / "skills" / "vibe-prompts" / "resources" / "template_prompts.md"
+    catalog.parent.mkdir(parents=True, exist_ok=True)
+    catalog.write_text("# template prompts\n", encoding="utf-8")
+
+    resolved = resolve_prompt_catalog_path(repo_root)
+
+    assert resolved == catalog.resolve()
 
 
 def test_issue_schema_language_uses_impact() -> None:

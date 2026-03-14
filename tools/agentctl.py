@@ -51,7 +51,7 @@ except ModuleNotFoundError as exc:
     }
     PROMPT_CATALOG_FILENAME = "template_prompts.md"
 from prompt_catalog_paths import (
-    is_repo_canonical_prompt_catalog,
+    is_repo_local_prompt_catalog,
     prompt_catalog_contract_description,
     resolve_prompt_catalog_path as _resolve_prompt_catalog_path,
 )
@@ -1921,10 +1921,10 @@ def _validate_catalog_section(
                 f"{workflow_name}: prompt id '{prompt_id}' has no role mapping in PROMPT_ROLE_MAP."
             )
 
-    if catalog_path and not is_repo_canonical_prompt_catalog(repo_root, catalog_path):
+    if catalog_path and not is_repo_local_prompt_catalog(repo_root, catalog_path):
         warnings.append(
-            f"Using derived prompt catalog at {catalog_path}; "
-            f"repo-local prompts/{PROMPT_CATALOG_FILENAME} is recommended."
+            f"Using non-local prompt catalog at {catalog_path}; "
+            "repo-local prompts/template_prompts.md or .codex/skills/vibe-prompts/resources/template_prompts.md is recommended."
         )
 
     return errors, warnings
@@ -4397,9 +4397,32 @@ def build_parser() -> argparse.ArgumentParser:
     return p
 
 
+def _normalize_global_option_order(raw_args: list[str]) -> list[str]:
+    """Hoist global options so they work before or after the subcommand."""
+    global_with_value = {"--repo-root", "--format"}
+    hoisted: list[str] = []
+    remaining: list[str] = []
+    i = 0
+    while i < len(raw_args):
+        token = raw_args[i]
+        if token in global_with_value:
+            if i + 1 < len(raw_args):
+                hoisted.extend([token, raw_args[i + 1]])
+                i += 2
+                continue
+        elif any(token.startswith(f"{flag}=") for flag in global_with_value):
+            hoisted.append(token)
+            i += 1
+            continue
+        remaining.append(token)
+        i += 1
+    return hoisted + remaining
+
+
 def main(argv: Iterable[str] | None = None) -> int:
     parser = build_parser()
     raw_args = list(argv) if argv is not None else list(sys.argv[1:])
+    raw_args = _normalize_global_option_order(raw_args)
     args, unknown = parser.parse_known_args(raw_args)
     if args.cmd == "add-checkpoint":
         args.params = _extract_add_checkpoint_params(raw_args or [])

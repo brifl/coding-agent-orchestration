@@ -164,7 +164,7 @@ def main() -> int:
     ap.add_argument(
         "--catalog",
         default="",
-        help="Optional path to template_prompts.md. If omitted, uses repo prompts/template_prompts.md or vibe-prompts resources.",
+        help="Optional path to template_prompts.md. If omitted, uses repo prompts/template_prompts.md, repo-local .codex/skills resources, or installed vibe-prompts resources.",
     )
     ap.add_argument(
         "--show-decision",

@@ -9,6 +9,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent / "tools"))
 
 from agentctl import (
     WORK_LOG_CONSOLIDATION_CAP,
+    _normalize_global_option_order,
     _parse_plan_checkpoint_ids,
     _get_stage_for_checkpoint,
     _detect_stage_transition,
@@ -89,6 +90,15 @@ Some description without checkpoints.
 """
         ids = _parse_plan_checkpoint_ids(plan)
         assert ids == ["1.0", "1.1"]
+
+
+def test_global_options_can_appear_after_subcommand() -> None:
+    normalized = _normalize_global_option_order(
+        ["next", "--repo-root", "/tmp/example", "--format", "json", "--workflow", "vibe-run"]
+    )
+
+    assert normalized[:4] == ["--repo-root", "/tmp/example", "--format", "json"]
+    assert normalized[4:] == ["next", "--workflow", "vibe-run"]
 
 
 class TestGetStageForCheckpoint:

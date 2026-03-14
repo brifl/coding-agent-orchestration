@@ -11,8 +11,8 @@ dependencies:
 ## Purpose
 
 Provide a continuous loop runner that repeats workflow selection until the
-dispatcher returns `recommended_role == "stop"` or a hard blocker requires
-human input.
+dispatcher returns `recommended_role == "stop"` or a real blocker requires
+human input. The bar is operator-trust quality, not shallow completion.
 
 ## Agent execution protocol
 
@@ -23,8 +23,9 @@ Each loop iteration follows this sequence:
 3. **Execute** — perform the work described by the prompt body
 4. **Record** — emit a `LOOP_RESULT: {...}` JSON line and record it via `agentctl loop-result`
 5. **Repeat** — go to step 1; do not stop after one completed checkpoint, review pass, or
-   auto-advance. Stop only when `recommended_role == "stop"` or a hard blocker
-   must be surfaced to the user.
+   auto-advance. Stop only when `recommended_role == "stop"` or a real blocker
+   must be surfaced to the user. Do not sign off weak, brittle, or placeholder
+   behavior as success.
 
 ### Operating contract
 
@@ -45,7 +46,7 @@ Each loop iteration follows this sequence:
 python3 .codex/skills/vibe-loop/scripts/agentctl.py --repo-root . --format json next --workflow <workflow-name>
 
 # Step 2: fetch prompt body
-python3 .codex/skills/vibe-prompts/scripts/prompt_catalog.py prompts/template_prompts.md get <recommended_prompt_id>
+python3 .codex/skills/vibe-prompts/scripts/prompt_catalog.py .codex/skills/vibe-prompts/resources/template_prompts.md get <recommended_prompt_id>
 
 # Step 4: record loop result
 python3 .codex/skills/vibe-loop/scripts/agentctl.py --repo-root . --format json loop-result --line "LOOP_RESULT: <json>"

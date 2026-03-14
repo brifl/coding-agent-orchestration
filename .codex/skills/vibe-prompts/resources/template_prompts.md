@@ -69,6 +69,10 @@ STRATEGIC DESIGN PROCESS
    - Demo commands: ≤ 4 items
    Run `agentctl validate --strict-complexity` to catch violations automatically.
 
+   Quality bar (hard rule):
+   - Acceptance must prove meaningful operator-visible behavior, not just non-empty files, placeholder widgets, or shallow green tests.
+   - If the expected live/manual-test behavior is materially stronger than what the checkpoint currently proves, split the work or tighten the acceptance criteria now.
+
 REQUIRED OUTPUT
 - Key design decisions made (3-5 bullet points)
 - Stages/checkpoints added, removed, or restructured
@@ -139,6 +143,11 @@ REQUIRED COMMANDS
 - Run checkpoint demo commands from `.vibe/PLAN.md` (or closest equivalent if paths changed).
 - Run `git status --porcelain` before and after commit.
 - Run `python3 .codex/skills/vibe-loop/scripts/agentctl.py --repo-root . validate --strict` before emitting LOOP_RESULT.
+
+QUALITY BAR
+- Understand what the user is actually trying to make the system do in the real world.
+- Do not hand off placeholder, misleading, or obviously disappointing live behavior just because a narrow acceptance item passed.
+- If the result would likely fail the first serious manual test, keep working or record a concrete blocker instead of declaring readiness.
 
 EXECUTION
 1) Implement only current checkpoint deliverables.
@@ -225,6 +234,11 @@ REQUIRED COMMANDS
 - Run at least 2 adversarial probes (negative-path, boundary, or regression probe).
 - Run `python3 .codex/skills/vibe-loop/scripts/agentctl.py --repo-root . validate --strict` before emitting LOOP_RESULT.
 
+QUALITY BAR
+- Review against the real operator expectation, not just the narrow wording of the checkpoint.
+- Fail the checkpoint if live or user-visible behavior is still brittle, misleading, obviously incomplete, or likely to fail the first meaningful manual test.
+- Non-empty output, green tests, or one-path success are not sufficient if the system still behaves below the intended bar.
+
 EXECUTION
 1) Pass A: Verify deliverables and every acceptance criterion with explicit evidence (pass/fail per item).
 2) Pass B: Adversarial review:
@@ -253,6 +267,7 @@ EXECUTION
    - FAIL if any acceptance item is unmet,
    - FAIL if any unresolved finding is `Impact: MAJOR|BLOCKER`,
    - FAIL if code review identified any `[MODERATE]` or `[MAJOR]` improvements,
+   - FAIL if the checkpoint technically passes but would still feel like a weak or misleading signoff to a reasonable operator,
    - PASS only when remaining findings are explicitly accepted as `MINOR|QUESTION` and all code review improvements are `[MINOR]` (and fixed in place).
 8) On FAIL, capture precise gaps and exact unblock evidence needed.
 
@@ -709,6 +724,7 @@ CONTRACT
 - Follow `AGENTS.md`.
 - `.vibe/STATE.md` is authoritative for stage/checkpoint/status/issues.
 - `.vibe/PLAN.md` defines deliverables/acceptance/demo/evidence.
+- Optimize for operator-trust quality: understand the real outcome the user wants and do not sign off weak or placeholder behavior as success.
 
 MODE
 - Single-loop: run exactly one loop, then stop; prefer `$vibe-one-loop`.
@@ -734,6 +750,7 @@ D) If running `$vibe-run`, continue dispatch -> fetch -> execute -> record until
 E) Record loop completion:
    `python3 .codex/skills/vibe-loop/scripts/agentctl.py --repo-root . --format json loop-result --line 'LOOP_RESULT: {...,"report":<report_json>}'`
 F) If blocked, add up to 2 questions as issues in `.vibe/STATE.md`, then stop.
+G) Do not treat green tests, non-empty artifacts, or one narrow success as enough if a reasonable operator would still judge the live result as not ready.
 ```
 
 ---
@@ -748,6 +765,7 @@ CONTRACT
 - Follow `AGENTS.md`.
 - `.vibe/STATE.md` is the current truth.
 - `.vibe/PLAN.md` lists checkpoints with acceptance criteria.
+- Aim for operator-trust quality, not just technically passing output.
 
 MODE
 - Single-loop: execute exactly one loop, update STATE, stop.

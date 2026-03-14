@@ -105,8 +105,13 @@ def _sync_prompt_catalog_to_skills(
     updated: list[str] = []
     for skill_name in sorted({name for name in skill_names if name}):
         dst_catalog = skills_root / skill_name / "resources" / PROMPT_CATALOG_FILENAME
-        if _copy_file(catalog_path, dst_catalog, force=force):
-            updated.append(str(dst_catalog))
+        if skill_name == "vibe-prompts":
+            if _copy_file(catalog_path, dst_catalog, force=force):
+                updated.append(str(dst_catalog))
+            continue
+        if dst_catalog.exists():
+            dst_catalog.unlink()
+            updated.append(f"{dst_catalog} (removed)")
     return updated
 
 
@@ -364,6 +369,7 @@ def _runtime_helper_pairs(repo_root: Path, skills_root: Path) -> list[tuple[Path
         (repo_root / "tools" / "checkpoint_templates.py", vibe_loop_scripts / "checkpoint_templates.py"),
         (repo_root / "tools" / "constants.py", vibe_loop_scripts / "constants.py"),
         (repo_root / "tools" / "path_utils.py", vibe_loop_scripts / "path_utils.py"),
+        (repo_root / "tools" / "prompt_catalog_paths.py", vibe_loop_scripts / "prompt_catalog_paths.py"),
         (repo_root / "tools" / "resource_resolver.py", vibe_loop_scripts / "resource_resolver.py"),
         (repo_root / "tools" / "stage_ordering.py", vibe_loop_scripts / "stage_ordering.py"),
         (repo_root / "tools" / "prompt_catalog.py", vibe_prompts_scripts / "prompt_catalog.py"),

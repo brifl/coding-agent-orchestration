@@ -58,9 +58,15 @@ def test_init_repo_installs_vibe_base_skills_by_default(tmp_path: Path) -> None:
     assert (skills_root / "vibe-loop" / "scripts" / "constants.py").read_bytes() == (
         repo_root / "tools" / "constants.py"
     ).read_bytes()
+    assert (skills_root / "vibe-loop" / "scripts" / "prompt_catalog_paths.py").read_bytes() == (
+        repo_root / "tools" / "prompt_catalog_paths.py"
+    ).read_bytes()
     assert (skills_root / "vibe-loop" / "scripts" / "path_utils.py").read_bytes() == (
         repo_root / "tools" / "path_utils.py"
     ).read_bytes()
+    assert (skills_root / "vibe-prompts" / "resources" / "template_prompts.md").exists()
+    assert not (skills_root / "vibe-run" / "resources" / "template_prompts.md").exists()
+    assert not (skills_root / "continuous-refactor" / "resources" / "template_prompts.md").exists()
 
     out = buffer.getvalue()
     assert "- Skillset installed: vibe-base" in out
@@ -70,7 +76,13 @@ def test_standalone_agentctl_imports_without_repo_constants(tmp_path: Path) -> N
     repo_root = Path(__file__).resolve().parents[2]
     runtime_dir = tmp_path / "runtime"
     runtime_dir.mkdir()
-    for name in ("agentctl.py", "resource_resolver.py", "checkpoint_templates.py", "stage_ordering.py"):
+    for name in (
+        "agentctl.py",
+        "resource_resolver.py",
+        "prompt_catalog_paths.py",
+        "checkpoint_templates.py",
+        "stage_ordering.py",
+    ):
         shutil.copyfile(repo_root / "tools" / name, runtime_dir / name)
 
     proc = subprocess.run(

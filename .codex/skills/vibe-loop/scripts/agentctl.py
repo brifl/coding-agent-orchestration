@@ -34,7 +34,27 @@ if str(_tools_dir) not in sys.path:
     sys.path.insert(0, str(_tools_dir))
 
 import checkpoint_templates
-from resource_resolver import find_resource
+try:
+    from constants import (
+        COMPLEXITY_BUDGET,
+        PROMPT_CATALOG_FILENAME,
+    )
+except ModuleNotFoundError as exc:
+    if exc.name != "constants":
+        raise
+    # Standalone runtime-script layouts may vendor this file without the full
+    # repo-local tools module set.
+    COMPLEXITY_BUDGET: dict[str, int] = {
+        "Deliverables": 5,
+        "Acceptance": 6,
+        "Demo commands": 4,
+    }
+    PROMPT_CATALOG_FILENAME = "template_prompts.md"
+from prompt_catalog_paths import (
+    is_repo_local_prompt_catalog,
+    prompt_catalog_contract_description,
+    resolve_prompt_catalog_path as _resolve_prompt_catalog_path,
+)
 from stage_ordering import (
     CHECKPOINT_ID_PATTERN,
     STAGE_ID_PATTERN,
@@ -87,7 +107,6 @@ LOOP_REPORT_MAX_FINDINGS = 5
 CONFIDENCE_MIN_REQUIRED = 0.75
 IDEA_IMPACT_TAG_RE = re.compile(r"\[(MAJOR|MODERATE|MINOR)\]", re.IGNORECASE)
 WORK_LOG_CONSOLIDATION_CAP = 10
-PROMPT_CATALOG_FILENAME = "template_prompts.md"
 
 Role = Literal[
     "issues_triage",
@@ -228,7 +247,7 @@ def _parse_plan_checkpoint_ids(plan_text: str) -> list[str]:
     ids: list[str] = []
     # capture (DONE), (SKIPPED), or (SKIP) optionally, then capture the checkpoint id X.Y (with optional stage suffix)
     pat = re.compile(
-        rf"^\s*#{{3,6}}\s+(?:\(\s*(?:DONE|SKIPPED|SKIP)\s*\)\s+)?(?P<id>{CHECKPOINT_ID_PATTERN})\b"
+        rf"^\s*#{{3,6}}\s+(?:\(\s*(?:DONE|SKIPPED|SKIP)\s*\)\s+)?(?:Checkpoint\s+)?(?P<id>{CHECKPOINT_ID_PATTERN})\b"
     )
     for _, line, is_visible in _iter_visible_markdown_lines(plan_text):
         if not is_visible:
@@ -260,7 +279,7 @@ def _parse_checkpoint_dependencies(plan_text: str) -> tuple[dict[str, list[str]]
     parse_errors: list[str] = []
 
     checkpoint_pat = re.compile(
-        rf"^\s*#{{3,6}}\s+(?:\(\s*(?:DONE|SKIPPED|SKIP)\s*\)\s+)?(?P<id>{CHECKPOINT_ID_PATTERN})\b"
+        rf"^\s*#{{3,6}}\s+(?:\(\s*(?:DONE|SKIPPED|SKIP)\s*\)\s+)?(?:Checkpoint\s+)?(?P<id>{CHECKPOINT_ID_PATTERN})\b"
     )
     depends_pat = re.compile(r"^\s*depends_on:\s*(?P<rest>.*)$", re.IGNORECASE)
     list_pat = re.compile(r"^\[(?P<inner>[^\]]*)\]$")
@@ -482,7 +501,7 @@ def _get_stage_for_checkpoint(plan_text: str, checkpoint_id: str) -> str | None:
     except ValueError:
         checkpoint_norm = checkpoint_id
     checkpoint_pat = re.compile(
-        rf"^\s*#{{3,6}}\s+(?:\(\s*(?:DONE|SKIPPED|SKIP)\s*\)\s+)?{re.escape(checkpoint_norm)}\b"
+        rf"^\s*#{{3,6}}\s+(?:\(\s*(?:DONE|SKIPPED|SKIP)\s*\)\s+)?(?:Checkpoint\s+)?{re.escape(checkpoint_norm)}\b"
     )
 
     for _, line, is_visible in _iter_visible_markdown_lines(plan_text):
@@ -529,7 +548,7 @@ def _is_checkpoint_marked_done(plan_text: str, checkpoint_id: str) -> bool:
 
     Note: (SKIP) is intentionally NOT matched here — skipped-for-later
     checkpoints are not considered done."""
-    pat = re.compile(rf"^\s*#{{3,6}}\s+\(\s*(?:DONE|SKIPPED)\s*\)\s+{re.escape(checkpoint_id)}\b")
+    pat = re.compile(rf"^\s*#{{3,6}}\s+\(\s*(?:DONE|SKIPPED)\s*\)\s+(?:Checkpoint\s+)?{re.escape(checkpoint_id)}\b")
     for _, line, is_visible in _iter_visible_markdown_lines(plan_text):
         if is_visible and pat.match(line):
             return True
@@ -541,7 +560,7 @@ def _is_checkpoint_skipped(plan_text: str, checkpoint_id: str) -> bool:
 
     (SKIP) checkpoints are deferred — bypassed during advance but preserved
     during consolidation.  Removing the marker reactivates the checkpoint."""
-    pat = re.compile(rf"^\s*#{{3,6}}\s+\(\s*SKIP\s*\)\s+{re.escape(checkpoint_id)}\b")
+    pat = re.compile(rf"^\s*#{{3,6}}\s+\(\s*SKIP\s*\)\s+(?:Checkpoint\s+)?{re.escape(checkpoint_id)}\b")
     for _, line, is_visible in _iter_visible_markdown_lines(plan_text):
         if is_visible and pat.match(line):
             return True
@@ -558,31 +577,6 @@ def _next_checkpoint_after(plan_ids: list[str], current_id: str) -> str | None:
     return None
 
 
-def _repo_prompt_catalog_path(repo_root: Path) -> Path:
-    return (repo_root / "prompts" / PROMPT_CATALOG_FILENAME).resolve()
-
-
-def _resolve_installed_prompt_catalog_path() -> Path | None:
-    skill_dir = find_resource("skill", "vibe-prompts")
-    if skill_dir is None:
-        return None
-    candidate = (skill_dir / "resources" / PROMPT_CATALOG_FILENAME).resolve()
-    if candidate.exists():
-        return candidate
-    return None
-
-
-def _resolve_prompt_catalog_path(repo_root: Path) -> Path | None:
-    repo_catalog = _repo_prompt_catalog_path(repo_root)
-    if repo_catalog.exists():
-        return repo_catalog
-    return _resolve_installed_prompt_catalog_path()
-
-
-def _is_repo_canonical_prompt_catalog(repo_root: Path, catalog_path: Path) -> bool:
-    return catalog_path.resolve() == _repo_prompt_catalog_path(repo_root)
-
-
 def _load_prompt_catalog_index(
     repo_root: Path,
 ) -> tuple[dict[str, str], Path | None, str | None]:
@@ -592,8 +586,7 @@ def _load_prompt_catalog_index(
             {},
             None,
             "Prompt catalog not found "
-            "(expected prompts/template_prompts.md in repo mode or "
-            "vibe-prompts/resources/template_prompts.md in installed-skill mode).",
+            f"(expected {prompt_catalog_contract_description()}).",
         )
     fallback_reason: str | None = None
     try:
@@ -1660,12 +1653,7 @@ def _extract_checkpoint_section(plan_text: str, checkpoint_id: str) -> str | Non
     return "".join(line for _, line, _ in indexed_lines[start_idx:end_idx]).rstrip()
 
 
-# Checkpoint complexity budget: warn when a checkpoint is likely too large for one loop.
-COMPLEXITY_BUDGET: dict[str, int] = {
-    "Deliverables": 5,
-    "Acceptance": 6,
-    "Demo commands": 4,
-}
+# COMPLEXITY_BUDGET is imported from constants.py
 
 _CHECKPOINT_FIELD_NAMES = ("Objective", "Deliverables", "Acceptance", "Demo commands", "Evidence")
 _CHECKPOINT_FIELD_HEADING_RE = re.compile(
@@ -1933,10 +1921,10 @@ def _validate_catalog_section(
                 f"{workflow_name}: prompt id '{prompt_id}' has no role mapping in PROMPT_ROLE_MAP."
             )
 
-    if catalog_path and not _is_repo_canonical_prompt_catalog(repo_root, catalog_path):
+    if catalog_path and not is_repo_local_prompt_catalog(repo_root, catalog_path):
         warnings.append(
-            f"Using derived prompt catalog at {catalog_path}; "
-            f"repo-local prompts/{PROMPT_CATALOG_FILENAME} is recommended."
+            f"Using non-local prompt catalog at {catalog_path}; "
+            "repo-local prompts/template_prompts.md or .codex/skills/vibe-prompts/resources/template_prompts.md is recommended."
         )
 
     return errors, warnings
@@ -2022,7 +2010,8 @@ def load_gate_config(repo_root: Path, checkpoint_id: str | None) -> GateConfig:
     try:
         config_data = json.loads(_read_text(config_path))
         gate_data = config_data.get("quality_gates", {})
-    except (json.JSONDecodeError, IOError):
+    except (json.JSONDecodeError, IOError) as exc:
+        print(f"[agentctl] warning: failed to parse gate config {config_path}: {exc}", file=sys.stderr)
         return GateConfig(gates=[])
 
     all_gates: list[Gate] = []
@@ -2368,7 +2357,7 @@ def _extract_demo_commands(plan_text: str, checkpoint_id: str) -> list[str]:
     """
     # Find the checkpoint heading
     heading_pat = re.compile(
-        rf"^\s*#{{3,6}}\s+(?:\(\s*(?:DONE|SKIPPED|SKIP)\s*\)\s+)?"
+        rf"^\s*#{{3,6}}\s+(?:\(\s*(?:DONE|SKIPPED|SKIP)\s*\)\s+)?(?:Checkpoint\s+)?"
         + re.escape(checkpoint_id) + r"\b"
     )
     lines = plan_text.splitlines()
@@ -2382,7 +2371,7 @@ def _extract_demo_commands(plan_text: str, checkpoint_id: str) -> list[str]:
 
     # Find the next checkpoint heading (end boundary)
     next_heading_pat = re.compile(
-        rf"^\s*#{{3,6}}\s+(?:\(\s*(?:DONE|SKIPPED|SKIP)\s*\)\s+)?{CHECKPOINT_ID_PATTERN}\b"
+        rf"^\s*#{{3,6}}\s+(?:\(\s*(?:DONE|SKIPPED|SKIP)\s*\)\s+)?(?:Checkpoint\s+)?{CHECKPOINT_ID_PATTERN}\b"
     )
     end_idx = len(lines)
     for idx in range(start_idx + 1, len(lines)):
@@ -2481,10 +2470,29 @@ class _DecisionContext:
     workflow_flags: dict[str, bool]
     plan_text: str
     smoke_gate_result: tuple[bool, str] | None  # Set only when state is IN_REVIEW
+    recent_resolved_triage_for_current_state: bool
     context_capture_reason: str | None
     consolidation_reason: str | None
     process_improvements_reason: str | None
     unprocessed_feedback_reason: str | None
+
+
+def _recent_resolved_triage_for_current_state(repo_root: Path) -> bool:
+    payload, error = _load_loop_result_record(repo_root)
+    if error or not isinstance(payload, dict):
+        return False
+    recorded_hash = str(payload.get("state_sha256", "")).strip()
+    if not recorded_hash:
+        return False
+    if recorded_hash != _state_sha256(repo_root):
+        return False
+    if payload.get("triage_acknowledged_for_state") is True:
+        return True
+    if str(payload.get("loop", "")).strip() != "issues_triage":
+        return False
+    if str(payload.get("result", "")).strip().lower() != "resolved":
+        return False
+    return True
 
 
 def _gather_decision_context(state: StateInfo, repo_root: Path) -> _DecisionContext:
@@ -2501,6 +2509,7 @@ def _gather_decision_context(state: StateInfo, repo_root: Path) -> _DecisionCont
         workflow_flags=workflow_flags,
         plan_text=plan_text,
         smoke_gate_result=smoke_gate_result,
+        recent_resolved_triage_for_current_state=_recent_resolved_triage_for_current_state(repo_root),
         context_capture_reason=_context_capture_trigger_reason(repo_root, workflow_flags),
         consolidation_reason=_consolidation_trigger_reason(repo_root),
         process_improvements_reason=_process_improvements_trigger_reason(
@@ -2630,7 +2639,10 @@ def _decide_role(state: StateInfo, ctx: _DecisionContext) -> tuple[Role, str, st
     if state.status in {"NOT_STARTED", "IN_PROGRESS"}:
         # Route to triage only for high-impact issues still pending triage.
         pending_triage_top = _top_pending_triage_issue_impact(state.issues)
-        if pending_triage_top in {"MAJOR", "QUESTION"}:
+        if (
+            pending_triage_top in {"MAJOR", "QUESTION"}
+            and not ctx.recent_resolved_triage_for_current_state
+        ):
             return (
                 "issues_triage",
                 f"Active issues present (top impact: {pending_triage_top}).",
@@ -3065,27 +3077,6 @@ def _parse_approval_ids_arg(raw: str) -> list[int]:
         if value not in approved_ids:
             approved_ids.append(value)
     return approved_ids
-
-
-def _continuous_refactor_should_stop(repo_root: Path) -> tuple[bool, str | None]:
-    context = _continuous_workflow_minor_stop_context(repo_root, "continuous-refactor")
-    if context is None:
-        return (False, None)
-    return (True, context.reason)
-
-
-def _continuous_test_generation_should_stop(repo_root: Path) -> tuple[bool, str | None]:
-    context = _continuous_workflow_minor_stop_context(repo_root, "continuous-test-generation")
-    if context is None:
-        return (False, None)
-    return (True, context.reason)
-
-
-def _continuous_documentation_should_stop(repo_root: Path) -> tuple[bool, str | None]:
-    context = _continuous_workflow_minor_stop_context(repo_root, "continuous-documentation")
-    if context is None:
-        return (False, None)
-    return (True, context.reason)
 
 
 def _continuous_workflow_should_stop(repo_root: Path, workflow: str) -> tuple[bool, str | None]:
@@ -3703,6 +3694,7 @@ def cmd_next(args: argparse.Namespace) -> int:
 def cmd_loop_result(args: argparse.Namespace) -> int:
     repo_root = Path(args.repo_root)
     state = load_state(repo_root)
+    existing_payload, _ = _load_loop_result_record(repo_root)
     raw_payload = ""
     sources = 0
 
@@ -3747,6 +3739,19 @@ def cmd_loop_result(args: argparse.Namespace) -> int:
     normalized["protocol_version"] = LOOP_RESULT_PROTOCOL_VERSION
     normalized["recorded_at"] = datetime.now(timezone.utc).isoformat()
     normalized["state_sha256"] = _state_sha256(repo_root)
+    triage_ack = (
+        normalized["loop"] == "issues_triage"
+        and normalized["result"].lower() == "resolved"
+    )
+    if (
+        not triage_ack
+        and isinstance(existing_payload, dict)
+        and existing_payload.get("triage_acknowledged_for_state") is True
+        and str(existing_payload.get("state_sha256", "")).strip() == normalized["state_sha256"]
+    ):
+        triage_ack = True
+    if triage_ack:
+        normalized["triage_acknowledged_for_state"] = True
 
     path = _loop_result_path(repo_root)
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -4115,7 +4120,6 @@ def cmd_feedback_ack(args: argparse.Namespace) -> int:
 
 def _extract_issue_id_for_feedback(feedback_text: str, feedback_id: str) -> str:
     """Extract ISSUE-ID from the processed comment for a given FEEDBACK-ID line."""
-    import re
     pattern = re.compile(
         r"- \[x\] " + re.escape(feedback_id) + r".*?<!--\s*processed:\s*(ISSUE-\d+)\s*-->",
         re.MULTILINE,
@@ -4140,7 +4144,6 @@ def _append_to_feedback_archive(history_text: str, archive_lines: list[str]) -> 
 
 def _remove_processed_entries(feedback_text: str) -> str:
     """Remove processed (checked + processed comment) entries from FEEDBACK.md text."""
-    import re
     # Match a feedback entry block: starts with "- [x] FEEDBACK-NNN:" and the processed comment,
     # followed by indented continuation lines.
     pattern = re.compile(
@@ -4158,8 +4161,8 @@ def _parse_checkpoint_titles(plan_text: str) -> dict[str, str]:
     """
     titles: dict[str, str] = {}
     pat = re.compile(
-        rf"^\s*#{{3,6}}\s+(?:\(\s*(?:DONE|SKIPPED|SKIP)\s*\)\s+)?(?P<id>{CHECKPOINT_ID_PATTERN})"
-        r"(?:\s*[\u2014\-]+\s*(?P<title>.+?))?\s*$"
+        rf"^\s*#{{3,6}}\s+(?:\(\s*(?:DONE|SKIPPED|SKIP)\s*\)\s+)?(?:Checkpoint\s+)?(?P<id>{CHECKPOINT_ID_PATTERN})"
+        r"(?::|\s*[\u2014\-]+)?\s*(?P<title>.+?)?\s*$"
     )
     for _, line, is_visible in _iter_visible_markdown_lines(plan_text):
         if not is_visible:
@@ -4394,9 +4397,32 @@ def build_parser() -> argparse.ArgumentParser:
     return p
 
 
+def _normalize_global_option_order(raw_args: list[str]) -> list[str]:
+    """Hoist global options so they work before or after the subcommand."""
+    global_with_value = {"--repo-root", "--format"}
+    hoisted: list[str] = []
+    remaining: list[str] = []
+    i = 0
+    while i < len(raw_args):
+        token = raw_args[i]
+        if token in global_with_value:
+            if i + 1 < len(raw_args):
+                hoisted.extend([token, raw_args[i + 1]])
+                i += 2
+                continue
+        elif any(token.startswith(f"{flag}=") for flag in global_with_value):
+            hoisted.append(token)
+            i += 1
+            continue
+        remaining.append(token)
+        i += 1
+    return hoisted + remaining
+
+
 def main(argv: Iterable[str] | None = None) -> int:
     parser = build_parser()
     raw_args = list(argv) if argv is not None else list(sys.argv[1:])
+    raw_args = _normalize_global_option_order(raw_args)
     args, unknown = parser.parse_known_args(raw_args)
     if args.cmd == "add-checkpoint":
         args.params = _extract_add_checkpoint_params(raw_args or [])

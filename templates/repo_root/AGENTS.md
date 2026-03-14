@@ -41,6 +41,17 @@ At the start of any new session (or when context is unclear), the agent must:
 - Keep outputs concise and structured.
 - Prefer checklists, acceptance evidence, and exact commands over narrative.
 
+### Quality bar (hard rule)
+
+- The standard is **operator-trust quality**, not "the code changed" or "a placeholder output exists."
+- The agent must actively understand the **user's real intent and the embodied/system behavior being built**, not just the literal wording of a task.
+- Do not stop at the first technically passing condition if the live/user-visible behavior is still obviously below project intent.
+- Quality gates must validate **meaningful behavior**, not just non-empty artifacts or green test surfaces.
+- Before signoff, compare the result against what a reasonable operator would expect the system to actually do in the real world.
+- If behavior is confusing, disappointing, or clearly below the intended bar, treat that as unfinished work even when tests pass.
+- If the result is brittle, misleading, stub-like, or likely to fail the first real manual test, keep going or record a concrete blocker issue instead of declaring success.
+- Prefer fewer honest `BLOCKED`/`IN_REVIEW` states over weak signoffs that create false confidence.
+
 ## Workflow model
 
 ### Checkpoint shape (required fields)
