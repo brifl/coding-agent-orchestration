@@ -335,6 +335,34 @@ steps:
     assert "selected prompt.checkpoint_implementation" in reason
 
 
+def test_vibe_run_workflow_alias_falls_back_to_plan_dispatcher(temp_repo: Path) -> None:
+    _write_state(
+        temp_repo,
+        """# STATE
+
+## Current focus
+- Stage: 1
+- Checkpoint: 1.0
+- Status: IN_PROGRESS
+""",
+    )
+    _write_plan(
+        temp_repo,
+        """# PLAN
+
+## Stage 1 — Demo
+### 1.0 — First
+""",
+    )
+    state = StateInfo(stage="1", checkpoint="1.0", status="IN_PROGRESS", evidence_path=None, issues=())
+
+    role, prompt_id, _title, reason = _resolve_next_prompt_selection(state, temp_repo, "vibe-run")
+
+    assert role == "implement"
+    assert prompt_id == "prompt.checkpoint_implementation"
+    assert "Checkpoint status is IN_PROGRESS." in reason
+
+
 def test_workflow_overlay_rejects_unknown_prompt_ids(temp_repo: Path) -> None:
     _write_state(
         temp_repo,

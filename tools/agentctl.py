@@ -2823,6 +2823,15 @@ CONTINUOUS_WORKFLOW_STEP_ORDER: dict[str, tuple[str, ...]] = {
     ),
 }
 
+DEFAULT_LOOP_WORKFLOW_ALIASES = frozenset({"vibe-run"})
+
+
+def _normalize_requested_workflow_name(workflow: str | None) -> str:
+    normalized = str(workflow or "").strip()
+    if normalized in DEFAULT_LOOP_WORKFLOW_ALIASES:
+        return ""
+    return normalized
+
 CONTINUOUS_THRESHOLD_STOP_REASONS: dict[str, str] = {
     "continuous-refactor": "Workflow continuous-refactor found only [MINOR] refactor ideas in the latest LOOP_RESULT report; stopping.",
     "continuous-test-generation": "Workflow continuous-test-generation found only [MINOR] test gaps in the latest gap analysis report; stopping.",
@@ -3258,6 +3267,7 @@ def _resolve_next_prompt_selection(
     repo_root: Path,
     workflow: str | None,
 ) -> tuple[Role, str, str, str]:
+    workflow = _normalize_requested_workflow_name(workflow)
     base_role, base_reason, prompt_override = _recommend_next(state, repo_root)
     base_prompt_id = prompt_override or PROMPT_MAP[base_role]["id"]
     base_prompt_title = PROMPT_MAP[base_role]["title"]
