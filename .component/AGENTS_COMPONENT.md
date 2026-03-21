@@ -9,7 +9,6 @@ Translate **one architectural element** into a **component-level design**. This 
 2. This file
 3. `.component/COMPONENTS_DESCRIPTIONS.md`
 4. `.component/STATE.md`
-5. `.component/PLAN.md`
 6. `.component/HISTORY.md`
 7. `.architecture/ARCHITECTURE_DESCRIPTION.md` (read-only reference)
 
