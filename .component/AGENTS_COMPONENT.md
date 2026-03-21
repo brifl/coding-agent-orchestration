@@ -9,7 +9,6 @@ Translate **one architectural component** into a **component-level design**. Thi
 2. This file
 3. `.component/COMPONENTS_DESCRIPTION.md`
 4. `.component/STATE.md`
-5. `.component/PLAN.md`
 6. `.component/HISTORY.md`
 7. `.architecture/ARCHITECTURE_DESCRIPTION.md` (read-only reference)
 
@@ -49,8 +48,6 @@ The prompt must provide or reference:
 If the architecture has not been reviewed/approved (status ≠ DONE in `.architecture/STATE.md`), log a warning in `.component/STATE.md` but proceed unless explicitly told to stop.
 
 ## Agentic Workflow Files to Update
-
-`.component/PLAN.md` to track component-level questions that require discussion, investigation, or explicit decision. What needs to happen next so we can advance the development of the components for this project.
 
 Use `.component/STATE.md` OPTIONAL, to track core, hot topic issues that required immediate attention before moving forward. Blocking items.
 
