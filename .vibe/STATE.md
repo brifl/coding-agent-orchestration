@@ -73,6 +73,7 @@ Make fresh installs and exhausted `$vibe-run` sessions inspect the target reposi
 - Fresh install prompt-resource smoke -> direct `tools/bootstrap.py "$tmp"` install generated `.codex/skills/vibe-prompts/resources/template_prompts.md`; installed `agentctl.py --workflow continuous-refactor` returned `prompt.refactor_scan`; installed `prompt_catalog.py` printed the refactor scan prompt from the returned `prompt_catalog_path`.
 - Runtime-helper mirror verification -> `python3 -m pytest tests/workflow/test_bootstrap.py tests/workflow/test_prompt_flow_integrity.py tests/workflow/test_continuous_refactor_workflow_override.py tests/workflow/test_continuous_aux_workflow_overrides.py tests/workflow/test_skill_tooling.py tests/workflow/test_vibe_run.py -v --capture=sys` -> `55 passed in 48.71s`.
 - Helper script smoke -> source `vibe_get_prompt.py` printed `prompt.refactor_scan` via `tools/prompt_catalog.py` fallback; fresh install generated `.codex/skills/vibe-loop/scripts/agentctl.py` and `.codex/skills/vibe-prompts/scripts/prompt_catalog.py`, returned `prompt.refactor_scan`, and used the installed prompt resource path.
+- Post-commit helper mirror verification -> `python3 -m pytest tests/workflow/test_bootstrap.py tests/workflow/test_prompt_flow_integrity.py tests/workflow/test_continuous_refactor_workflow_override.py tests/workflow/test_continuous_aux_workflow_overrides.py -v --capture=sys` -> `37 passed in 45.37s`; `git ls-files '.codex/skills/**/scripts/*.py'` now lists only skill-owned wrappers.
 
 ## Active issues
 
