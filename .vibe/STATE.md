@@ -68,6 +68,8 @@ Make fresh installs and exhausted `$vibe-run` sessions inspect the target reposi
 - Continuous refactor prompt-source verification -> `python3 -m pytest tests/workflow/test_prompt_flow_integrity.py tests/workflow/test_bootstrap.py tests/workflow/test_continuous_refactor_workflow_override.py tests/workflow/test_continuous_aux_workflow_overrides.py -v --capture=sys` -> `36 passed in 27.02s`.
 - Installed prompt lookup smoke -> `python3 -m pytest tests/workflow/test_skill_tooling.py tests/workflow/test_vibe_run.py tests/workflow/test_prompt_catalog_validation.py -v --capture=sys` -> `20 passed in 6.68s`.
 - Refactor validation -> `python3 .codex/skills/vibe-loop/scripts/agentctl.py --repo-root . validate --strict` -> `ok: True`; `python3 -m ruff check tools/bootstrap.py tests/workflow/test_bootstrap.py tests/workflow/test_prompt_flow_integrity.py` -> all checks passed.
+- Continuous refactor verification -> `python3 -m pytest tests/workflow/test_prompt_flow_integrity.py tests/workflow/test_bootstrap.py tests/workflow/test_skill_tooling.py tests/workflow/test_vibe_run.py tests/workflow/test_prompt_catalog_validation.py tests/workflow/test_continuous_refactor_workflow_override.py tests/workflow/test_continuous_aux_workflow_overrides.py -v --capture=sys` -> `56 passed in 30.47s`.
+- Fresh install prompt-resource smoke -> direct `tools/bootstrap.py "$tmp"` install generated `.codex/skills/vibe-prompts/resources/template_prompts.md`; installed `agentctl.py --workflow continuous-refactor` returned `prompt.refactor_scan`; installed `prompt_catalog.py` printed the refactor scan prompt from the returned `prompt_catalog_path`.
 
 ## Active issues
 
