@@ -13,7 +13,7 @@
 
 - Stage: 33
 - Checkpoint: 33.0
-- Status: IN_PROGRESS  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
+- Status: IN_REVIEW  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
 
 ## Objective (current checkpoint)
 
@@ -41,6 +41,7 @@ Make fresh installs and exhausted `$vibe-run` sessions inspect the target reposi
 - 2026-06-30: User-prioritized Stage 33.0 started to modernize repo installation and make `$vibe-run` bootstrap a repository-aware executable backlog before implementation.
 - 2026-06-30: 33.0 implemented — direct repo-path installation, clean/preserving bootstrap behavior, fresh/exhausted-plan design routing, Codex-native skill metadata, repository-aware planning prompts, docs, and regression coverage committed in `38620d0`.
 - 2026-06-30: 33.0 review feedback reopened implementation — remove additive legacy launch surfaces and encode senior ownership/anti-clutter behavior in canonical instructions and prompts.
+- 2026-06-30: 33.0 review repair implemented in `1abe5ff` — added ownership/roadmap rules, made prompts deletion- and default-oriented, removed duplicate launch/version/dependency surfaces, and reduced active PLAN to current plus two committed stages.
 
 - 2026-03-08: Backlog expanded again — added Stage 32 to make the system actively handle overwhelming project complexity through working-set derivation, pressure-triggered decomposition, explicit fork tracking, and resume packets.
 - 2026-03-08: context_capture loop — refreshed `.vibe/CONTEXT.md` so the current Stage 27 work, Stage 31 completion, and Stage 32 backlog can be resumed without rediscovery; recorded `LOOP_RESULT`.
@@ -59,10 +60,11 @@ Make fresh installs and exhausted `$vibe-run` sessions inspect the target reposi
 
 ## Evidence
 
-- `python3 -m pytest tests/workflow/test_bootstrap.py tests/workflow/test_agentctl_routing.py tests/workflow/test_vibe_run.py tests/workflow/test_prompt_flow_integrity.py -v --capture=sys` -> `80 passed in 48.85s`.
-- Fresh-repo probe -> direct path install printed `Invoke $vibe-run`; first explicit dispatch returned only `recommended_role: design` / `prompt.stage_design`; fetched prompt required repository inventory, plan assessment, Codex planning inputs, and relevant-skill use.
-- `python3 tools/agentctl.py --repo-root . validate --strict` -> `ok: True`; skill-creator `quick_validate.py` and `tools/skillctl.py validate` both passed for `vibe-run`.
-- `python3 -m pytest tests/workflow -v --capture=sys` -> `269 passed, 2 failed`; both failures pre-exist in `HEAD` because unchanged feedback tests omit the already-required `_DecisionContext.recent_resolved_triage_for_current_state` constructor field.
+- `python3 -m pytest tests/workflow/test_bootstrap.py tests/workflow/test_skill_tooling.py tests/workflow/test_agentctl_routing.py tests/workflow/test_vibe_run.py tests/workflow/test_prompt_flow_integrity.py -v --capture=sys` -> `94 passed in 42.09s`.
+- Fresh-repo probe -> one-path install produced only six base skills, no single-loop alias, concise summary output, and an initial repository-aware `design` decision; legacy `init-repo` exited `2`.
+- `python3 -m ruff check ...` for changed Python/test files -> all checks passed; `python3 tools/agentctl.py --repo-root . validate --strict` -> `ok: True`; all shipped skill manifests validated.
+- Full workflow run -> `272 passed, 3 failed`; the attributable SKIP-prompt assertion was repaired and its targeted regression passed. The remaining two failures are the pre-existing feedback fixtures already recorded in the non-blocking verification backlog.
+- Scoped diff in `1abe5ff` -> 37 files, 404 insertions, 979 deletions; canonical AGENTS and prompt mirrors compare byte-for-byte.
 
 ## Active issues
 
