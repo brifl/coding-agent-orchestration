@@ -17,7 +17,8 @@ Both supported agents use the same prompt catalog:
   2) Run `$vibe-run` for continuous execution (do not stop after one loop or
      one completed checkpoint; it repeats through review/consolidation until the
      dispatcher returns `recommended_role == "stop"` or a hard blocker requires
-     human input).
+     human input). On a fresh or exhausted plan, it first dispatches repository-aware
+     stage design to build or replenish executable checkpoints from code and tests.
   3) Run `$continuous-refactor` for continuous refactor-only execution
      (workflow pinned to `continuous-refactor`).
   4) Run `$continuous-test-generation` for continuous test-only execution

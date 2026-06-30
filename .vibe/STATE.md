@@ -11,34 +11,34 @@
 
 ## Current focus
 
-- Stage: 27
-- Checkpoint: 27.1
-- Status: NOT_STARTED  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
+- Stage: 33
+- Checkpoint: 33.0
+- Status: IN_PROGRESS  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
 
 ## Objective (current checkpoint)
 
-Remove bootstrap/install behavior that copies the core prompt catalog into non-`vibe-prompts` skill resources.
+Make fresh installs and exhausted `$vibe-run` sessions inspect the target repository, build a meaningful checkpoint backlog, and continue into execution without placeholder work or retrospective noise.
 
 ## Deliverables (current checkpoint)
 
-- `tools/bootstrap.py` only syncs the core catalog into the installed `vibe-prompts` skill resource path
-- Repo-local `.codex/skills/*/resources/template_prompts.md` duplication is eliminated outside `vibe-prompts`
-- Runtime helpers that previously fell back to per-skill catalog copies are simplified
-- Regression coverage updated in bootstrap/install tests
+- Direct repo-path bootstrap command with backward compatibility and clean skill copying
+- Fresh-template routing into repository-aware stage design without overwriting existing workflow files
+- Explicit `$vibe-run` replenishment for empty/exhausted plans with blocker preservation
+- Current Codex-aligned `vibe-run` skill metadata/instructions and stage-design prompt
+- Regression coverage and operator documentation for the install-to-plan-to-execute path
 
 ## Acceptance (current checkpoint)
 
-- Repo-local skill trees do not carry duplicated `template_prompts.md` files outside `vibe-prompts`.
-- Global install flow still yields a working `vibe-prompts/resources/template_prompts.md`.
-- Bootstrap/install tests cover the reduced sync behavior.
-- `python3 -m pytest tests/workflow/test_bootstrap.py tests/workflow/test_skill_tooling.py tests/workflow/test_vibe_run.py -v --capture=sys` passes.
+- `python3 tools/bootstrap.py /path/to/repo` works with one required argument.
+- Fresh install dispatches `design`; explicit `$vibe-run` replenishes exhausted plans without weakening blocker behavior.
+- Reinstall preserves substantive workflow files and excludes Python cache artifacts.
+- Planning prompt inspects code and produces aligned, executable PLAN/STATE content.
+- Focused workflow tests and strict validation pass.
 
 ## Work log (current session)
 
-- 2026-03-07: Backlog expanded again — added Stage 30 to complement Codex's built-in thinking with execution briefs, invariant memory, and a falsification pass for planned work.
-- 2026-03-08: Stage 31 designed and started — added a Codex runtime self-sufficiency checkpoint to remove downstream patch requirements from installed/runtime helper layouts and dispatcher triage flow.
-- 2026-03-08: 31.0 implemented — added standalone fallbacks for `agentctl.py`/`resource_resolver.py`, synced runtime helper dependencies during init/install flows, and preserved triage acknowledgement across same-state loop-result updates.
-- 2026-03-08: 31.0 review PASS — `python3 -m pytest tests/workflow/test_bootstrap.py tests/workflow/test_agentctl_routing.py tests/workflow/test_loop_result_protocol.py -v --capture=sys` passed (64 tests) and `python3 tools/agentctl.py --repo-root . validate --strict` returned `ok: True`; checkpoint marked `(DONE)` in PLAN and focus returned to 27.0 NOT_STARTED.
+- 2026-06-30: User-prioritized Stage 33.0 started to modernize repo installation and make `$vibe-run` bootstrap a repository-aware executable backlog before implementation.
+
 - 2026-03-08: Backlog expanded again — added Stage 32 to make the system actively handle overwhelming project complexity through working-set derivation, pressure-triggered decomposition, explicit fork tracking, and resume packets.
 - 2026-03-08: context_capture loop — refreshed `.vibe/CONTEXT.md` so the current Stage 27 work, Stage 31 completion, and Stage 32 backlog can be resumed without rediscovery; recorded `LOOP_RESULT`.
 - 2026-03-08: consolidation loop — archiving completed Stages 25, 26, and 31 into HISTORY, pruning them from PLAN, and trimming STATE work-log/evidence noise back to a current handoff set for 27.0.

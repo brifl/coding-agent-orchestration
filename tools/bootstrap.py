@@ -269,6 +269,10 @@ def init_repo(target_repo: Path, skillset: str | None = None, overwrite: bool = 
         for p in skipped:
             print(f"  - {p}")
 
+    print("- Next:")
+    print(f"  1. Open Codex in {target_repo}")
+    print("  2. Invoke $vibe-run")
+
     return 0
 
 
@@ -355,6 +359,8 @@ def _sync_dir(src_dir: Path, dst_dir: Path, *, force: bool = False) -> list[str]
         if src.is_dir():
             continue
         rel = src.relative_to(src_dir)
+        if "__pycache__" in rel.parts or src.suffix in {".pyc", ".pyo"}:
+            continue
         dst = dst_dir / rel
         if _copy_file(src, dst, force=force):
             updated.append(str(dst))
@@ -569,6 +575,9 @@ def _install_skills_all(global_install: bool, repo_install: bool, force: bool) -
 
 
 def main(argv: list[str]) -> int:
+    # Make the common path a one-argument command while preserving subcommands.
+    if argv and argv[0] not in {"init-repo", "install-skills", "-h", "--help"}:
+        argv = ["init-repo", *argv]
     args = _build_parser().parse_args(argv)
     try:
         if args.cmd == "init-repo":

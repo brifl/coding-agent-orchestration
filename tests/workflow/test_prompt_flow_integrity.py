@@ -135,6 +135,19 @@ def test_repo_prompt_catalog_is_canonical_source() -> None:
     assert "prompt.stage_design" in catalog_index
 
 
+def test_stage_design_prompt_bootstraps_backlog_from_repository_evidence() -> None:
+    repo_root = Path(__file__).resolve().parents[2]
+    catalog_text = (repo_root / "prompts" / "template_prompts.md").read_text(encoding="utf-8")
+    stage_design = catalog_text.split("## prompt.checkpoint_implementation", 1)[0]
+
+    assert "Inventory the repository with `rg --files`" in stage_design
+    assert "preserve useful unfinished work" in stage_design
+    assert "replace template placeholders" in stage_design
+    assert "extend an exhausted plan" in stage_design
+    assert "Goal: the operator-visible outcome" in stage_design
+    assert "If a listed skill clearly matches" in stage_design
+
+
 def test_repo_shipped_skill_prompt_catalog_is_only_in_vibe_prompts() -> None:
     repo_root = Path(__file__).resolve().parents[2]
     canonical = (repo_root / "prompts" / "template_prompts.md").read_text(encoding="utf-8")

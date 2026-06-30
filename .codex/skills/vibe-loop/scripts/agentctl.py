@@ -2823,6 +2823,15 @@ CONTINUOUS_WORKFLOW_STEP_ORDER: dict[str, tuple[str, ...]] = {
     ),
 }
 
+DEFAULT_LOOP_WORKFLOW_ALIASES = frozenset({"vibe-run"})
+
+
+def _normalize_requested_workflow_name(workflow: str | None) -> str:
+    normalized = str(workflow or "").strip()
+    if normalized in DEFAULT_LOOP_WORKFLOW_ALIASES:
+        return ""
+    return normalized
+
 CONTINUOUS_THRESHOLD_STOP_REASONS: dict[str, str] = {
     "continuous-refactor": "Workflow continuous-refactor found only [MINOR] refactor ideas in the latest LOOP_RESULT report; stopping.",
     "continuous-test-generation": "Workflow continuous-test-generation found only [MINOR] test gaps in the latest gap analysis report; stopping.",
@@ -3258,7 +3267,16 @@ def _resolve_next_prompt_selection(
     repo_root: Path,
     workflow: str | None,
 ) -> tuple[Role, str, str, str]:
+    replenish_exhausted_plan = str(workflow or "").strip() in DEFAULT_LOOP_WORKFLOW_ALIASES
+    workflow = _normalize_requested_workflow_name(workflow)
     base_role, base_reason, prompt_override = _recommend_next(state, repo_root)
+    if replenish_exhausted_plan and base_role == "stop" and "plan exhausted" in base_reason.lower():
+        return (
+            "design",
+            PROMPT_MAP["design"]["id"],
+            PROMPT_MAP["design"]["title"],
+            f"{base_reason} Explicit vibe-run requested repository assessment and backlog replenishment.",
+        )
     base_prompt_id = prompt_override or PROMPT_MAP[base_role]["id"]
     base_prompt_title = PROMPT_MAP[base_role]["title"]
 
@@ -3671,20 +3689,32 @@ def cmd_next(args: argparse.Namespace) -> int:
                 }
             ]
     else:
-        parallel_n = getattr(args, "parallel", 1) or 1
-        plan_path = repo_root / ".vibe" / "PLAN.md"
-        plan_text = _read_text(plan_path) if plan_path.exists() else ""
-        ready_cps = _get_ready_checkpoints(plan_text, state)[:parallel_n]
-        implement_prompt = PROMPT_MAP.get("implement", {})
-        recommended_roles = [
-            {
-                "checkpoint": cp_id,
-                "role": "implement",
-                "prompt_id": implement_prompt.get("id", "prompt.checkpoint_implementation"),
-                "reason": f"Checkpoint {cp_id} is ready (deps satisfied).",
-            }
-            for cp_id in ready_cps
-        ]
+        if role not in {"design", "stop"}:
+            parallel_n = getattr(args, "parallel", 1) or 1
+            plan_path = repo_root / ".vibe" / "PLAN.md"
+            plan_text = _read_text(plan_path) if plan_path.exists() else ""
+            ready_cps = _get_ready_checkpoints(plan_text, state)[:parallel_n]
+            implement_prompt = PROMPT_MAP.get("implement", {})
+            recommended_roles = [
+                {
+                    "checkpoint": cp_id,
+                    "role": "implement",
+                    "prompt_id": implement_prompt.get("id", "prompt.checkpoint_implementation"),
+                    "reason": f"Checkpoint {cp_id} is ready (deps satisfied).",
+                }
+                for cp_id in ready_cps
+            ]
+        elif role == "design":
+            recommended_roles = [
+                {
+                    "checkpoint": state.checkpoint,
+                    "role": role,
+                    "prompt_id": prompt_id,
+                    "reason": reason,
+                }
+            ]
+        else:
+            recommended_roles = []
         payload["recommended_roles"] = recommended_roles
 
     print(_render_output(payload, args.format))

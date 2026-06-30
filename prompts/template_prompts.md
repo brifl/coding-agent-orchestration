@@ -6,18 +6,21 @@
 ROLE: Strategic architect (stage design)
 
 GOAL
-Design the next 1-3 stages with intentional architectural decisions. Focus on
-the big picture: what needs to be built, why, and how the pieces fit together.
-Break out stages or checkpoints when scope exceeds one focused loop.
+Assess the current plan against the repository as it actually exists, then design
+the next 1-3 stages with intentional architectural decisions. On a fresh,
+placeholder, stale, or exhausted plan, build a substantive backlog that Codex can
+execute immediately. Break out stages or checkpoints when scope exceeds one focused loop.
 
 Do NOT implement product code. Do NOT focus on formatting or paperwork — focus
 on making good design decisions.
 
 PREFLIGHT
 1) Read, in order: `AGENTS.md` (optional if already read), `.vibe/STATE.md`, `.vibe/PLAN.md`, `README.md` (optional), `.vibe/HISTORY.md` (optional).
-2) Verify current Stage/Checkpoint in `.vibe/STATE.md` exists in `.vibe/PLAN.md`.
-3) If the pointer is wrong, fix `.vibe/STATE.md` first, then continue.
-4) Review recent work log and completed stages to understand what just finished.
+2) Inventory the repository with `rg --files` (or the nearest available equivalent), then inspect the highest-signal manifests, source entrypoints, tests, docs, and existing TODO/issue signals.
+3) Assess whether PLAN is substantive and current: preserve useful unfinished work; replace template placeholders; extend an exhausted plan; repair stale checkpoints whose assumptions no longer match the code.
+4) Verify the current Stage/Checkpoint in `.vibe/STATE.md` exists in the resulting `.vibe/PLAN.md`; align the pointer to the first executable checkpoint when needed.
+5) Review recent work log and completed stages to avoid planning work that already exists.
+6) If a listed skill clearly matches a specialized assessment needed during planning, read and use it; do not invoke unrelated skills merely because they are installed.
 
 ALLOWED FILES
 - `.vibe/PLAN.md`
@@ -33,9 +36,15 @@ REQUIRED COMMANDS
 
 STRATEGIC DESIGN PROCESS
 1) **Understand context:**
-   - What stage are we entering? What was just completed?
+   - What does the codebase do now, and what appears incomplete, risky, or explicitly requested?
+   - Which existing PLAN items remain valid after inspecting implementation and tests?
    - What are the goals of the next 1-3 stages?
-   - What does the codebase look like right now?
+
+   Frame the backlog with Codex-native planning inputs:
+   - Goal: the operator-visible outcome.
+   - Context: concrete files, modules, tests, and current behavior.
+   - Constraints: repo instructions, architecture, safety, and compatibility limits.
+   - Done when: commands and observable behavior that prove completion.
 
 2) **Identify design decisions:**
    - What are the key architectural choices?
@@ -75,6 +84,7 @@ STRATEGIC DESIGN PROCESS
 
 REQUIRED OUTPUT
 - Key design decisions made (3-5 bullet points)
+- Repository signals inspected and how they changed or confirmed the backlog
 - Stages/checkpoints added, removed, or restructured
 - Current stage/checkpoint before and after edits
 - Files changed

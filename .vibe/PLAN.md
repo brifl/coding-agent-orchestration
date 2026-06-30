@@ -417,3 +417,43 @@ Make the orchestration system actively reduce cognitive load during large vibeco
 * **Evidence:**
   * Example resume packet derived from a real loop result.
   * Tests showing deterministic recovery output.
+
+---
+
+## Stage 33 — Codex-Native Backlog Bootstrap
+
+**Stage objective:**
+Make a newly installed Vibe repo immediately useful in current Codex: one repo-path install, one `$vibe-run` invocation, then repository-aware backlog design followed by execution.
+
+### Stage invariants (apply to all checkpoints)
+
+- **Native planning first:** Use Codex's repository inspection and planning strengths instead of requiring an external LLM provider to seed the backlog.
+- **Skills stay focused:** `$vibe-run` owns orchestration and delegates planning through the dispatched design prompt only when the backlog needs it.
+- **Existing work is preserved:** Installation and cold-start checks never overwrite a substantive `.vibe/PLAN.md` or active `.vibe/STATE.md`.
+- **Operator path stays short:** The only required installation input is the target repository path.
+
+---
+
+### 33.0 — Bootstrap a repository-aware executable backlog
+
+* **Objective:**
+  Make fresh installs and exhausted `$vibe-run` sessions inspect the target repository, build a meaningful checkpoint backlog, and continue into execution without placeholder work or retrospective noise.
+* **Deliverables:**
+  * `tools/bootstrap.py` accepts a target repo path directly, preserves the legacy subcommand, and installs clean skill trees without cache artifacts
+  * Fresh `.vibe` templates route their first dispatcher step to repository-aware stage design while preserving existing workflow files
+  * Explicit `vibe-run` dispatch replenishes an empty/exhausted backlog but still honors blockers and active checkpoints
+  * The `vibe-run` skill and stage-design prompt use current Codex skill/planning conventions with concise trigger metadata and concrete planning inputs/outputs
+  * Regression coverage and operator docs prove the install-to-plan-to-execute path
+* **Acceptance:**
+  * `python3 tools/bootstrap.py /path/to/repo` is a supported install form with exactly one required argument.
+  * A fresh install's first `agentctl next --workflow vibe-run` decision is `design`, and its prompt requires repository inspection plus substantive PLAN/STATE alignment.
+  * An explicit `vibe-run` decision on an exhausted plan routes to `design`; default/manual dispatch still returns `stop`, and blockers still stop or triage normally.
+  * Reinstalling does not overwrite substantive `STATE.md`/`PLAN.md`, and installed skill trees contain no `__pycache__` or `*.pyc` artifacts.
+  * `python3 -m pytest tests/workflow/test_bootstrap.py tests/workflow/test_agentctl_routing.py tests/workflow/test_vibe_run.py tests/workflow/test_prompt_flow_integrity.py -v --capture=sys` passes.
+* **Demo commands:**
+  * `python3 -m pytest tests/workflow/test_bootstrap.py tests/workflow/test_agentctl_routing.py tests/workflow/test_vibe_run.py tests/workflow/test_prompt_flow_integrity.py -v --capture=sys`
+  * `python3 tools/agentctl.py --repo-root . validate --strict`
+  * `tmp=$(mktemp -d) && git init -q "$tmp" && python3 tools/bootstrap.py "$tmp" && python3 "$tmp/.codex/skills/vibe-loop/scripts/agentctl.py" --repo-root "$tmp" --format json next --workflow vibe-run`
+* **Evidence:**
+  * Focused test output covering fresh install, plan preservation, exhausted-plan replenishment, and blocker behavior.
+  * Fresh-repo demo output showing the direct install form and initial `design` decision.

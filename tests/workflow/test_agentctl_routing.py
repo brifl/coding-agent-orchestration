@@ -363,6 +363,74 @@ def test_vibe_run_workflow_alias_falls_back_to_plan_dispatcher(temp_repo: Path) 
     assert "Checkpoint status is IN_PROGRESS." in reason
 
 
+def test_vibe_run_replenishes_exhausted_plan(temp_repo: Path) -> None:
+    _write_plan(
+        temp_repo,
+        """# PLAN
+
+## Stage 1 — Complete
+### 1.0 — Last checkpoint
+""",
+    )
+    state = StateInfo(stage="1", checkpoint="1.0", status="DONE", evidence_path=None, issues=())
+
+    role, prompt_id, _title, reason = _resolve_next_prompt_selection(state, temp_repo, "vibe-run")
+
+    assert role == "design"
+    assert prompt_id == "prompt.stage_design"
+    assert "plan exhausted" in reason
+    assert "backlog replenishment" in reason
+
+
+def test_default_dispatch_still_stops_on_exhausted_plan(temp_repo: Path) -> None:
+    _write_plan(
+        temp_repo,
+        """# PLAN
+
+## Stage 1 — Complete
+### 1.0 — Last checkpoint
+""",
+    )
+    state = StateInfo(stage="1", checkpoint="1.0", status="DONE", evidence_path=None, issues=())
+
+    role, prompt_id, _title, reason = _resolve_next_prompt_selection(state, temp_repo, "")
+
+    assert role == "stop"
+    assert prompt_id == "stop"
+    assert "plan exhausted" in reason
+
+
+def test_vibe_run_does_not_replenish_past_human_blocker(temp_repo: Path) -> None:
+    from agentctl import Issue  # type: ignore
+
+    _write_plan(temp_repo, "# PLAN\n")
+    blocker = Issue(
+        impact="BLOCKER",
+        title="Human decision required",
+        line="- [ ] ISSUE-900: Human decision required",
+        issue_id="ISSUE-900",
+        owner="human",
+        status="BLOCKED",
+        unblock_condition="Human provides direction",
+        evidence_needed="Decision recorded in STATE.md",
+        checked=False,
+        impact_specified=True,
+    )
+    state = StateInfo(
+        stage="1",
+        checkpoint="1.0",
+        status="DONE",
+        evidence_path=None,
+        issues=(blocker,),
+    )
+
+    role, prompt_id, _title, reason = _resolve_next_prompt_selection(state, temp_repo, "vibe-run")
+
+    assert role == "stop"
+    assert prompt_id == "stop"
+    assert "agent cannot proceed" in reason
+
+
 def test_workflow_overlay_rejects_unknown_prompt_ids(temp_repo: Path) -> None:
     _write_state(
         temp_repo,

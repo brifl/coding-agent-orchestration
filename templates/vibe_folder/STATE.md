@@ -33,8 +33,9 @@
 <!-- Dispatcher flags. Checked = active/needed. Cleared by the loop that handles each flag. -->
 - [ ] RUN_CONTEXT_CAPTURE
 - [ ] STAGE_DESIGNED
-- [ ] MAINTENANCE_CYCLE_DONE
-- [ ] RETROSPECTIVE_DONE
+- [x] MAINTENANCE_CYCLE_DONE
+- [x] RETROSPECTIVE_DONE
+- [x] PROCESS_IMPROVEMENTS_DONE
 
 ## Active issues
 <!-- Keep only active issues here. Move resolved items to HISTORY.md. -->

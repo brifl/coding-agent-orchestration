@@ -1,0 +1,4 @@
+interface:
+  display_name: "Vibe Run"
+  short_description: "Plan and execute a repository backlog"
+  default_prompt: "Use $vibe-run to assess this repository, build or refresh its backlog, and execute it until blocked or complete."

@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import io
+import json
 import shutil
 import subprocess
 import sys
@@ -47,6 +48,7 @@ def test_init_repo_installs_vibe_base_skills_by_default(tmp_path: Path) -> None:
 
     skills_root = tmp_path / ".codex" / "skills"
     assert (skills_root / "vibe-run" / "SKILL.md").exists()
+    assert (skills_root / "vibe-run" / "agents" / "openai.yaml").exists()
     assert (skills_root / "continuous-refactor" / "SKILL.md").exists()
     assert (skills_root / "continuous-test-generation" / "SKILL.md").exists()
     assert (skills_root / "vibe-loop" / "scripts" / "agentctl.py").read_bytes() == (
@@ -67,9 +69,72 @@ def test_init_repo_installs_vibe_base_skills_by_default(tmp_path: Path) -> None:
     assert (skills_root / "vibe-prompts" / "resources" / "template_prompts.md").exists()
     assert not (skills_root / "vibe-run" / "resources" / "template_prompts.md").exists()
     assert not (skills_root / "continuous-refactor" / "resources" / "template_prompts.md").exists()
+    assert not any(path.name == "__pycache__" for path in skills_root.rglob("__pycache__"))
+    assert not any(path.suffix in {".pyc", ".pyo"} for path in skills_root.rglob("*"))
 
     out = buffer.getvalue()
     assert "- Skillset installed: vibe-base" in out
+    assert "Invoke $vibe-run" in out
+
+
+def test_direct_repo_path_install_routes_first_vibe_run_step_to_design(tmp_path: Path) -> None:
+    repo_root = Path(__file__).resolve().parents[2]
+    target = tmp_path / "target"
+    target.mkdir()
+
+    install = subprocess.run(
+        [sys.executable, str(repo_root / "tools" / "bootstrap.py"), str(target)],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+    )
+
+    assert install.returncode == 0, install.stderr
+    assert f"- Repo: {target}" in install.stdout
+    assert "Invoke $vibe-run" in install.stdout
+
+    decision = subprocess.run(
+        [
+            sys.executable,
+            str(target / ".codex" / "skills" / "vibe-loop" / "scripts" / "agentctl.py"),
+            "--repo-root",
+            str(target),
+            "--format",
+            "json",
+            "next",
+            "--workflow",
+            "vibe-run",
+        ],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+    )
+
+    assert decision.returncode == 0, decision.stderr
+    payload = json.loads(decision.stdout)
+    assert payload["recommended_role"] == "design"
+    assert payload["recommended_prompt_id"] == "prompt.stage_design"
+    assert payload["recommended_roles"] == [
+        {
+            "checkpoint": "0.0",
+            "prompt_id": "prompt.stage_design",
+            "reason": "New stage entered without design; STAGE_DESIGNED flag not set.",
+            "role": "design",
+        }
+    ]
+
+
+def test_reinstall_preserves_substantive_workflow_files(tmp_path: Path) -> None:
+    assert init_repo(tmp_path) == 0
+    state_path = tmp_path / ".vibe" / "STATE.md"
+    plan_path = tmp_path / ".vibe" / "PLAN.md"
+    state_path.write_text("# STATE\n\ncustom state\n", encoding="utf-8")
+    plan_path.write_text("# PLAN\n\n## Stage 7 — Keep me\n", encoding="utf-8")
+
+    assert init_repo(tmp_path) == 0
+
+    assert state_path.read_text(encoding="utf-8") == "# STATE\n\ncustom state\n"
+    assert plan_path.read_text(encoding="utf-8") == "# PLAN\n\n## Stage 7 — Keep me\n"
 
 
 def test_standalone_agentctl_imports_without_repo_constants(tmp_path: Path) -> None:

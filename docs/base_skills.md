@@ -9,7 +9,8 @@ All future skills must layer on top of this foundation without breaking it.
 - **vibe-loop**: runs a single workflow loop using `agentctl` to select the next prompt.
 - **vibe-one-loop**: compatibility alias for single-loop execution in Codex instruction packs.
 - **vibe-run**: continuous loop runner (Codex reference implementation); it keeps looping
-  until the dispatcher returns `recommended_role == "stop"`.
+  until the dispatcher returns `recommended_role == "stop"`, and explicit invocation
+  replenishes fresh or exhausted backlogs through repository-aware stage design.
 - **continuous-refactor**: continuous runner pinned to the `continuous-refactor` workflow.
 - **continuous-test-generation**: continuous runner pinned to the `continuous-test-generation` workflow.
 - **continuous-documentation**: continuous runner pinned to the `continuous-documentation` workflow.

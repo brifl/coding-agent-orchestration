@@ -146,14 +146,22 @@ include sensible default acceptance criteria.
 
 ### Bootstrap a repo
 
-```
-python3 tools/bootstrap.py init-repo /path/to/your/repo
+```bash
+python3 tools/bootstrap.py /path/to/your/repo
 ```
 
 This creates `.vibe/`, adds `.vibe/` to `.gitignore`, installs a baseline `AGENTS.md`,
 and installs repo-local skills into `.codex/skills` from the default `vibe-base` set
 (`vibe-run`, `continuous-refactor`, `continuous-test-generation`, and
-`continuous-documentation` included).
+`continuous-documentation` included). The legacy explicit form
+`python3 tools/bootstrap.py init-repo /path/to/your/repo` remains supported.
+
+The installer preserves existing `STATE.md` and `PLAN.md` files. In a fresh repo,
+open Codex at the target path and invoke `$vibe-run`. Its first dispatch inspects
+the repository and turns the placeholder plan into a concrete checkpoint backlog;
+the same run then continues into implementation and review. Invoking `$vibe-run`
+against an exhausted backlog returns to repository-aware planning instead of
+silently stopping.
 
 Use a different set if needed:
 
@@ -182,6 +190,8 @@ manual bootstrap in `prompts/init/claude_bootstrap.md` or installed skill script
 Codex's `$vibe-run` skill implements continuous mode. It must keep looping until
 the dispatcher says stop or a hard blocker requires human input; never stop
 just because one checkpoint completed, auto-advanced, or reached `IN_REVIEW`.
+Explicit `$vibe-run` dispatch also replenishes a fresh or exhausted plan from
+current repository evidence. Substantive unfinished checkpoints are preserved.
 For non-interactive dry-runs (no executor), use
 `--simulate-loop-result` to auto-acknowledge loop protocol and continue.
 
