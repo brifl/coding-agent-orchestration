@@ -13,7 +13,7 @@
 
 - Stage: 33
 - Checkpoint: 33.0
-- Status: IN_REVIEW  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
+- Status: IN_PROGRESS  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
 
 ## Objective (current checkpoint)
 
@@ -42,6 +42,7 @@ Make fresh installs and exhausted `$vibe-run` sessions inspect the target reposi
 - 2026-06-30: 33.0 implemented — direct repo-path installation, clean/preserving bootstrap behavior, fresh/exhausted-plan design routing, Codex-native skill metadata, repository-aware planning prompts, docs, and regression coverage committed in `38620d0`.
 - 2026-06-30: 33.0 review feedback reopened implementation — remove additive legacy launch surfaces and encode senior ownership/anti-clutter behavior in canonical instructions and prompts.
 - 2026-06-30: 33.0 review repair implemented in `1abe5ff` — added ownership/roadmap rules, made prompts deletion- and default-oriented, removed duplicate launch/version/dependency surfaces, and reduced active PLAN to current plus two committed stages.
+- 2026-06-30: Review smoke gate exposed a 30-second per-command budget mismatch; split the same 94-test coverage into two focused demo commands instead of adding a timeout parameter.
 
 - 2026-03-08: Backlog expanded again — added Stage 32 to make the system actively handle overwhelming project complexity through working-set derivation, pressure-triggered decomposition, explicit fork tracking, and resume packets.
 - 2026-03-08: context_capture loop — refreshed `.vibe/CONTEXT.md` so the current Stage 27 work, Stage 31 completion, and Stage 32 backlog can be resumed without rediscovery; recorded `LOOP_RESULT`.

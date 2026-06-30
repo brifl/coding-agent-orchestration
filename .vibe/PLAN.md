@@ -28,7 +28,8 @@ Make a newly installed Vibe repo immediately useful in current Codex: one repo-p
   * Canonical instructions treat parameters, stale docs, compatibility paths, diagnostics, and speculative tests as project risk; this PLAN contains only the current and next few committed stages plus bounded verification work.
   * Reinstall preserves substantive workflow files, installed skills contain no cache artifacts, focused tests pass, and strict validation succeeds.
 * **Demo commands:**
-  * `python3 -m pytest tests/workflow/test_bootstrap.py tests/workflow/test_skill_tooling.py tests/workflow/test_agentctl_routing.py tests/workflow/test_vibe_run.py tests/workflow/test_prompt_flow_integrity.py -v --capture=sys`
+  * `python3 -m pytest tests/workflow/test_bootstrap.py::test_direct_repo_path_install_routes_first_vibe_run_step_to_design tests/workflow/test_bootstrap.py::test_legacy_init_repo_subcommand_is_not_supported tests/workflow/test_bootstrap.py::test_reinstall_preserves_substantive_workflow_files tests/workflow/test_skill_tooling.py tests/workflow/test_prompt_flow_integrity.py -v --capture=sys`
+  * `python3 -m pytest tests/workflow/test_agentctl_routing.py tests/workflow/test_vibe_run.py -v --capture=sys`
   * `python3 tools/agentctl.py --repo-root . validate --strict`
   * `tmp=$(mktemp -d) && git init -q "$tmp" && python3 tools/bootstrap.py "$tmp" && python3 "$tmp/.codex/skills/vibe-loop/scripts/agentctl.py" --repo-root "$tmp" --format json next --workflow vibe-run`
 * **Evidence:**
