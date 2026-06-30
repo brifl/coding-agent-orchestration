@@ -189,6 +189,30 @@ def test_vibe_run_guidance_prioritizes_lightweight_evidence_and_throughput() -> 
     assert "Use evidence as lightweight trust-but-verify receipts" in vibe_run_text
 
 
+def test_vibe_run_guidance_supports_deferred_progress() -> None:
+    repo_root = Path(__file__).resolve().parents[2]
+    agents_text = (repo_root / "AGENTS.md").read_text(encoding="utf-8")
+    template_agents_text = (repo_root / "templates" / "repo_root" / "AGENTS.md").read_text(
+        encoding="utf-8"
+    )
+    prompt_text = (repo_root / "prompts" / "template_prompts.md").read_text(encoding="utf-8")
+    vibe_run_text = (repo_root / ".codex" / "skills" / "vibe-run" / "SKILL.md").read_text(
+        encoding="utf-8"
+    )
+
+    assert agents_text == template_agents_text
+    assert "mark it `[DEFERRED]` and move on" in agents_text
+    assert "Waiting on human feedback is a legitimate deferral reason" in agents_text
+    assert "Do not defer work that a later item depends on" in agents_text
+
+    assert "Review `[DEFERRED]` issues/checkpoints/stages" in prompt_text
+    assert "skip `(DONE)`, `(SKIPPED)`, `(SKIP)`, and `[DEFERRED]`" in prompt_text
+    assert "Status: OPEN|IN_PROGRESS|BLOCKED|RESOLVED|DECISION_REQUIRED|DEFERRED" in prompt_text
+
+    assert "Waiting on human feedback is a valid deferral reason" in vibe_run_text
+    assert "Do not treat deferral as satisfying dependencies" in vibe_run_text
+
+
 def test_removed_launch_aliases_do_not_reappear() -> None:
     repo_root = Path(__file__).resolve().parents[2]
     shipped_paths = [

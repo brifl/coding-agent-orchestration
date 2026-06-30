@@ -24,12 +24,16 @@ Stages sort by numeric value first, then by suffix.
 - `2, 2A, 2B, 3`
 - `9, 10, 10A, 11`
 
-## (SKIP) markers
+## Deferral markers
 
-Use `(SKIP)` to defer a stage or checkpoint without removing it from the plan.
+Use `[DEFERRED]` to bypass a blocked stage or checkpoint without removing it
+from the plan when independent later work can safely proceed. `(SKIP)` is still
+recognized as a legacy bypass marker.
 
-- Stage syntax: `## (SKIP) Stage 14 — Title`
-- Checkpoint syntax: `### (SKIP) 14.1 — Title`
-- Advance behavior: `(SKIP)` checkpoints are parsed but skipped when advancing.
-- Consolidation: `(SKIP)` stages/checkpoints are preserved (not archived).
-- Reactivation: remove `(SKIP)` to make the item active again.
+- Stage syntax: `## [DEFERRED] Stage 14 — Title`
+- Checkpoint syntax: `### [DEFERRED] 14.1 — Title`
+- Add a short reason and unblock/revisit condition near the deferred item.
+- Advance behavior: `[DEFERRED]` stages/checkpoints are parsed but skipped when advancing.
+- Dependency behavior: `[DEFERRED]` does not satisfy `depends_on`; dependent work should wait or also be deferred.
+- Consolidation: `[DEFERRED]` stages/checkpoints are preserved only while they have a real owner/outcome.
+- Reactivation: remove `[DEFERRED]` once the unblock condition is true.

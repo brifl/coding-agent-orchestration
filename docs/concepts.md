@@ -73,7 +73,7 @@ For detailed flag lifecycle and feature descriptions see `docs/workflow_improvem
 turns linear checkpoint ordering into a dependency graph.
 
 Core rules:
-- Dependencies are satisfied only when referenced checkpoints are marked `(DONE)` or `(SKIP)` in `PLAN.md`.
+- Dependencies are satisfied only when referenced checkpoints are marked `(DONE)` or `(SKIP)` in `PLAN.md`; `[DEFERRED]` is bypassed for progress but does not satisfy dependencies.
 - `STATE.md` status does not satisfy dependencies by itself.
 - `agentctl validate` enforces graph correctness (self-deps, dangling refs, cycles).
 - `agentctl dag` renders graph structure and per-node readiness.

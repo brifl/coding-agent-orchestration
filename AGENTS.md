@@ -36,6 +36,13 @@ At the start of any new session (or when context is unclear), the agent must:
 - Prefer **small, reviewable diffs**.
 - When ambiguity affects correctness, ask **1–2 clarifying questions max** as issues in `.vibe/STATE.md`, then stop.
 
+### Deferral for throughput
+
+- If an issue, checkpoint, or stage is blocked but later independent work can safely proceed, mark it `[DEFERRED]` and move on instead of stopping the project.
+- Add a short reason and unblock/revisit condition near the deferred item. Waiting on human feedback is a legitimate deferral reason.
+- Do not defer work that a later item depends on unless that later item is also deferred or redesigned; deferral is for preserving momentum, not hiding shaky foundations.
+- Revisit `[DEFERRED]` items during stage design and consolidation. If the unblock condition is now true, reactivate the item or fold it into the next executable checkpoint.
+
 ### Output discipline
 
 - Keep outputs concise and structured.
@@ -127,7 +134,7 @@ Each active issue in `.vibe/STATE.md` should use this format:
 ```
 - [ ] ISSUE-123: Short title
   - Impact: QUESTION|MINOR|MAJOR|BLOCKER
-  - Status: OPEN|IN_PROGRESS|BLOCKED|RESOLVED
+  - Status: OPEN|IN_PROGRESS|BLOCKED|RESOLVED|DECISION_REQUIRED|DEFERRED
   - Owner: agent|human
   - Unblock Condition: <what must be true to proceed>
   - Evidence Needed: <command/output/link proving resolution>
@@ -138,6 +145,7 @@ Each active issue in `.vibe/STATE.md` should use this format:
 - `Impact` drives triage priority.
 - `Status` reflects current resolution state.
 - `Unblock Condition` and `Evidence Needed` should be concrete and testable.
+- `Status: DEFERRED` or a `[DEFERRED]` marker means the issue is intentionally bypassed while independent work proceeds; include the reason in `Notes`.
 - `python tools/agentctl.py --repo-root . validate --strict` in the orchestration source kit, or the generated installed `agentctl.py`, should fail if required fields are missing.
 
 ## Version control policy (required)

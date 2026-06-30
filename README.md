@@ -101,7 +101,7 @@ Use one strict issue format in `.vibe/STATE.md`:
 ```
 - [ ] ISSUE-123: Short title
   - Impact: QUESTION|MINOR|MAJOR|BLOCKER
-  - Status: OPEN|IN_PROGRESS|BLOCKED|RESOLVED
+  - Status: OPEN|IN_PROGRESS|BLOCKED|RESOLVED|DECISION_REQUIRED|DEFERRED
   - Owner: agent|human
   - Unblock Condition: ...
   - Evidence Needed: ...
@@ -193,6 +193,10 @@ the dispatcher says stop or a hard blocker requires human input; never stop
 just because one checkpoint completed, auto-advanced, or reached `IN_REVIEW`.
 Explicit `$vibe-run` dispatch also replenishes a fresh or exhausted plan from
 current repository evidence. Substantive unfinished checkpoints are preserved.
+When a blocked issue, checkpoint, or stage does not block independent next work,
+mark it `[DEFERRED]` with a short reason/unblock condition and keep moving.
+Design and consolidation loops revisit deferred items and reactivate them when
+the unblock condition is satisfied.
 For non-interactive dry-runs (no executor), use
 `--simulate-loop-result` to auto-acknowledge loop protocol and continue.
 
@@ -251,6 +255,8 @@ flowchart TD
     H --> B
     G -->|PASS stage transition| I[Set DONE for current checkpoint]
     I --> B
+    G -->|blocked but independent next work exists| W[Mark item DEFERRED<br/>advance to next safe checkpoint]
+    W --> B
     G -->|FAIL| V[Set IN_PROGRESS or BLOCKED<br/>add issues]
     V --> B
 
@@ -284,7 +290,7 @@ flowchart TD
     classDef other fill:#fff8e1,stroke:#f9a825,color:#6d4c41,stroke-width:1px;
     classDef terminal fill:#ffebee,stroke:#c62828,color:#7f1d1d,stroke-width:1px;
     class D,E,F,G,H,J,K happy;
-    class L,M,N,O,P,Q,R,S,I,T,U,V other;
+    class L,M,N,O,P,Q,R,S,I,T,U,V,W other;
     class Z terminal;
 ```
 

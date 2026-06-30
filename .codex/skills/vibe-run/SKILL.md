@@ -20,6 +20,11 @@ become the product.
   rediscovery, or shaky handoffs.
 - Keep moving when the next capability is safe; record useful non-blocking checks
   as concise backlog items instead of making them gate every loop.
+- If an issue, checkpoint, or stage is blocked but later independent work can
+  safely proceed, mark it `[DEFERRED]`, add a short reason plus unblock/revisit
+  condition, and move on. Waiting on human feedback is a valid deferral reason.
+- Revisit `[DEFERRED]` items during design and consolidation; reactivate them
+  when the unblock condition is true, otherwise keep the note compact.
 
 ## Start
 
@@ -55,6 +60,8 @@ become the product.
 - Preserve substantive unfinished checkpoints. Replace placeholders, repair stale
   assumptions, and extend exhausted plans; never overwrite useful work merely to
   regenerate formatting.
+- Preserve `[DEFERRED]` work only while it has a real owner/outcome and a useful
+  revisit condition. Do not treat deferral as satisfying dependencies.
 - Use another installed skill only when its description clearly matches a
   specialized part of the current loop. Read that skill before following it.
 - Ask at most two questions only when missing information materially changes

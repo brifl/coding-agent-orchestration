@@ -123,6 +123,24 @@ def test_decision_required_status_is_valid(temp_repo: Path) -> None:
     assert not any("invalid Status" in e for e in result.errors)
 
 
+def test_deferred_issue_status_is_valid(temp_repo: Path) -> None:
+    _write_plan(temp_repo)
+    _write_state(
+        temp_repo,
+        """
+- [ ] [DEFERRED] ISSUE-210: Waiting on human feedback
+  - Impact: BLOCKER
+  - Status: DEFERRED
+  - Owner: human
+  - Unblock Condition: Human answers the product question.
+  - Evidence Needed: Decision recorded in STATE.md Decisions section.
+  - Notes: Deferred because independent implementation work can continue.
+""",
+    )
+    result = validate(temp_repo, strict=True)
+    assert result.ok is True, f"Unexpected errors: {result.errors}"
+
+
 def test_decision_required_checked_is_invalid(temp_repo: Path) -> None:
     _write_plan(temp_repo)
     _write_state(

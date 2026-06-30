@@ -33,7 +33,7 @@ _tools_dir = Path(__file__).parent.resolve()
 if str(_tools_dir) not in sys.path:
     sys.path.insert(0, str(_tools_dir))
 
-import checkpoint_templates
+import checkpoint_templates  # noqa: E402
 try:
     from constants import (
         COMPLEXITY_BUDGET,
@@ -50,12 +50,12 @@ except ModuleNotFoundError as exc:
         "Demo commands": 4,
     }
     PROMPT_CATALOG_FILENAME = "template_prompts.md"
-from prompt_catalog_paths import (
+from prompt_catalog_paths import (  # noqa: E402
     is_repo_local_prompt_catalog,
     prompt_catalog_contract_description,
     resolve_prompt_catalog_path as _resolve_prompt_catalog_path,
 )
-from stage_ordering import (
+from stage_ordering import (  # noqa: E402
     CHECKPOINT_ID_PATTERN,
     STAGE_ID_PATTERN,
     is_valid_stage_id,
@@ -74,7 +74,14 @@ ALLOWED_STATUS = {
 # For prioritization (highest -> lowest)
 IMPACT_ORDER = ["BLOCKER", "MAJOR", "MINOR", "QUESTION"]
 IMPACTS = tuple(IMPACT_ORDER)
-ISSUE_STATUS_VALUES = ("OPEN", "IN_PROGRESS", "BLOCKED", "RESOLVED", "DECISION_REQUIRED")
+ISSUE_STATUS_VALUES = (
+    "OPEN",
+    "IN_PROGRESS",
+    "BLOCKED",
+    "RESOLVED",
+    "DECISION_REQUIRED",
+    "DEFERRED",
+)
 LOOP_RESULT_PROTOCOL_VERSION = 1
 LOOP_RESULT_REQUIRED_FIELDS = (
     "loop",
@@ -107,6 +114,16 @@ LOOP_REPORT_MAX_FINDINGS = 5
 CONFIDENCE_MIN_REQUIRED = 0.75
 IDEA_IMPACT_TAG_RE = re.compile(r"\[(MAJOR|MODERATE|MINOR)\]", re.IGNORECASE)
 WORK_LOG_CONSOLIDATION_CAP = 10
+PLAN_DONE_OR_INACTIVE_MARKER_PATTERN = (
+    r"(?:\(\s*(?:DONE|SKIPPED|SKIP)\s*\)|\[\s*DEFERRED\s*\])"
+)
+PLAN_SKIP_MARKER_PATTERN = r"\(\s*SKIP\s*\)"
+PLAN_DEFERRED_MARKER_PATTERN = r"\[\s*DEFERRED\s*\]"
+PLAN_SKIP_OR_DEFERRED_MARKER_PATTERN = (
+    rf"(?:{PLAN_SKIP_MARKER_PATTERN}|{PLAN_DEFERRED_MARKER_PATTERN})"
+)
+OPTIONAL_PLAN_CHECKPOINT_MARKER_PATTERN = rf"(?:{PLAN_DONE_OR_INACTIVE_MARKER_PATTERN}\s+)?"
+OPTIONAL_PLAN_STAGE_MARKER_PATTERN = rf"(?:{PLAN_SKIP_OR_DEFERRED_MARKER_PATTERN}\s+)?"
 
 Role = Literal[
     "issues_triage",
@@ -243,11 +260,13 @@ def _parse_plan_checkpoint_ids(plan_text: str) -> list[str]:
       ### (DONE) 1.2 — Title
       ### (SKIPPED) 12B.3 — Title
       ### (SKIP) 5.1 — Title
+      ### [DEFERRED] 5.2 — Title
     """
     ids: list[str] = []
-    # capture (DONE), (SKIPPED), or (SKIP) optionally, then capture the checkpoint id X.Y (with optional stage suffix)
     pat = re.compile(
-        rf"^\s*#{{3,6}}\s+(?:\(\s*(?:DONE|SKIPPED|SKIP)\s*\)\s+)?(?:Checkpoint\s+)?(?P<id>{CHECKPOINT_ID_PATTERN})\b"
+        rf"^\s*#{{3,6}}\s+{OPTIONAL_PLAN_CHECKPOINT_MARKER_PATTERN}"
+        rf"(?:Checkpoint\s+)?(?P<id>{CHECKPOINT_ID_PATTERN})\b",
+        re.IGNORECASE,
     )
     for _, line, is_visible in _iter_visible_markdown_lines(plan_text):
         if not is_visible:
@@ -279,7 +298,9 @@ def _parse_checkpoint_dependencies(plan_text: str) -> tuple[dict[str, list[str]]
     parse_errors: list[str] = []
 
     checkpoint_pat = re.compile(
-        rf"^\s*#{{3,6}}\s+(?:\(\s*(?:DONE|SKIPPED|SKIP)\s*\)\s+)?(?:Checkpoint\s+)?(?P<id>{CHECKPOINT_ID_PATTERN})\b"
+        rf"^\s*#{{3,6}}\s+{OPTIONAL_PLAN_CHECKPOINT_MARKER_PATTERN}"
+        rf"(?:Checkpoint\s+)?(?P<id>{CHECKPOINT_ID_PATTERN})\b",
+        re.IGNORECASE,
     )
     depends_pat = re.compile(r"^\s*depends_on:\s*(?P<rest>.*)$", re.IGNORECASE)
     list_pat = re.compile(r"^\[(?P<inner>[^\]]*)\]$")
@@ -426,12 +447,16 @@ def _parse_stage_headings(plan_text: str) -> list[tuple[str, int, str]]:
     """
     Return (stage_id, line_no, line_text) for each stage heading.
 
-    Tolerates an optional (SKIP) marker before 'Stage':
+    Tolerates an optional deferral marker before 'Stage':
       ## Stage 14 — Title
       ## (SKIP) Stage 14 — Title
+      ## [DEFERRED] Stage 14 — Title
     """
     results: list[tuple[str, int, str]] = []
-    stage_pat = re.compile(r"^##\s+(?:\(\s*SKIP\s*\)\s+)?Stage\s+(?P<stage>\S+)")
+    stage_pat = re.compile(
+        rf"^##\s+{OPTIONAL_PLAN_STAGE_MARKER_PATTERN}Stage\s+(?P<stage>\S+)",
+        re.IGNORECASE,
+    )
     for idx, line, is_visible in _iter_visible_markdown_lines(plan_text):
         if not is_visible:
             continue
@@ -444,8 +469,14 @@ def _parse_stage_headings(plan_text: str) -> list[tuple[str, int, str]]:
 def _find_stage_bounds(plan_text: str, stage: str) -> tuple[int | None, int | None]:
     lines = plan_text.splitlines(keepends=True)
     indexed_lines = list(_iter_visible_markdown_lines(plan_text, keepends=True))
-    stage_pat = re.compile(rf"^##\s+(?:\(\s*SKIP\s*\)\s+)?Stage\s+{re.escape(stage)}\b")
-    next_stage_pat = re.compile(rf"^##\s+(?:\(\s*SKIP\s*\)\s+)?Stage\s+{STAGE_ID_PATTERN}\b")
+    stage_pat = re.compile(
+        rf"^##\s+{OPTIONAL_PLAN_STAGE_MARKER_PATTERN}Stage\s+{re.escape(stage)}\b",
+        re.IGNORECASE,
+    )
+    next_stage_pat = re.compile(
+        rf"^##\s+{OPTIONAL_PLAN_STAGE_MARKER_PATTERN}Stage\s+{STAGE_ID_PATTERN}\b",
+        re.IGNORECASE,
+    )
     start_idx = None
     end_idx = None
 
@@ -466,8 +497,8 @@ def _find_stage_bounds(plan_text: str, stage: str) -> tuple[int | None, int | No
         end_idx = len(lines)
 
     # Convert line indices to character offsets
-    start_offset = sum(len(l) for l in lines[:start_idx])
-    end_offset = sum(len(l) for l in lines[:end_idx])
+    start_offset = sum(len(line) for line in lines[:start_idx])
+    end_offset = sum(len(line) for line in lines[:end_idx])
     return (start_offset, end_offset)
 
 
@@ -495,13 +526,19 @@ def _get_stage_for_checkpoint(plan_text: str, checkpoint_id: str) -> str | None:
     Returns the stage number as a string, or None if not found.
     """
     current_stage: str | None = None
-    stage_pat = re.compile(rf"^\s*##\s+(?:\(\s*SKIP\s*\)\s+)?Stage\s+(?P<stage>{STAGE_ID_PATTERN})\b")
+    stage_pat = re.compile(
+        rf"^\s*##\s+{OPTIONAL_PLAN_STAGE_MARKER_PATTERN}Stage\s+"
+        rf"(?P<stage>{STAGE_ID_PATTERN})\b",
+        re.IGNORECASE,
+    )
     try:
         checkpoint_norm = normalize_checkpoint_id(checkpoint_id)
     except ValueError:
         checkpoint_norm = checkpoint_id
     checkpoint_pat = re.compile(
-        rf"^\s*#{{3,6}}\s+(?:\(\s*(?:DONE|SKIPPED|SKIP)\s*\)\s+)?(?:Checkpoint\s+)?{re.escape(checkpoint_norm)}\b"
+        rf"^\s*#{{3,6}}\s+{OPTIONAL_PLAN_CHECKPOINT_MARKER_PATTERN}"
+        rf"(?:Checkpoint\s+)?{re.escape(checkpoint_norm)}\b",
+        re.IGNORECASE,
     )
 
     for _, line, is_visible in _iter_visible_markdown_lines(plan_text):
@@ -548,23 +585,95 @@ def _is_checkpoint_marked_done(plan_text: str, checkpoint_id: str) -> bool:
 
     Note: (SKIP) is intentionally NOT matched here — skipped-for-later
     checkpoints are not considered done."""
-    pat = re.compile(rf"^\s*#{{3,6}}\s+\(\s*(?:DONE|SKIPPED)\s*\)\s+(?:Checkpoint\s+)?{re.escape(checkpoint_id)}\b")
+    pat = re.compile(
+        rf"^\s*#{{3,6}}\s+\(\s*(?:DONE|SKIPPED)\s*\)\s+"
+        rf"(?:Checkpoint\s+)?{re.escape(checkpoint_id)}\b",
+        re.IGNORECASE,
+    )
     for _, line, is_visible in _iter_visible_markdown_lines(plan_text):
         if is_visible and pat.match(line):
             return True
     return False
+
+
+def _line_has_skip_marker(line: str) -> bool:
+    return re.search(PLAN_SKIP_MARKER_PATTERN, line, re.IGNORECASE) is not None
+
+
+def _line_has_deferred_marker(line: str) -> bool:
+    return re.search(PLAN_DEFERRED_MARKER_PATTERN, line, re.IGNORECASE) is not None
+
+
+def _line_has_skip_or_deferred_marker(line: str) -> bool:
+    return (
+        re.search(PLAN_SKIP_OR_DEFERRED_MARKER_PATTERN, line, re.IGNORECASE)
+        is not None
+    )
+
+
+def _checkpoint_heading_matches(line: str, checkpoint_id: str) -> bool:
+    try:
+        checkpoint_norm = normalize_checkpoint_id(checkpoint_id)
+    except ValueError:
+        checkpoint_norm = checkpoint_id
+    pat = re.compile(
+        rf"^\s*#{{3,6}}\s+{OPTIONAL_PLAN_CHECKPOINT_MARKER_PATTERN}"
+        rf"(?:Checkpoint\s+)?{re.escape(checkpoint_norm)}\b",
+        re.IGNORECASE,
+    )
+    return pat.match(line) is not None
 
 
 def _is_checkpoint_skipped(plan_text: str, checkpoint_id: str) -> bool:
     """Check if a checkpoint is marked as (SKIP) in the plan.
 
-    (SKIP) checkpoints are deferred — bypassed during advance but preserved
-    during consolidation.  Removing the marker reactivates the checkpoint."""
-    pat = re.compile(rf"^\s*#{{3,6}}\s+\(\s*SKIP\s*\)\s+(?:Checkpoint\s+)?{re.escape(checkpoint_id)}\b")
+    (SKIP) is a legacy bypass marker. New deferrals should use [DEFERRED]
+    with a short reason/unblock note."""
     for _, line, is_visible in _iter_visible_markdown_lines(plan_text):
-        if is_visible and pat.match(line):
+        if is_visible and _checkpoint_heading_matches(line, checkpoint_id) and _line_has_skip_marker(line):
             return True
     return False
+
+
+def _is_checkpoint_deferred(plan_text: str, checkpoint_id: str) -> bool:
+    """Check if a checkpoint is marked [DEFERRED] in the plan."""
+    for _, line, is_visible in _iter_visible_markdown_lines(plan_text):
+        if (
+            is_visible
+            and _checkpoint_heading_matches(line, checkpoint_id)
+            and _line_has_deferred_marker(line)
+        ):
+            return True
+    return False
+
+
+def _is_stage_skipped_or_deferred(plan_text: str, stage: str) -> bool:
+    """Check if a stage heading is marked (SKIP) or [DEFERRED]."""
+    try:
+        stage_norm = normalize_stage_id(stage)
+    except ValueError:
+        stage_norm = stage
+    pat = re.compile(
+        rf"^\s*##\s+{OPTIONAL_PLAN_STAGE_MARKER_PATTERN}"
+        rf"Stage\s+{re.escape(stage_norm)}\b",
+        re.IGNORECASE,
+    )
+    for _, line, is_visible in _iter_visible_markdown_lines(plan_text):
+        if is_visible and pat.match(line) and _line_has_skip_or_deferred_marker(line):
+            return True
+    return False
+
+
+def _is_checkpoint_inactive_for_advance(plan_text: str, checkpoint_id: str) -> bool:
+    """Return True when a checkpoint should be bypassed by advance/review PASS."""
+    if (
+        _is_checkpoint_marked_done(plan_text, checkpoint_id)
+        or _is_checkpoint_skipped(plan_text, checkpoint_id)
+        or _is_checkpoint_deferred(plan_text, checkpoint_id)
+    ):
+        return True
+    stage = _get_stage_for_checkpoint(plan_text, checkpoint_id)
+    return bool(stage and _is_stage_skipped_or_deferred(plan_text, stage))
 
 
 def _next_checkpoint_after(plan_ids: list[str], current_id: str) -> str | None:
@@ -734,7 +843,11 @@ def _parse_issues_checkbox_format(text: str) -> tuple[Issue, ...]:
 
         checked = m.group(1).strip().lower() == "x"
         issue_id: str | None = None
-        id_match = re.match(r"(?i)^(ISSUE-[A-Za-z0-9_.-]+)\s*:\s*(.+)$", title)
+        id_match = re.match(
+            r"(?i)^(?:\[DEFERRED\]\s*)?"
+            r"(ISSUE-[A-Za-z0-9_.-]+)(?:\s+\[DEFERRED\])?\s*:\s*(.+)$",
+            title,
+        )
         if id_match:
             issue_id = id_match.group(1).upper()
 
@@ -911,10 +1024,10 @@ def _feedback_entry_to_issue_block(entry: "FeedbackEntry", issue_id: str) -> str
     lines = [
         f"- [ ] {issue_id}: {entry.feedback_id} - {entry.type}",
         f"  - Impact: {entry.impact}",
-        f"  - Status: OPEN",
-        f"  - Owner: agent",
+        "  - Status: OPEN",
+        "  - Owner: agent",
         f"  - Unblock Condition: {entry.expected or 'See description'}",
-        f"  - Evidence Needed: (to be determined during triage)",
+        "  - Evidence Needed: (to be determined during triage)",
         f"  - Notes: {notes}",
     ]
     if entry.proposed_action:
@@ -1602,8 +1715,12 @@ def load_state(repo_root: Path, state_path: Path | None = None) -> StateInfo:
 
 
 def _plan_has_stage(plan_text: str, stage: str) -> bool:
-    # Matches: "## Stage 0 — Name" or "## (SKIP) Stage 0 - Name" or "## Stage 0"
-    pat = re.compile(rf"^##\s+(?:\(\s*SKIP\s*\)\s+)?Stage\s+{re.escape(stage)}\b")
+    # Matches "## Stage 0 — Name", "## (SKIP) Stage 0 - Name",
+    # "## [DEFERRED] Stage 0 - Name", or "## Stage 0".
+    pat = re.compile(
+        rf"^##\s+{OPTIONAL_PLAN_STAGE_MARKER_PATTERN}Stage\s+{re.escape(stage)}\b",
+        re.IGNORECASE,
+    )
     for _, line, is_visible in _iter_visible_markdown_lines(plan_text):
         if is_visible and pat.match(line):
             return True
@@ -2095,6 +2212,11 @@ _ACTIONABLE_ISSUE_STATUSES = {"OPEN", "IN_PROGRESS", "DECISION_REQUIRED"}
 _TRIAGE_PENDING_ISSUE_STATUSES = {"", "OPEN", "BLOCKED", "DECISION_REQUIRED"}
 
 
+def _is_issue_deferred(issue: Issue) -> bool:
+    raw_status = (issue.status or "").strip().upper()
+    return raw_status == "DEFERRED" or "[DEFERRED]" in issue.title.upper()
+
+
 def _top_issue_impact(
     issues: tuple[Issue, ...],
     *,
@@ -2106,6 +2228,8 @@ def _top_issue_impact(
     if actionable_only:
         actionable: list[Issue] = []
         for issue in issues:
+            if _is_issue_deferred(issue):
+                continue
             impact = (issue.impact or "").strip().upper()
             status = (issue.status or "").strip().upper()
             # Always surface BLOCKER severity, even when status is BLOCKED.
@@ -2140,6 +2264,8 @@ def _top_pending_triage_issue_impact(issues: tuple[Issue, ...]) -> str | None:
     """
     pending: list[Issue] = []
     for issue in issues:
+        if _is_issue_deferred(issue):
+            continue
         impact = (issue.impact or "").strip().upper()
         if impact not in {"MAJOR", "QUESTION"}:
             continue
@@ -2357,8 +2483,9 @@ def _extract_demo_commands(plan_text: str, checkpoint_id: str) -> list[str]:
     """
     # Find the checkpoint heading
     heading_pat = re.compile(
-        rf"^\s*#{{3,6}}\s+(?:\(\s*(?:DONE|SKIPPED|SKIP)\s*\)\s+)?(?:Checkpoint\s+)?"
-        + re.escape(checkpoint_id) + r"\b"
+        rf"^\s*#{{3,6}}\s+{OPTIONAL_PLAN_CHECKPOINT_MARKER_PATTERN}"
+        rf"(?:Checkpoint\s+)?{re.escape(checkpoint_id)}\b",
+        re.IGNORECASE,
     )
     lines = plan_text.splitlines()
     start_idx: int | None = None
@@ -2371,7 +2498,9 @@ def _extract_demo_commands(plan_text: str, checkpoint_id: str) -> list[str]:
 
     # Find the next checkpoint heading (end boundary)
     next_heading_pat = re.compile(
-        rf"^\s*#{{3,6}}\s+(?:\(\s*(?:DONE|SKIPPED|SKIP)\s*\)\s+)?(?:Checkpoint\s+)?{CHECKPOINT_ID_PATTERN}\b"
+        rf"^\s*#{{3,6}}\s+{OPTIONAL_PLAN_CHECKPOINT_MARKER_PATTERN}"
+        rf"(?:Checkpoint\s+)?{CHECKPOINT_ID_PATTERN}\b",
+        re.IGNORECASE,
     )
     end_idx = len(lines)
     for idx in range(start_idx + 1, len(lines)):
@@ -2532,7 +2661,9 @@ def _decide_role(state: StateInfo, ctx: _DecisionContext) -> tuple[Role, str, st
 
     top = _top_issue_impact(state.issues, actionable_only=True)
     if top == "BLOCKER":
-        blocker_issues = [i for i in state.issues if i.impact == "BLOCKER"]
+        blocker_issues = [
+            i for i in state.issues if i.impact == "BLOCKER" and not _is_issue_deferred(i)
+        ]
         all_human_owned = all(
             i.owner and i.owner.lower() == "human" for i in blocker_issues
         )
@@ -2547,7 +2678,10 @@ def _decide_role(state: StateInfo, ctx: _DecisionContext) -> tuple[Role, str, st
         return ("issues_triage", "BLOCKER issue present.", None)
 
     # 0a) Human approval gate — stop and surface DECISION_REQUIRED issues for human review
-    decision_issues = [i for i in state.issues if i.status == "DECISION_REQUIRED"]
+    decision_issues = [
+        i for i in state.issues
+        if i.status == "DECISION_REQUIRED" and not _is_issue_deferred(i)
+    ]
     if decision_issues:
         titles = "; ".join(i.issue_id or i.title for i in decision_issues)
         return (
@@ -2583,16 +2717,18 @@ def _decide_role(state: StateInfo, ctx: _DecisionContext) -> tuple[Role, str, st
         if not nxt:
             return ("stop", "Current checkpoint is last checkpoint in .vibe/PLAN.md (plan exhausted).", None)
 
-        # If the next one is explicitly marked (DONE) or (SKIP), skip forward
-        while nxt and (
-            _is_checkpoint_marked_done(ctx.plan_text, nxt)
-            or _is_checkpoint_skipped(ctx.plan_text, nxt)
-        ):
+        # If the next one is explicitly completed or deferred, skip forward.
+        while nxt and _is_checkpoint_inactive_for_advance(ctx.plan_text, nxt):
             state_ck = nxt
             nxt = _next_checkpoint_after(plan_ids, state_ck)
 
         if not nxt:
-            return ("stop", "All remaining checkpoints are marked (DONE) or (SKIP) in .vibe/PLAN.md (plan exhausted).", None)
+            return (
+                "stop",
+                "All remaining checkpoints are marked (DONE), (SKIP), or [DEFERRED] "
+                "in .vibe/PLAN.md (plan exhausted).",
+                None,
+            )
 
         # Also skip dep-blocked checkpoints (deps not yet DONE/SKIP)
         dep_blocked: dict[str, list[str]] = {}
@@ -2601,11 +2737,8 @@ def _decide_role(state: StateInfo, ctx: _DecisionContext) -> tuple[Role, str, st
             dep_blocked[nxt] = unmet
             state_ck = nxt
             nxt = _next_checkpoint_after(plan_ids, state_ck)
-            # Re-skip any DONE/SKIP checkpoints encountered while scanning
-            while nxt and (
-                _is_checkpoint_marked_done(ctx.plan_text, nxt)
-                or _is_checkpoint_skipped(ctx.plan_text, nxt)
-            ):
+            # Re-skip any completed/deferred checkpoints encountered while scanning.
+            while nxt and _is_checkpoint_inactive_for_advance(ctx.plan_text, nxt):
                 state_ck = nxt
                 nxt = _next_checkpoint_after(plan_ids, state_ck)
 
@@ -3238,7 +3371,9 @@ def _continuous_workflow_blocking_decision(state: StateInfo) -> tuple[Role, str]
     if state.status == "BLOCKED":
         return ("issues_triage", "Checkpoint status is BLOCKED.")
 
-    blocker_issues = [i for i in state.issues if i.impact == "BLOCKER"]
+    blocker_issues = [
+        i for i in state.issues if i.impact == "BLOCKER" and not _is_issue_deferred(i)
+    ]
     if blocker_issues:
         all_human_owned = all(i.owner and i.owner.lower() == "human" for i in blocker_issues)
         if all_human_owned:
@@ -3250,7 +3385,10 @@ def _continuous_workflow_blocking_decision(state: StateInfo) -> tuple[Role, str]
             )
         return ("issues_triage", "BLOCKER issue present.")
 
-    decision_issues = [i for i in state.issues if i.status == "DECISION_REQUIRED"]
+    decision_issues = [
+        i for i in state.issues
+        if i.status == "DECISION_REQUIRED" and not _is_issue_deferred(i)
+    ]
     if decision_issues:
         titles = "; ".join(i.issue_id or i.title for i in decision_issues)
         return (
@@ -3977,7 +4115,7 @@ def cmd_plan(args: argparse.Namespace) -> int:
         return 1
 
     if config.dry_run:
-        print(f"(dry run \u2014 no files written)")
+        print("(dry run \u2014 no files written)")
         print(f"  problem_statement : {config.problem_statement}")
         print(f"  provider          : {config.provider if config.provider else '(not set)'}")
         print(f"  output_path       : {config.output_path}")
@@ -4191,8 +4329,10 @@ def _parse_checkpoint_titles(plan_text: str) -> dict[str, str]:
     """
     titles: dict[str, str] = {}
     pat = re.compile(
-        rf"^\s*#{{3,6}}\s+(?:\(\s*(?:DONE|SKIPPED|SKIP)\s*\)\s+)?(?:Checkpoint\s+)?(?P<id>{CHECKPOINT_ID_PATTERN})"
-        r"(?::|\s*[\u2014\-]+)?\s*(?P<title>.+?)?\s*$"
+        rf"^\s*#{{3,6}}\s+{OPTIONAL_PLAN_CHECKPOINT_MARKER_PATTERN}"
+        rf"(?:Checkpoint\s+)?(?P<id>{CHECKPOINT_ID_PATTERN})"
+        r"(?::|\s*[\u2014\-]+)?\s*(?P<title>.+?)?\s*$",
+        re.IGNORECASE,
     )
     for _, line, is_visible in _iter_visible_markdown_lines(plan_text):
         if not is_visible:
@@ -4211,11 +4351,16 @@ def _parse_checkpoint_titles(plan_text: str) -> dict[str, str]:
 
 
 def _compute_dag_node_status(plan_text: str, checkpoint_id: str) -> str:
-    """Compute DAG node status: DONE | SKIP | READY | DEP_BLOCKED."""
+    """Compute DAG node status: DONE | SKIP | DEFERRED | READY | DEP_BLOCKED."""
     if _is_checkpoint_marked_done(plan_text, checkpoint_id):
         return "DONE"
     if _is_checkpoint_skipped(plan_text, checkpoint_id):
         return "SKIP"
+    if _is_checkpoint_deferred(plan_text, checkpoint_id):
+        return "DEFERRED"
+    stage = _get_stage_for_checkpoint(plan_text, checkpoint_id)
+    if stage and _is_stage_skipped_or_deferred(plan_text, stage):
+        return "DEFERRED"
     if _get_unmet_deps(plan_text, checkpoint_id):
         return "DEP_BLOCKED"
     return "READY"
@@ -4224,7 +4369,7 @@ def _compute_dag_node_status(plan_text: str, checkpoint_id: str) -> str:
 def _get_ready_checkpoints(plan_text: str, state: "StateInfo") -> list[str]:
     """Return all dep-satisfied, not-yet-done checkpoints in document order.
 
-    A checkpoint is 'ready' iff it is not DONE, not SKIP, and all its deps are satisfied.
+    A checkpoint is 'ready' iff it is not DONE/SKIP/DEFERRED and all its deps are satisfied.
     The state parameter is accepted for interface consistency and future use.
     """
     cp_ids = _parse_plan_checkpoint_ids(plan_text)
@@ -4265,7 +4410,13 @@ def cmd_dag(args: argparse.Namespace) -> int:
         return 0
 
     # ASCII output
-    _STATUS_ICONS = {"DONE": "[+]", "SKIP": "[-]", "READY": "[>]", "DEP_BLOCKED": "[!]"}
+    _STATUS_ICONS = {
+        "DONE": "[+]",
+        "SKIP": "[-]",
+        "DEFERRED": "[-]",
+        "READY": "[>]",
+        "DEP_BLOCKED": "[!]",
+    }
     for node in nodes:
         status = node["status"]
         cp_id = node["id"]

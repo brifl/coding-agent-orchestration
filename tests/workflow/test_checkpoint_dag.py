@@ -179,6 +179,36 @@ def test_done_dispatch_skips_dep_blocked_checkpoint(temp_repo: Path) -> None:
     assert "1.2" in reason
 
 
+def test_done_dispatch_does_not_treat_deferred_dependency_as_satisfied(temp_repo: Path) -> None:
+    _write_plan(
+        temp_repo,
+        """# PLAN
+
+## Stage 1 — Demo
+
+### (DONE) 1.0 — Complete
+
+### [DEFERRED] 1.1 — Waiting on human feedback
+
+Reason: Product owner needs to answer integration question.
+Unblock: Decision recorded.
+
+### 1.2 — Depends on deferred work
+  depends_on: [1.1]
+
+### 1.3 — Independent safe work
+  depends_on: [1.0]
+""",
+    )
+    state = StateInfo(stage="1", checkpoint="1.0", status="DONE", evidence_path=None, issues=())
+
+    role, reason, _ = _recommend_next(state, temp_repo)
+
+    assert role == "advance"
+    assert "1.3" in reason
+    assert "1.2" not in reason
+
+
 def test_done_dispatch_stops_when_all_remaining_are_dep_blocked(temp_repo: Path) -> None:
     _write_plan(
         temp_repo,
@@ -215,6 +245,8 @@ def test_cmd_dag_json_renders_nodes_edges_and_status(temp_repo: Path, capsys) ->
 
 ### (SKIP) 1.1 — Deferred
 
+### [DEFERRED] 1.5 — Waiting on human feedback
+
 ### 1.2 — Ready leaf
   depends_on: [1.0]
 
@@ -236,6 +268,7 @@ def test_cmd_dag_json_renders_nodes_edges_and_status(temp_repo: Path, capsys) ->
     nodes = {node["id"]: node for node in payload["nodes"]}  # type: ignore[index]
     assert nodes["1.0"]["status"] == "DONE"
     assert nodes["1.1"]["status"] == "SKIP"
+    assert nodes["1.5"]["status"] == "DEFERRED"
     assert nodes["1.2"]["status"] == "READY"
     assert nodes["1.3"]["status"] == "DEP_BLOCKED"
     assert nodes["1.4"]["status"] == "READY"

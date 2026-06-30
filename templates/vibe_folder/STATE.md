@@ -41,7 +41,7 @@
 <!-- Keep only active issues here. Move resolved items to HISTORY.md. -->
 - [ ] ISSUE-001: <short title>
   - Impact: QUESTION <!-- QUESTION | MINOR | MAJOR | BLOCKER -->
-  - Status: OPEN <!-- OPEN | IN_PROGRESS | BLOCKED | RESOLVED | DECISION_REQUIRED -->
+  - Status: OPEN <!-- OPEN | IN_PROGRESS | BLOCKED | RESOLVED | DECISION_REQUIRED | DEFERRED -->
   - Owner: agent|human
   - Unblock Condition: <what must be true to proceed>
   - Evidence Needed: <command/output/link proving resolution>

@@ -37,6 +37,11 @@ A dependency is satisfied only when the referenced checkpoint is marked:
 - `(DONE)`, or
 - `(SKIP)`.
 
+`[DEFERRED]` lets the dispatcher move past blocked independent work, but it does
+not satisfy a dependency. If a later checkpoint depends on deferred work, the
+later checkpoint remains dependency-blocked until the dependency is completed or
+explicitly skipped.
+
 `STATE.md` status is not used for dependency satisfaction; only `PLAN.md` markers
 are consulted.
 
@@ -71,6 +76,7 @@ Schema:
 Node status values:
 - `DONE`
 - `SKIP`
+- `DEFERRED`
 - `READY`
 - `DEP_BLOCKED`
 
@@ -82,7 +88,7 @@ python3 tools/agentctl.py --repo-root . dag --format ascii
 
 ASCII markers:
 - `[+]` done
-- `[-]` skipped
+- `[-]` skipped/deferred
 - `[>]` ready
 - `[!]` dependency blocked
 
@@ -90,7 +96,7 @@ ASCII markers:
 
 When current checkpoint status is `DONE`, dispatcher:
 1. Finds next checkpoints in document order.
-2. Skips `(DONE)` and `(SKIP)` checkpoints.
+2. Skips `(DONE)`, `(SKIP)`, and `[DEFERRED]` checkpoints/stages.
 3. Skips dependency-blocked checkpoints (unmet dependencies).
 4. Routes to first dependency-satisfied checkpoint.
 5. Returns `stop` if all remaining checkpoints are dependency blocked.
@@ -109,7 +115,7 @@ Output includes:
 - `recommended_roles` (list of up to `N` runnable checkpoints)
 
 Readiness for `recommended_roles` is based on:
-- Not marked `(DONE)`/`(SKIP)`.
+- Not marked `(DONE)`/`(SKIP)`/`[DEFERRED]`.
 - All dependencies satisfied.
 
 ## Worked example: diamond dependency

@@ -26,7 +26,8 @@ PREFLIGHT
 3) Assess whether PLAN is substantive and current: preserve useful unfinished work; replace template placeholders; extend an exhausted plan; repair stale checkpoints whose assumptions no longer match the code.
 4) Verify the current Stage/Checkpoint in `.vibe/STATE.md` exists in the resulting `.vibe/PLAN.md`; align the pointer to the first executable checkpoint when needed.
 5) Review recent work log and completed stages to avoid planning work that already exists.
-6) If a listed skill clearly matches a specialized assessment needed during planning, read and use it; do not invoke unrelated skills merely because they are installed.
+6) Review `[DEFERRED]` issues/checkpoints/stages. If an unblock condition is now true, reactivate or fold the item into the next executable checkpoint; otherwise keep a short reason/revisit note.
+7) If a listed skill clearly matches a specialized assessment needed during planning, read and use it; do not invoke unrelated skills merely because they are installed.
 
 ALLOWED FILES
 - `.vibe/PLAN.md`
@@ -88,9 +89,10 @@ STRATEGIC DESIGN PROCESS
 
    Quality bar (hard rule):
    - Acceptance must prove meaningful operator-visible behavior, not just non-empty files, placeholder widgets, or shallow green tests.
-   - If the expected live/manual-test behavior is materially stronger than what the checkpoint currently proves, split the work or tighten the acceptance criteria now.
-   - Keep PLAN bounded to the current stage, the next few committed stages, and concise non-blocking verification items. Remove stale/speculative scaffolding instead of accumulating it.
-   - Do not design elaborate evidence requirements. Prefer the smallest check that would catch likely backsliding.
+  - If the expected live/manual-test behavior is materially stronger than what the checkpoint currently proves, split the work or tighten the acceptance criteria now.
+  - Keep PLAN bounded to the current stage, the next few committed stages, and concise non-blocking verification items. Remove stale/speculative scaffolding instead of accumulating it.
+  - Do not design elaborate evidence requirements. Prefer the smallest check that would catch likely backsliding.
+  - Use `[DEFERRED]` only for blocked work with a real reason and unblock condition. Waiting on human feedback is legitimate; hiding required foundations is not.
 
 REQUIRED OUTPUT
 - Key design decisions made (3-5 bullet points)
@@ -148,7 +150,7 @@ REQUIRED STATE MUTATIONS
 ACTIVE ISSUE BLOCK (required format)
 - [ ] ISSUE-123: Short title
   - Impact: QUESTION|MINOR|MAJOR|BLOCKER
-  - Status: OPEN|IN_PROGRESS|BLOCKED|RESOLVED|DECISION_REQUIRED
+  - Status: OPEN|IN_PROGRESS|BLOCKED|RESOLVED|DECISION_REQUIRED|DEFERRED
   - Owner: agent|human
   - Unblock Condition: Specific condition to proceed
   - Evidence Needed: Command/output/link that closes the issue
@@ -176,10 +178,11 @@ EXECUTION
 1) Implement the current checkpoint and directly related low-risk cleanup in the same ownership area.
 2) Keep diffs scoped, but change existing code when that is clearer than layering additions beside it.
 3) Run the smallest useful verification/demo commands for the risk. Put useful non-blocking verification into a concise future PLAN item instead of blocking the next capability.
-4) If required verification fails and the cause is outside the ownership area, record an issue and stop.
-5) Commit at least once using `<checkpoint_id>:` prefix (imperative mood).
-6) If unresolved `Impact: MAJOR|BLOCKER` issues remain, do not hand off as ready-for-review; set status to `BLOCKED` and route to triage.
-7) Trust-but-verify self-check (required, lightweight):
+4) If the active issue/checkpoint/stage is blocked but later independent work can safely proceed, mark it `[DEFERRED]`, add a short reason + unblock/revisit condition, move the STATE pointer to the next safe checkpoint, and keep going. Do not defer a foundation that the next checkpoint depends on.
+5) If required verification fails and the cause is outside the ownership area, record an issue; defer only when the next work is independent, otherwise stop.
+6) Commit at least once using `<checkpoint_id>:` prefix (imperative mood).
+7) If unresolved `Impact: MAJOR|BLOCKER` issues remain and cannot be deferred behind independent work, do not hand off as ready-for-review; set status to `BLOCKED` and route to triage.
+8) Trust-but-verify self-check (required, lightweight):
    - Ask: would a reasonable operator trust this next handoff?
    - Check `correctness`, `scope_control`, `evidence_signal`, and `state_transition_accuracy`.
    - If any answer is shaky, run one targeted repair/check. If still shaky, set status to `IN_PROGRESS|BLOCKED` and route to `issues_triage`.
@@ -238,7 +241,7 @@ REQUIRED STATE MUTATIONS
   - Set status to `IN_PROGRESS` or `BLOCKED`.
   - Add/update issues using the required issue block schema.
 - PASS path:
-  - Determine next checkpoint in PLAN order (skip `(DONE)`, `(SKIPPED)`, `(SKIP)` entries).
+  - Determine next checkpoint in PLAN order (skip `(DONE)`, `(SKIPPED)`, `(SKIP)`, and `[DEFERRED]` entries/stages).
   - If no next checkpoint exists: keep current checkpoint, set status `DONE`, add "plan exhausted" evidence note.
   - If next checkpoint is in the same stage: update checkpoint to next and set status `NOT_STARTED` (auto-advance).
   - If next checkpoint is in a different stage: keep current checkpoint as `DONE` so dispatcher routes to consolidation.
@@ -246,7 +249,7 @@ REQUIRED STATE MUTATIONS
 ACTIVE ISSUE BLOCK (required format)
 - [ ] ISSUE-123: Short title
   - Impact: QUESTION|MINOR|MAJOR|BLOCKER
-  - Status: OPEN|IN_PROGRESS|BLOCKED|RESOLVED|DECISION_REQUIRED
+  - Status: OPEN|IN_PROGRESS|BLOCKED|RESOLVED|DECISION_REQUIRED|DEFERRED
   - Owner: agent|human
   - Unblock Condition: Specific condition to proceed
   - Evidence Needed: Command/output/link that closes the issue
@@ -337,7 +340,7 @@ change set.
 PREFLIGHT
 1) Read `AGENTS.md` (optional if already read), `.vibe/STATE.md`, `.vibe/PLAN.md`, `README.md` (optional).
 2) Rank issues using impact-first ordering: `BLOCKER > MAJOR > MINOR > QUESTION`, then by unblock value and blast radius.
-3) Produce a "Top 5 issues by impact" list before editing anything.
+3) Produce a "Top 5 issues by impact" list before editing anything. Exclude `[DEFERRED]` issues unless their unblock condition appears satisfied.
 4) Select only the top 1-2 issues for active resolution in this loop.
 
 ALLOWED FILES
@@ -348,13 +351,14 @@ ALLOWED FILES
 REQUIRED STATE MUTATIONS
 - For resolved issues: mark resolved and move to HISTORY if your repo uses that pattern.
 - For unresolved issues: keep active and update notes with what is still required.
+- For blocked issues that do not block independent next work: mark `Status: DEFERRED` or `[DEFERRED]`, add the reason/unblock condition in Notes, and keep the project moving. Waiting on human feedback is a legitimate reason.
 - Add one lightweight evidence receipt for each resolved issue.
 - If blocked on missing information, add up to 2 explicit questions.
 
 ACTIVE ISSUE BLOCK (required format)
 - [ ] ISSUE-123: Short title
   - Impact: QUESTION|MINOR|MAJOR|BLOCKER
-  - Status: OPEN|IN_PROGRESS|BLOCKED|RESOLVED|DECISION_REQUIRED
+  - Status: OPEN|IN_PROGRESS|BLOCKED|RESOLVED|DECISION_REQUIRED|DEFERRED
   - Owner: agent|human
   - Unblock Condition: Specific condition to proceed
   - Evidence Needed: Command/output/link that closes the issue
@@ -373,7 +377,7 @@ EXECUTION
 6) Trust-but-verify issue check (required, lightweight):
    - For each resolved/updated issue claim, record `confidence` (0.0-1.0) and `evidence_strength` (`LOW|MEDIUM|HIGH`).
    - If any `critical: true` claim has `confidence < 0.75` or `evidence_strength == LOW`, set status to `IN_PROGRESS|BLOCKED` and route to `issues_triage`.
-7) Re-rank remaining issues after updates and record the next recommended issue.
+7) Re-rank remaining issues after updates and record the next recommended issue. Reconsider deferred issues first if their unblock condition is now true; otherwise leave the deferral note compact.
 
 REQUIRED OUTPUT
 - Top 5 issues by impact (ordered).
@@ -437,16 +441,17 @@ REQUIRED COMMANDS
 
 EXECUTION
 1) Archive completed stages into `.vibe/HISTORY.md` with concise stage summaries.
-2) Prune `.vibe/STATE.md`:
+2) Review `[DEFERRED]` issues/checkpoints/stages before pruning. Reactivate any whose unblock condition is satisfied; otherwise preserve only compact notes with reason, owner, and revisit condition.
+3) Prune `.vibe/STATE.md`:
    - keep at most 10 work log entries (remove oldest first)
    - clear bulky evidence for old checkpoints after preserving the outcome summary
    - sync objective/deliverables/acceptance to active checkpoint
-3) Prune `.vibe/PLAN.md`:
+4) Prune `.vibe/PLAN.md`:
    - keep the current stage, the next 1-3 committed stages, and a concise non-blocking verification backlog
    - remove fully completed stages after summarizing outcomes in HISTORY
    - remove stale/speculative checkpoints that repository evidence no longer supports
-   - Preserve any stages/checkpoints marked (SKIP) only when the deferred item still has a real owner/outcome; compress long-range ideas instead of carrying full checkpoint scaffolding
-4) If no stage transition is needed, do not change checkpoint status unless required for alignment.
+   - Preserve any stages/checkpoints marked (SKIP) or `[DEFERRED]` only when the deferred item still has a real owner/outcome; compress long-range ideas instead of carrying full checkpoint scaffolding
+5) If no stage transition is needed, do not change checkpoint status unless required for alignment.
 
 REQUIRED OUTPUT
 - Stages archived.
@@ -633,7 +638,7 @@ ALLOWED FILES
 - `.vibe/STATE.md`
 
 REQUIRED STATE MUTATIONS
-- Set `Checkpoint` to the immediate next checkpoint only.
+- Set `Checkpoint` to the immediate next executable checkpoint only, skipping `(DONE)`, `(SKIPPED)`, `(SKIP)`, and `[DEFERRED]` entries/stages.
 - Set `Status` to `NOT_STARTED`.
 - Append one work-log entry noting manual advance.
 - If no next checkpoint exists, keep checkpoint unchanged and add a "plan exhausted" evidence note.
@@ -642,8 +647,8 @@ REQUIRED COMMANDS
 - `python3 .codex/skills/vibe-loop/scripts/agentctl.py --repo-root . validate --format json`
 
 EXECUTION
-1) Move forward by one checkpoint at most.
-2) Do not change `.vibe/PLAN.md`.
+1) Move forward to the next executable checkpoint only; skipped/deferred entries do not count as executable work.
+2) Do not change `.vibe/PLAN.md` except to add a missing `[DEFERRED]` reason/unblock note when the current pointer cannot otherwise advance safely.
 3) Do not implement product code.
 
 REQUIRED OUTPUT
