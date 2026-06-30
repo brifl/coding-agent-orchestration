@@ -200,7 +200,13 @@ For non-interactive dry-runs (no executor), use
 To invoke `workflows/continuous-refactor.yaml`, pass the workflow name
 `continuous-refactor` (without `.yaml`) to `agentctl next`.
 
-Using repo-local skills:
+From this source repo:
+
+```bash
+python3 tools/agentctl.py --repo-root . --format json next --workflow continuous-refactor
+```
+
+From an installed repo-local `vibe-loop` skill:
 
 ```bash
 python3 .codex/skills/vibe-loop/scripts/agentctl.py --repo-root . --format json next --workflow continuous-refactor

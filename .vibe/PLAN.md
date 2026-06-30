@@ -38,39 +38,12 @@ Make a newly installed Vibe repo immediately useful in current Codex: one repo-p
 
 ---
 
-## Stage 34 — Packaging Surface Simplification
-
-**Stage objective:**
-Eliminate hand-maintained runtime mirrors so each helper has one source and installation produces only the files the supported runtime needs.
-
-### 34.0 — Remove tracked helper mirrors
-
-* **Objective:**
-  Replace duplicated `.codex/skills/**/scripts` implementations with a single source-owned packaging path.
-* **Deliverables:**
-  * One source location for each runtime helper currently duplicated between `tools/` and skill script directories
-  * Installer packaging that derives runtime files from those sources without a second editable copy
-  * Removal of stale mirror-specific fallback and drift code made unnecessary by the new layout
-  * Focused installation/runtime regression coverage
-* **Acceptance:**
-  * Editing a runtime helper requires changing one tracked source file.
-  * Fresh repo and global installs still run `vibe-loop` and `vibe-run` from their installed layout.
-  * No new manifest, flag, or compatibility layer is introduced unless it replaces more surface than it adds.
-  * `python3 -m pytest tests/workflow/test_bootstrap.py tests/workflow/test_skill_tooling.py tests/workflow/test_vibe_run.py -v --capture=sys` passes.
-* **Demo commands:**
-  * `python3 -m pytest tests/workflow/test_bootstrap.py tests/workflow/test_skill_tooling.py tests/workflow/test_vibe_run.py -v --capture=sys`
-  * `git ls-files '.codex/skills/**/scripts/*.py'`
-* **Evidence:**
-  * Source inventory before/after and installed-runtime test output.
-
----
-
-## Stage 35 — State And Roadmap Hygiene
+## Stage 34 — State And Roadmap Hygiene
 
 **Stage objective:**
 Keep active workflow context small enough that operators and agents can see the next decision without excavating historical noise.
 
-### 35.0 — Bound active state and plan content
+### 34.0 — Bound active state and plan content
 
 * **Objective:**
   Make consolidation reliably keep only current roadmap/state material while archiving durable outcomes.

@@ -48,10 +48,11 @@ steps:
 
 ## Invoke from skills
 
-Use the `vibe-loop` skill's `agentctl.py` and pass workflow name (file stem):
+Use the source dispatcher in this repo, or the generated `vibe-loop` skill
+dispatcher after install, and pass workflow name (file stem):
 
 ```bash
-python3 .codex/skills/vibe-loop/scripts/agentctl.py --repo-root . --format json next --workflow continuous-refactor
+python3 tools/agentctl.py --repo-root . --format json next --workflow continuous-refactor
 ```
 
 This selects prompts from `workflows/continuous-refactor.yaml` while still

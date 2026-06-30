@@ -24,16 +24,17 @@ This skill can:
 
 ## Scripts
 
-- `scripts/prompt_catalog.py`
-- `scripts/vibe_get_prompt.py`
+- Source repo: `tools/prompt_catalog.py` is the editable parser source.
+- Installed skill: `scripts/prompt_catalog.py` is generated from `tools/prompt_catalog.py` by bootstrap tooling.
+- Skill-owned wrapper: `scripts/vibe_get_prompt.py`.
 
 ## How to use
 
 - List prompts:
-  - Source repo: `python3 .codex/skills/vibe-prompts/scripts/prompt_catalog.py prompts/template_prompts.md list`
+  - Source repo: `python3 tools/prompt_catalog.py prompts/template_prompts.md list`
   - Installed skill directory: `python3 scripts/prompt_catalog.py resources/template_prompts.md list`
 - Get a prompt body:
-  - Source repo: `python3 .codex/skills/vibe-prompts/scripts/vibe_get_prompt.py prompts/template_prompts.md prompt.stage_design`
+  - Source repo: `python3 tools/prompt_catalog.py prompts/template_prompts.md get prompt.stage_design`
   - Installed skill directory: `python3 scripts/vibe_get_prompt.py resources/template_prompts.md prompt.stage_design`
   - `vibe_get_prompt.py` wraps `prompt_catalog.py get` and prints only the prompt body so it can be pasted directly into a loop
 

@@ -13,6 +13,10 @@
 
 ## Completed stages
 
+### 2026-06-30 — Prompt and helper source simplification (continuous refactor)
+
+Removed tracked prompt/resource and runtime-helper mirrors from source skills: `prompts/template_prompts.md` and `tools/*.py` are the editable sources, while bootstrap generates installed skill resources/scripts. Updated skills, docs, tests, and roadmap entries so source-vs-installed paths are explicit and stale future packaging work is not left in PLAN.
+
 ### 2026-03-08 — Stage 31: Codex Runtime Self-Sufficiency (completed)
 
 Removed downstream Codex patch requirements by making runtime/helper installs self-sufficient, adding standalone import fallbacks for vendored tooling, and preserving triage acknowledgement across same-state loop results (checkpoint 31.0).

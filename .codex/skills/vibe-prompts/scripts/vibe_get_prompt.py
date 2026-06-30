@@ -6,7 +6,7 @@ Convenience wrapper around prompt_catalog.py for the Codex vibe-prompts skill.
 Prints a prompt body by stable ID or title.
 
 Usage:
-  python3 scripts/vibe_get_prompt.py resources/template_prompts.md prompt.onboarding
+  python3 scripts/vibe_get_prompt.py resources/template_prompts.md prompt.stage_design
 """
 
 from __future__ import annotations
@@ -14,8 +14,16 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-# prompt_catalog.py is expected to be in the same scripts/ folder after install
-from prompt_catalog import load_catalog, find_entry  # type: ignore
+try:
+    # Installed skills generate prompt_catalog.py into this same scripts folder.
+    from prompt_catalog import find_entry, load_catalog  # type: ignore
+except ModuleNotFoundError as exc:
+    if exc.name != "prompt_catalog":
+        raise
+    source_tools = Path(__file__).resolve().parents[4] / "tools"
+    if str(source_tools) not in sys.path:
+        sys.path.insert(0, str(source_tools))
+    from prompt_catalog import find_entry, load_catalog  # type: ignore
 
 
 def main(argv: list[str]) -> int:

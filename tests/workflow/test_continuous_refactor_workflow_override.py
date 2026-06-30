@@ -2,12 +2,15 @@
 from __future__ import annotations
 
 import json
+import io
 import shutil
 import subprocess
 import sys
+from contextlib import redirect_stdout
 from pathlib import Path
 
 from agentctl import StateInfo, _resolve_next_prompt_selection, build_parser  # type: ignore
+from bootstrap import install_repo  # type: ignore
 
 
 def _write_state(repo_root: Path, body: str) -> None:
@@ -98,6 +101,13 @@ def _seed_workflow_engine(repo_root: Path) -> None:
     tools_dir.mkdir(parents=True, exist_ok=True)
     src = Path(__file__).resolve().parents[2] / "tools" / "workflow_engine.py"
     shutil.copyfile(src, tools_dir / "workflow_engine.py")
+
+
+def _install_packaged_agentctl(repo_root: Path) -> Path:
+    buffer = io.StringIO()
+    with redirect_stdout(buffer):
+        assert install_repo(repo_root) == 0
+    return repo_root / ".codex" / "skills" / "vibe-loop" / "scripts" / "agentctl.py"
 
 
 def _run_json_command(capsys, argv: list[str]) -> tuple[int, dict[str, object]]:
@@ -278,7 +288,7 @@ def test_skill_packaged_cmd_next_continuous_refactor_uses_strict_cycle(temp_repo
     _seed_continuous_refactor_workflow(temp_repo)
     _seed_workflow_engine(temp_repo)
 
-    skill_agentctl = Path(__file__).resolve().parents[2] / ".codex" / "skills" / "vibe-loop" / "scripts" / "agentctl.py"
+    skill_agentctl = _install_packaged_agentctl(temp_repo)
     proc = subprocess.run(
         [
             sys.executable,
@@ -328,7 +338,7 @@ def test_skill_packaged_cmd_next_continuous_refactor_uses_repo_skill_prompt_cata
 """,
     )
     _seed_continuous_refactor_skill_prompt_catalog(temp_repo)
-    skill_agentctl = Path(__file__).resolve().parents[2] / ".codex" / "skills" / "vibe-loop" / "scripts" / "agentctl.py"
+    skill_agentctl = _install_packaged_agentctl(temp_repo)
     proc = subprocess.run(
         [
             sys.executable,

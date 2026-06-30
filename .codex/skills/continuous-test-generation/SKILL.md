@@ -41,6 +41,9 @@ The `--workflow continuous-test-generation` flag is **required** — it activate
 the continuous override that ignores normal plan-state routing and selects from
 the test generation prompt rotation instead.
 
+In this orchestration source repo, use `tools/agentctl.py` and `tools/prompt_catalog.py`
+instead; the `.codex` runtime helper scripts are generated during install.
+
 ### LOOP_RESULT format
 
 After executing each prompt, emit a LOOP_RESULT JSON line with the dispatcher-required

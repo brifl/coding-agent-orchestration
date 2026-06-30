@@ -38,7 +38,6 @@ Make fresh installs and exhausted `$vibe-run` sessions inspect the target reposi
 
 ## Work log (current session)
 
-- 2026-06-30: User-prioritized Stage 33.0 started to modernize repo installation and make `$vibe-run` bootstrap a repository-aware executable backlog before implementation.
 - 2026-06-30: 33.0 implemented — direct repo-path installation, clean/preserving bootstrap behavior, fresh/exhausted-plan design routing, Codex-native skill metadata, repository-aware planning prompts, docs, and regression coverage committed in `38620d0`.
 - 2026-06-30: 33.0 review feedback reopened implementation — remove additive legacy launch surfaces and encode senior ownership/anti-clutter behavior in canonical instructions and prompts.
 - 2026-06-30: 33.0 review repair implemented in `1abe5ff` — added ownership/roadmap rules, made prompts deletion- and default-oriented, removed duplicate launch/version/dependency surfaces, and reduced active PLAN to current plus two committed stages.
@@ -47,6 +46,8 @@ Make fresh installs and exhausted `$vibe-run` sessions inspect the target reposi
 - 2026-06-30: Review handoff cleanup committed in `e03e2b6` — non-implementation dispatcher payloads now keep `recommended_role` and `recommended_roles` coherent instead of advertising parallel implementation during review.
 - 2026-06-30: Continuous refactor scan selected prompt-catalog source simplification: remove the tracked `.codex/skills/vibe-prompts/resources/template_prompts.md` mirror and keep `prompts/template_prompts.md` as the single editable prompt catalog.
 - 2026-06-30: Continuous refactor execution removed the prompt catalog mirror, updated prompt/skill docs to use the dispatcher-returned `prompt_catalog_path`, and kept installed repo behavior by verifying bootstrap still generates the `vibe-prompts` resource artifact.
+- 2026-06-30: Continuous refactor scan selected runtime helper mirror simplification after finding generated helper copies under `.codex/skills/**/scripts` and one already-drifted `agentctl.py` mirror.
+- 2026-06-30: Continuous refactor execution removed generated helper mirrors from source skills, kept skill-owned wrappers, updated source-vs-installed skill guidance, and pruned the now-completed packaging surface checkpoint from PLAN into HISTORY.
 
 ## Workflow state
 
@@ -70,6 +71,8 @@ Make fresh installs and exhausted `$vibe-run` sessions inspect the target reposi
 - Refactor validation -> `python3 .codex/skills/vibe-loop/scripts/agentctl.py --repo-root . validate --strict` -> `ok: True`; `python3 -m ruff check tools/bootstrap.py tests/workflow/test_bootstrap.py tests/workflow/test_prompt_flow_integrity.py` -> all checks passed.
 - Continuous refactor verification -> `python3 -m pytest tests/workflow/test_prompt_flow_integrity.py tests/workflow/test_bootstrap.py tests/workflow/test_skill_tooling.py tests/workflow/test_vibe_run.py tests/workflow/test_prompt_catalog_validation.py tests/workflow/test_continuous_refactor_workflow_override.py tests/workflow/test_continuous_aux_workflow_overrides.py -v --capture=sys` -> `56 passed in 30.47s`.
 - Fresh install prompt-resource smoke -> direct `tools/bootstrap.py "$tmp"` install generated `.codex/skills/vibe-prompts/resources/template_prompts.md`; installed `agentctl.py --workflow continuous-refactor` returned `prompt.refactor_scan`; installed `prompt_catalog.py` printed the refactor scan prompt from the returned `prompt_catalog_path`.
+- Runtime-helper mirror verification -> `python3 -m pytest tests/workflow/test_bootstrap.py tests/workflow/test_prompt_flow_integrity.py tests/workflow/test_continuous_refactor_workflow_override.py tests/workflow/test_continuous_aux_workflow_overrides.py tests/workflow/test_skill_tooling.py tests/workflow/test_vibe_run.py -v --capture=sys` -> `55 passed in 48.71s`.
+- Helper script smoke -> source `vibe_get_prompt.py` printed `prompt.refactor_scan` via `tools/prompt_catalog.py` fallback; fresh install generated `.codex/skills/vibe-loop/scripts/agentctl.py` and `.codex/skills/vibe-prompts/scripts/prompt_catalog.py`, returned `prompt.refactor_scan`, and used the installed prompt resource path.
 
 ## Active issues
 

@@ -2,11 +2,14 @@
 from __future__ import annotations
 
 import json
+import io
 import subprocess
 import sys
+from contextlib import redirect_stdout
 from pathlib import Path
 
 from agentctl import Issue, StateInfo, _resolve_next_prompt_selection, build_parser  # type: ignore
+from bootstrap import install_repo  # type: ignore
 
 
 def _write_state(repo_root: Path, body: str) -> None:
@@ -31,6 +34,13 @@ def _write_workflow(repo_root: Path, name: str, body: str) -> None:
     workflows_dir = repo_root / "workflows"
     workflows_dir.mkdir(parents=True, exist_ok=True)
     (workflows_dir / f"{name}.yaml").write_text(body, encoding="utf-8")
+
+
+def _install_packaged_agentctl(repo_root: Path) -> Path:
+    buffer = io.StringIO()
+    with redirect_stdout(buffer):
+        assert install_repo(repo_root) == 0
+    return repo_root / ".codex" / "skills" / "vibe-loop" / "scripts" / "agentctl.py"
 
 
 def _write_loop_result(repo_root: Path, findings: list[dict[str, str]]) -> None:
@@ -568,7 +578,7 @@ steps:
 """,
     )
 
-    skill_agentctl = Path(__file__).resolve().parents[2] / ".codex" / "skills" / "vibe-loop" / "scripts" / "agentctl.py"
+    skill_agentctl = _install_packaged_agentctl(temp_repo)
     proc = subprocess.run(
         [
             sys.executable,

@@ -197,6 +197,31 @@ def test_repo_ships_prompt_catalog_as_single_editable_source() -> None:
         assert not path.exists(), path
 
 
+def test_repo_skills_do_not_track_generated_runtime_helper_mirrors() -> None:
+    repo_root = Path(__file__).resolve().parents[2]
+    generated_helpers = [
+        repo_root / ".codex" / "skills" / "vibe-loop" / "scripts" / "agentctl.py",
+        repo_root / ".codex" / "skills" / "vibe-loop" / "scripts" / "checkpoint_templates.py",
+        repo_root / ".codex" / "skills" / "vibe-loop" / "scripts" / "constants.py",
+        repo_root / ".codex" / "skills" / "vibe-loop" / "scripts" / "path_utils.py",
+        repo_root / ".codex" / "skills" / "vibe-loop" / "scripts" / "prompt_catalog_paths.py",
+        repo_root / ".codex" / "skills" / "vibe-loop" / "scripts" / "resource_resolver.py",
+        repo_root / ".codex" / "skills" / "vibe-loop" / "scripts" / "stage_ordering.py",
+        repo_root / ".codex" / "skills" / "vibe-prompts" / "scripts" / "prompt_catalog.py",
+    ]
+    skill_owned_scripts = [
+        repo_root / ".codex" / "skills" / "vibe-loop" / "scripts" / "vibe_next_and_print.py",
+        repo_root / ".codex" / "skills" / "vibe-loop" / "scripts" / "vibe_mark_done.py",
+        repo_root / ".codex" / "skills" / "vibe-prompts" / "scripts" / "vibe_get_prompt.py",
+        repo_root / ".codex" / "skills" / "vibe-run" / "scripts" / "vibe_run.py",
+    ]
+
+    for path in generated_helpers:
+        assert not path.exists(), path
+    for path in skill_owned_scripts:
+        assert path.exists(), path
+
+
 def test_resolve_prompt_catalog_supports_repo_local_skill_layout(tmp_path: Path) -> None:
     repo_root = tmp_path
     catalog = repo_root / ".codex" / "skills" / "vibe-prompts" / "resources" / "template_prompts.md"

@@ -17,11 +17,16 @@ execution backlog, not as a substitute for inspecting the repository.
    python3 .codex/skills/vibe-loop/scripts/agentctl.py --repo-root . --format json next --workflow vibe-run
    ```
 
+   In this orchestration source repo, use `python3 tools/agentctl.py ...` instead;
+   the `.codex` dispatcher script is generated during install.
+
 3. Fetch `recommended_prompt_id` from the returned `prompt_catalog_path`:
 
    ```bash
    python3 .codex/skills/vibe-prompts/scripts/prompt_catalog.py <prompt_catalog_path> get <recommended_prompt_id>
    ```
+
+   In this orchestration source repo, use `python3 tools/prompt_catalog.py ...` instead.
 
 4. Follow the fetched prompt as the current loop. Inspect and edit the repository
    yourself; `scripts/vibe_run.py` is a terminal/headless helper, not a replacement
