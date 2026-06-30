@@ -40,6 +40,7 @@ def test_install_repo_overwrite_replaces_canonical_docs(tmp_path: Path) -> None:
 
 def test_install_repo_installs_vibe_base_skills_by_default(tmp_path: Path) -> None:
     repo_root = Path(__file__).resolve().parents[2]
+    canonical_catalog = repo_root / "prompts" / "template_prompts.md"
     buffer = io.StringIO()
     with redirect_stdout(buffer):
         exit_code = install_repo(tmp_path)
@@ -66,7 +67,8 @@ def test_install_repo_installs_vibe_base_skills_by_default(tmp_path: Path) -> No
     assert (skills_root / "vibe-loop" / "scripts" / "path_utils.py").read_bytes() == (
         repo_root / "tools" / "path_utils.py"
     ).read_bytes()
-    assert (skills_root / "vibe-prompts" / "resources" / "template_prompts.md").exists()
+    installed_catalog = skills_root / "vibe-prompts" / "resources" / "template_prompts.md"
+    assert installed_catalog.read_bytes() == canonical_catalog.read_bytes()
     assert not (skills_root / "vibe-run" / "resources" / "template_prompts.md").exists()
     assert not (skills_root / "continuous-refactor" / "resources" / "template_prompts.md").exists()
     assert not any(path.name == "__pycache__" for path in skills_root.rglob("__pycache__"))

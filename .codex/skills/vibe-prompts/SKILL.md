@@ -9,7 +9,7 @@ description: Deterministic access to the Vibe prompt catalog.
 Provide deterministic access to the Vibe prompt catalog.
 
 This skill can:
-- list available prompt IDs/titles from `resources/template_prompts.md`
+- list available prompt IDs/titles from the prompt catalog
 - print a prompt body by stable ID (or title) so it can be pasted into a chat or used as context
 
 ## Inputs
@@ -19,7 +19,8 @@ This skill can:
 
 ## Resources
 
-- `resources/template_prompts.md` (canonical prompt catalog; synced by bootstrap install tooling)
+- Source repo: `prompts/template_prompts.md` is the single editable catalog.
+- Installed skill: `resources/template_prompts.md` is generated from the source catalog by bootstrap tooling.
 
 ## Scripts
 
@@ -29,9 +30,11 @@ This skill can:
 ## How to use
 
 - List prompts:
-  - Run: `python3 scripts/prompt_catalog.py resources/template_prompts.md list`
+  - Source repo: `python3 .codex/skills/vibe-prompts/scripts/prompt_catalog.py prompts/template_prompts.md list`
+  - Installed skill directory: `python3 scripts/prompt_catalog.py resources/template_prompts.md list`
 - Get a prompt body:
-  - Run: `python3 scripts/vibe_get_prompt.py resources/template_prompts.md prompt.onboarding`
+  - Source repo: `python3 .codex/skills/vibe-prompts/scripts/vibe_get_prompt.py prompts/template_prompts.md prompt.stage_design`
+  - Installed skill directory: `python3 scripts/vibe_get_prompt.py resources/template_prompts.md prompt.stage_design`
   - `vibe_get_prompt.py` wraps `prompt_catalog.py get` and prints only the prompt body so it can be pasted directly into a loop
 
 ## Output

@@ -25,7 +25,8 @@ Agents do **not** invent workflows. They run the prompt loop recommended by `age
 ## How work progresses
 
 1) `agentctl.py next` chooses the next loop (implement, review, triage, consolidation, etc.).
-2) The loop prompt is fetched from `.codex/skills/vibe-prompts/resources/template_prompts.md` and executed.
+2) The loop prompt is fetched from `prompts/template_prompts.md` in this source repo
+   or from the generated `vibe-prompts/resources/template_prompts.md` artifact in an installed repo.
 3) The agent updates `.vibe/STATE.md` with evidence and status changes.
 4) Record the emitted `LOOP_RESULT: {...}` line:
    `python3 tools/agentctl.py --repo-root . --format json loop-result --line 'LOOP_RESULT: {...}'`
@@ -43,11 +44,11 @@ Stages are expected to be consolidated before moving to the next stage.
     PLAN.md               # checkpoint backlog
     HISTORY.md            # rollups and archived work
     CONTEXT.md            # snapshot of key context
-  prompts/                # bootstrap prompts and templates
+  prompts/                # bootstrap prompts and the editable loop catalog
   tools/                  # deterministic workflow tools
   templates/              # repo bootstrap + checkpoint/gate templates
   .codex/
-    skills/               # skill packages + resources/template_prompts.md copies
+    skills/               # skill packages; prompt resources are generated during install
 ```
 
 `.vibe/` is ignored by default to avoid constant churn. If your repo benefits from versioning
@@ -66,7 +67,7 @@ The control plane for the workflow. Key commands:
 
 ### `tools/prompt_catalog.py`
 
-Lists and retrieves prompts from `.codex/skills/vibe-prompts/resources/template_prompts.md` by stable ID.
+Lists and retrieves prompts from `prompts/template_prompts.md` by stable ID.
 
 ### `tools/checkpoint_templates.py`
 
@@ -74,7 +75,7 @@ Lists, previews, and instantiates checkpoint templates from `templates/checkpoin
 
 ## Workflow loops (what they do)
 
-Loops are defined in `.codex/skills/vibe-prompts/resources/template_prompts.md` and chosen by `agentctl.py`:
+Loops are defined in `prompts/template_prompts.md` and chosen by `agentctl.py`:
 
 | Loop role | Prompt ID | Intended job |
 | --- | --- | --- |

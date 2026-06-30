@@ -6,12 +6,13 @@ This document describes the supported skill-pack entrypoints for Codex and Claud
 
 Both supported agents use the same prompt catalog:
 - Bootstraps: `prompts/init/*.md`
-- Loop catalog: `.codex/skills/vibe-prompts/resources/template_prompts.md`
+- Editable loop catalog source: `prompts/template_prompts.md`
+- Installed loop catalog artifact: `.codex/skills/vibe-prompts/resources/template_prompts.md`
 
 ## Codex (reference)
 
 - **Instructions**: use `$vibe-loop` or `$vibe-run` skills.
-- **Prompt pack**: bundled into the Codex skill resources.
+- **Prompt pack**: generated into Codex skill resources during install.
 - **Invocation pattern**:
   1) Run `$vibe-loop` for single-loop execution.
   2) Run `$vibe-run` for continuous execution (do not stop after one loop or

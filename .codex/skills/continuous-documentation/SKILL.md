@@ -27,8 +27,8 @@ Run one dispatcher step at a time:
 # 1. Ask the dispatcher for the next prompt
 python3 .codex/skills/vibe-loop/scripts/agentctl.py --repo-root . --format json next --workflow continuous-documentation
 
-# 2. Read the prompt body from the catalog
-python3 .codex/skills/vibe-prompts/scripts/prompt_catalog.py .codex/skills/vibe-prompts/resources/template_prompts.md get <recommended_prompt_id>
+# 2. Read the prompt body from the catalog path returned by the dispatcher
+python3 .codex/skills/vibe-prompts/scripts/prompt_catalog.py <prompt_catalog_path> get <recommended_prompt_id>
 
 # 3. Execute the prompt body (do the actual documentation work)
 
@@ -44,7 +44,8 @@ documentation prompt rotation instead.
 
 ### LOOP_RESULT format
 
-After executing each prompt, emit a LOOP_RESULT JSON line with these required fields:
+After executing each prompt, emit a LOOP_RESULT JSON line with the dispatcher-required
+report fields:
 
 ```json
 {
@@ -54,16 +55,40 @@ After executing each prompt, emit a LOOP_RESULT JSON line with these required fi
   "checkpoint": "<current_checkpoint>",
   "status": "<current_status>",
   "next_role_hint": "implement|review|stop",
+  "workflow": "continuous-documentation",
   "report": {
-    "acceptance_matrix": [],
+    "acceptance_matrix": [
+      {
+        "item": "<checked behavior>",
+        "status": "PASS|FAIL|N/A",
+        "evidence": "<command or file evidence>",
+        "critical": true,
+        "confidence": 0.9,
+        "evidence_strength": "LOW|MEDIUM|HIGH"
+      }
+    ],
     "top_findings": [
-      {"impact": "MAJOR|MODERATE|MINOR", "title": "...", "evidence": "...", "action": "..."}
-    ]
+      {"impact": "MAJOR|MINOR", "title": "[MAJOR|MODERATE|MINOR] ...", "evidence": "...", "action": "..."}
+    ],
+    "state_transition": {
+      "before": {"stage": "<current_stage>", "checkpoint": "<current_checkpoint>", "status": "<previous_status>"},
+      "after": {"stage": "<current_stage>", "checkpoint": "<current_checkpoint>", "status": "<current_status>"}
+    },
+    "loop_result": {
+      "loop": "implement",
+      "result": "ready_for_review",
+      "stage": "<current_stage>",
+      "checkpoint": "<current_checkpoint>",
+      "status": "<current_status>",
+      "next_role_hint": "implement|review|stop"
+    }
   }
 }
 ```
 
-Use impact tags (`[MAJOR]`, `[MODERATE]`, `[MINOR]`) in `top_findings` titles.
+Use idea impact tags (`[MAJOR]`, `[MODERATE]`, `[MINOR]`) in `top_findings` titles.
+The structured `impact` field follows the dispatcher impact schema; use the title tag
+for the continuous-workflow major/moderate/minor idea threshold.
 The workflow stops when only `[MINOR]` findings remain.
 
 ## Scripts (wrapper)

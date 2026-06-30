@@ -124,14 +124,13 @@ def test_repo_workflow_prompt_ids_exist_and_are_mapped() -> None:
 def test_repo_prompt_catalog_is_canonical_source() -> None:
     repo_root = Path(__file__).resolve().parents[2]
     expected_catalog = repo_root / "prompts" / "template_prompts.md"
-    installed_copy = repo_root / ".codex" / "skills" / "vibe-prompts" / "resources" / "template_prompts.md"
+    source_mirror = repo_root / ".codex" / "skills" / "vibe-prompts" / "resources" / "template_prompts.md"
     catalog_index, catalog_path, catalog_error = _load_prompt_catalog_index(repo_root)
 
     assert catalog_error is None
     assert catalog_path == expected_catalog
     assert expected_catalog.exists()
-    assert installed_copy.exists()
-    assert expected_catalog.read_text(encoding="utf-8") == installed_copy.read_text(encoding="utf-8")
+    assert not source_mirror.exists()
     assert "prompt.stage_design" in catalog_index
 
 
@@ -184,14 +183,10 @@ def test_removed_launch_aliases_do_not_reappear() -> None:
         assert "bootstrap.py init-repo" not in text, path
 
 
-def test_repo_shipped_skill_prompt_catalog_is_only_in_vibe_prompts() -> None:
+def test_repo_ships_prompt_catalog_as_single_editable_source() -> None:
     repo_root = Path(__file__).resolve().parents[2]
-    canonical = (repo_root / "prompts" / "template_prompts.md").read_text(encoding="utf-8")
-    canonical_copy = repo_root / ".codex" / "skills" / "vibe-prompts" / "resources" / "template_prompts.md"
-    assert canonical_copy.exists()
-    assert canonical_copy.read_text(encoding="utf-8") == canonical
-
     absent_targets = [
+        repo_root / ".codex" / "skills" / "vibe-prompts" / "resources" / "template_prompts.md",
         repo_root / ".codex" / "skills" / "vibe-loop" / "resources" / "template_prompts.md",
         repo_root / ".codex" / "skills" / "vibe-run" / "resources" / "template_prompts.md",
         repo_root / ".codex" / "skills" / "continuous-refactor" / "resources" / "template_prompts.md",

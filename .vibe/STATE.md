@@ -45,6 +45,8 @@ Make fresh installs and exhausted `$vibe-run` sessions inspect the target reposi
 - 2026-06-30: Review smoke gate exposed a 30-second per-command budget mismatch; split the same 94-test coverage into two focused demo commands instead of adding a timeout parameter.
 - 2026-06-30: Smoke-budget repair committed in `e98098d`; final demo commands passed separately in 16.87s (26 tests) and 19.19s (63 tests), keeping each below the dispatcher budget.
 - 2026-06-30: Review handoff cleanup committed in `e03e2b6` — non-implementation dispatcher payloads now keep `recommended_role` and `recommended_roles` coherent instead of advertising parallel implementation during review.
+- 2026-06-30: Continuous refactor scan selected prompt-catalog source simplification: remove the tracked `.codex/skills/vibe-prompts/resources/template_prompts.md` mirror and keep `prompts/template_prompts.md` as the single editable prompt catalog.
+- 2026-06-30: Continuous refactor execution removed the prompt catalog mirror, updated prompt/skill docs to use the dispatcher-returned `prompt_catalog_path`, and kept installed repo behavior by verifying bootstrap still generates the `vibe-prompts` resource artifact.
 
 ## Workflow state
 
@@ -63,6 +65,9 @@ Make fresh installs and exhausted `$vibe-run` sessions inspect the target reposi
 - Scoped diff in `1abe5ff` -> 37 files, 404 insertions, 979 deletions; canonical AGENTS and prompt mirrors compare byte-for-byte.
 - Review smoke verification -> `26 passed in 16.87s` and `63 passed in 19.19s`; no timeout parameter or wider smoke budget was added.
 - `python3 -m pytest tests/workflow/test_checkpoint_dag.py -v --capture=sys` -> `12 passed in 4.33s`, including coherent review recommendation coverage.
+- Continuous refactor prompt-source verification -> `python3 -m pytest tests/workflow/test_prompt_flow_integrity.py tests/workflow/test_bootstrap.py tests/workflow/test_continuous_refactor_workflow_override.py tests/workflow/test_continuous_aux_workflow_overrides.py -v --capture=sys` -> `36 passed in 27.02s`.
+- Installed prompt lookup smoke -> `python3 -m pytest tests/workflow/test_skill_tooling.py tests/workflow/test_vibe_run.py tests/workflow/test_prompt_catalog_validation.py -v --capture=sys` -> `20 passed in 6.68s`.
+- Refactor validation -> `python3 .codex/skills/vibe-loop/scripts/agentctl.py --repo-root . validate --strict` -> `ok: True`; `python3 -m ruff check tools/bootstrap.py tests/workflow/test_bootstrap.py tests/workflow/test_prompt_flow_integrity.py` -> all checks passed.
 
 ## Active issues
 
