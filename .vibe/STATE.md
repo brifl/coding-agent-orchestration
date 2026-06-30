@@ -44,6 +44,7 @@ Make fresh installs and exhausted `$vibe-run` sessions inspect the target reposi
 - 2026-06-30: 33.0 review repair implemented in `1abe5ff` — added ownership/roadmap rules, made prompts deletion- and default-oriented, removed duplicate launch/version/dependency surfaces, and reduced active PLAN to current plus two committed stages.
 - 2026-06-30: Review smoke gate exposed a 30-second per-command budget mismatch; split the same 94-test coverage into two focused demo commands instead of adding a timeout parameter.
 - 2026-06-30: Smoke-budget repair committed in `e98098d`; final demo commands passed separately in 16.87s (26 tests) and 19.19s (63 tests), keeping each below the dispatcher budget.
+- 2026-06-30: Review handoff cleanup committed in `e03e2b6` — non-implementation dispatcher payloads now keep `recommended_role` and `recommended_roles` coherent instead of advertising parallel implementation during review.
 
 ## Workflow state
 
@@ -61,6 +62,7 @@ Make fresh installs and exhausted `$vibe-run` sessions inspect the target reposi
 - Full workflow run -> `272 passed, 3 failed`; the attributable SKIP-prompt assertion was repaired and its targeted regression passed. The remaining two failures are the pre-existing feedback fixtures already recorded in the non-blocking verification backlog.
 - Scoped diff in `1abe5ff` -> 37 files, 404 insertions, 979 deletions; canonical AGENTS and prompt mirrors compare byte-for-byte.
 - Review smoke verification -> `26 passed in 16.87s` and `63 passed in 19.19s`; no timeout parameter or wider smoke budget was added.
+- `python3 -m pytest tests/workflow/test_checkpoint_dag.py -v --capture=sys` -> `12 passed in 4.33s`, including coherent review recommendation coverage.
 
 ## Active issues
 
