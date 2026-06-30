@@ -148,6 +148,42 @@ def test_stage_design_prompt_bootstraps_backlog_from_repository_evidence() -> No
     assert "If a listed skill clearly matches" in stage_design
 
 
+def test_canonical_agent_and_prompt_surfaces_require_senior_ownership() -> None:
+    repo_root = Path(__file__).resolve().parents[2]
+    agents_text = (repo_root / "AGENTS.md").read_text(encoding="utf-8")
+    template_agents_text = (repo_root / "templates" / "repo_root" / "AGENTS.md").read_text(
+        encoding="utf-8"
+    )
+    prompt_text = (repo_root / "prompts" / "template_prompts.md").read_text(encoding="utf-8")
+
+    assert agents_text == template_agents_text
+    assert "Treat clutter as project risk" in agents_text
+    assert "Prefer one stable default path over parameter surfaces" in agents_text
+    assert "current stage, the next few committed stages" in agents_text
+    assert "remove directly related stale comments, docs, flags, aliases" in prompt_text
+    assert "future debugging cost it removes" in prompt_text
+    assert "remove stale/speculative checkpoints" in prompt_text
+
+
+def test_removed_launch_aliases_do_not_reappear() -> None:
+    repo_root = Path(__file__).resolve().parents[2]
+    shipped_paths = [
+        repo_root / "README.md",
+        repo_root / "skillsets" / "vibe-base.yaml",
+        repo_root / "docs" / "agent_skill_packs.md",
+        repo_root / "docs" / "base_skills.md",
+        repo_root / "prompts" / "template_prompts.md",
+        repo_root / "prompts" / "init" / "codex_bootstrap.md",
+        repo_root / "tools" / "bootstrap.py",
+    ]
+
+    assert not (repo_root / ".codex" / "skills" / "vibe-one-loop" / "SKILL.md").exists()
+    for path in shipped_paths:
+        text = path.read_text(encoding="utf-8")
+        assert "vibe-one-loop" not in text, path
+        assert "bootstrap.py init-repo" not in text, path
+
+
 def test_repo_shipped_skill_prompt_catalog_is_only_in_vibe_prompts() -> None:
     repo_root = Path(__file__).resolve().parents[2]
     canonical = (repo_root / "prompts" / "template_prompts.md").read_text(encoding="utf-8")

@@ -24,7 +24,6 @@ from skillset_utils import (
     find_skillset,
     load_manifest,
     load_skillset,
-    parse_skillset_yaml,  # noqa: F401
 )
 
 
@@ -77,28 +76,11 @@ def _repo_skill_dest(name: str) -> Path:
     return _repo_root() / ".codex" / "skills" / name
 
 
-def _manifest_dependencies(skill_name: str, agent: str) -> list[str]:
-    skill_dir = find_resource("skill", skill_name, agent=agent)
-    if not skill_dir or not skill_dir.exists():
-        return []
-    manifest_path = find_manifest(Path(skill_dir))
-    if not manifest_path:
-        return []
-    manifest = load_manifest(manifest_path)
-    if not manifest:
-        return []
-    deps = manifest.get("dependencies") or []
-    if isinstance(deps, list):
-        return [str(d) for d in deps]
-    return []
-
-
 def resolve_skillset(name: str, agent: str) -> dict[str, Any]:
     agent = validate_agent_name(agent)
     visited: set[str] = set()
     resolving: set[str] = set()
-    resolved: dict[str, str | None] = {}
-    tree: dict[str, list[str]] = {}
+    resolved: dict[str, None] = {}
 
     def load_set(set_name: str) -> dict[str, Any]:
         path = find_skillset(_skillsets_root(), set_name)
@@ -120,29 +102,15 @@ def resolve_skillset(name: str, agent: str) -> dict[str, Any]:
             visit_set(str(parent))
 
         for skill in data.get("skills", []):
-            name = str(skill.get("name"))
-            version = skill.get("version")
-            if name in resolved and version and resolved[name] and resolved[name] != version:
-                raise ValueError(f"Version conflict for {name}: {resolved[name]} vs {version}")
-            resolved[name] = resolved.get(name) or version
+            skill_name = str(skill.get("name"))
+            resolved[skill_name] = None
         visited.add(set_name)
         resolving.remove(set_name)
 
     visit_set(name)
 
-    # Expand dependencies from manifests
-    for skill_name in list(resolved.keys()):
-        deps = _manifest_dependencies(skill_name, agent)
-        tree[skill_name] = deps
-        for dep in deps:
-            if dep not in resolved:
-                resolved[dep] = None
-
-    resolved_list = [
-        {"name": skill, "version": resolved[skill]} for skill in sorted(resolved.keys())
-    ]
-
-    return {"name": name, "skills": resolved_list, "dependency_tree": tree}
+    resolved_list = [{"name": skill} for skill in sorted(resolved)]
+    return {"name": name, "skills": resolved_list}
 
 
 def _sync_dir(src: Path, dst: Path, *, force: bool) -> None:
@@ -288,11 +256,7 @@ def cmd_resolve_set(name: str, fmt: str, agent: str) -> int:
     print(f"Skillset: {payload['name']}")
     print("Skills:")
     for skill in payload["skills"]:
-        version = skill["version"] or "-"
-        print(f"- {skill['name']} ({version})")
-    print("Dependency tree:")
-    for key, deps in payload["dependency_tree"].items():
-        print(f"- {key}: {', '.join(deps) if deps else '-'}")
+        print(f"- {skill['name']}")
     return 0
 
 

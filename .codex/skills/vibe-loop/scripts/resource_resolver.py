@@ -28,7 +28,6 @@ except ModuleNotFoundError as exc:
         "vibe-prompts",
         "vibe-loop",
         "vibe-run",
-        "vibe-one-loop",
         "continuous-refactor",
         "continuous-test-generation",
         "continuous-documentation",

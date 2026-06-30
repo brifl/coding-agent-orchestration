@@ -1,174 +1,78 @@
-# Skill Lifecycle and Compatibility Policy
+# Skill Lifecycle Policy
 
-This document defines how skills are added, versioned, and deprecated in the Vibe workflow system.
+Skills are maintained product surfaces, not append-only compatibility layers.
 
-## Core Principles
+## Principles
 
-1. **Stability over features** — Base skills must remain stable; new features go in extension skills
-2. **No breaking changes to base skills** — Once a skill is in `docs/base_skills.md`, its interface is frozen
-3. **Explicit compatibility** — Skills should note which agents they support when relevant
-4. **Graceful degradation** — Skills should work in reduced-capability environments when possible
+1. **Small stable surface:** Keep one clear default path and remove redundant entrypoints.
+2. **Evidence-based compatibility:** Preserve a compatibility path only for a demonstrated consumer or explicit requirement.
+3. **Ownership over wrappers:** Improve the nearest existing skill when that is clearer than adding a wrapper, flag, or extension.
+4. **Bounded migration cost:** Update in-repo consumers, tests, and docs atomically. Write migration guidance only when external users actually need it.
 
-## Skill Categories
+## Skill categories
 
-### Base Skills (frozen)
+### Maintained core
 
-These skills are defined in `docs/base_skills.md` and are **immutable**:
+The core surface is defined in `docs/base_skills.md`. Core skills may evolve when
+the change fixes behavior or reduces complexity.
 
-| Skill | Purpose | Breaking changes allowed? |
-|-------|---------|---------------------------|
-| vibe-prompts | Prompt catalog access | No |
-| vibe-loop | Single loop execution | No |
-| vibe-one-loop | Single loop alias for compatibility | No |
-| vibe-run | Continuous execution | No |
-| continuous-refactor | Continuous refactor workflow execution | No |
-| continuous-test-generation | Continuous test workflow execution | No |
-| continuous-documentation | Continuous documentation workflow execution | No |
-| agentctl | Dispatcher and validation | No (interface only) |
+Change rules:
 
-**What "no breaking changes" means:**
-- Existing commands/flags must continue to work
-- Output formats must remain backward-compatible
-- New features are additive only (new flags, new commands)
-- Bug fixes are allowed even if they change behavior
+- Prefer replacing or removing a weak interface over retaining old and new paths.
+- Add a flag or command only for a real recurring variation.
+- Protect stable behavior with focused tests; do not freeze accidental implementation details.
+- Test affected supported agents in proportion to the change.
 
-### Extension Skills (versioned)
+### Extension skills
 
-Skills not in the base set follow semantic versioning:
+An extension skill is appropriate only when it owns a distinct workflow that the
+core surface should not absorb. Use semantic versions when external consumers need
+release coordination:
 
-- **MAJOR** — Breaking changes (rename, remove, change interface)
-- **MINOR** — New features, backward-compatible
-- **PATCH** — Bug fixes only
+- **MAJOR:** breaking interface or behavior change
+- **MINOR:** new capability or bounded interface simplification
+- **PATCH:** compatible bug fix
 
-Extension skills live in:
-- `.codex/skills/<skill-name>/` — Repo-local Codex skills
-- `~/.codex/skills/<skill-name>/` or `$CODEX_HOME/skills/<skill-name>/` — User/global installs for Codex
-- `~/.claude/skills/<skill-name>/` or `$AGENT_HOME/skills/<skill-name>/` — User/global installs for Claude Code
+Skill locations:
 
-## Adding a New Skill
+- `.codex/skills/<skill-name>/` — repository-local source
+- `$CODEX_HOME/skills/<skill-name>/` — Codex user install
+- `$AGENT_HOME/skills/<skill-name>/` — Claude Code user install
 
-### Go/No-Go Criteria
+## Adding a skill
 
-Before adding a skill, it must pass ALL of these criteria:
+Add a skill only when all of these are true:
 
-| Criterion | Requirement | Verified by |
-|-----------|-------------|-------------|
-| **Need** | Solves a real problem not covered by base skills | Review discussion |
-| **Scope** | Does one thing well; not a catch-all | Code review |
-| **Compatibility** | Works with both supported agents | Test transcript |
-| **Documentation** | Has SKILL.md with usage instructions | File check |
-| **No base conflicts** | Does not override or shadow base skill names | Name check |
-| **Testable** | Has demo commands that verify it works | Manual test |
+- It solves a demonstrated repeated problem.
+- The nearest core skill would become less coherent by absorbing it.
+- Its name and description define one clear trigger boundary.
+- It has a concrete demo or regression check that reduces future debugging time.
+- It does not introduce a parallel route to behavior already owned elsewhere.
 
-### Review Checklist
+Review the resulting surface, not just the new directory:
 
-Use this checklist when reviewing a new skill PR:
+- Remove displaced commands, docs, flags, and compatibility branches.
+- Update the relevant skill set and agent-facing docs.
+- Verify supported agents that actually consume the skill.
 
-```markdown
-## New Skill Review Checklist
+## Changing or removing a skill
 
-### Metadata
-- [ ] SKILL.md exists with name and description
-- [ ] Skill name does not conflict with base skills
-- [ ] Agent compatibility is documented
+Before preserving an old path, identify its consumer. If no consumer exists,
+remove it with the replacement change.
 
-### Functionality
-- [ ] Does one thing well (single responsibility)
-- [ ] Does not duplicate base skill functionality
-- [ ] Works without requiring base skill modifications
+When consumers do exist:
 
-### Compatibility
-- [ ] Tested with Codex
-- [ ] Tested with Claude Code
-- [ ] Fails gracefully on unsupported agents
+1. Define the replacement and why it is simpler.
+2. Update known in-repo consumers in the same change.
+3. Add a time-bounded migration note only for external consumers.
+4. Remove the old path when the stated migration window ends.
 
-### Documentation
-- [ ] Usage instructions are clear
-- [ ] Demo commands are provided
-- [ ] Error cases are documented
+A core skill may be consolidated or removed when another supported path fully
+owns its behavior. Removal requires scoped review and regression verification,
+not an indefinite deprecation ceremony.
 
-### Integration
-- [ ] Does not modify files outside skill directory
-- [ ] Does not require changes to agentctl.py
-- [ ] Does not require changes to template_prompts.md
-```
+## Metadata
 
-## Deprecating a Skill
-
-Extension skills may be deprecated following this process:
-
-1. **Announce** — Add deprecation notice to SKILL.md
-2. **Grace period** — Minimum 2 releases or 30 days
-3. **Remove** — Delete skill directory and update docs
-
-Base skills **cannot be deprecated** — they can only be extended.
-
-## Versioning Scheme
-
-### Skill Version Format
-
-```
-<skill-name>@<major>.<minor>.<patch>
-```
-
-Example: `my-validator@1.2.0`
-
-### Version Storage
-
-Version is declared in SKILL.md frontmatter:
-
-```yaml
----
-name: my-validator
-version: 1.2.0
-description: Validates widget configurations
----
-```
-
-### Compatibility Matrix Updates
-
-When adding or modifying skills, update:
-- `docs/agent_capabilities.md` — If agent support changes
-- `docs/base_skills.md` — Only if adding to base set (requires RFC)
-- `docs/agent_skill_packs.md` — If agent-specific instructions change
-
-## Repo-Local Skills
-
-Repos can override global skills by placing them in `.codex/skills/<skill-name>/`.
-
-**Precedence order:**
-1. `.codex/skills/<skill-name>/` (repo-local, highest priority)
-2. `$CODEX_HOME/skills/<skill-name>/` (global user, defaults to `~/.codex/skills`)
-3. `/etc/codex/skills/<skill-name>/` (system)
-
-**Rules for repo-local skills:**
-- May shadow global skills (use same name to override)
-- Must be self-contained (no external dependencies)
-- Are not subject to base skill freeze (repo can customize anything)
-- Should be documented in repo README
-
-## Breaking Change Process (Extension Skills Only)
-
-If an extension skill must make a breaking change:
-
-1. **Bump MAJOR version** — `1.x.x` → `2.0.0`
-2. **Document migration** — Add MIGRATION.md to skill directory
-3. **Announce in changelog** — Note breaking changes prominently
-4. **Update dependent repos** — Coordinate with known users
-
-## Exceptions
-
-The following changes are NOT considered breaking:
-
-- Fixing bugs that caused incorrect behavior
-- Adding new optional parameters with sensible defaults
-- Improving error messages
-- Performance improvements
-- Adding new output fields (existing fields unchanged)
-
-## Governance
-
-- **Base skill changes** — Require RFC and multi-agent verification
-- **Extension skill additions** — Require review checklist completion
-- **Deprecations** — Require 30-day notice minimum
-- **Emergency fixes** — May bypass process for security issues
+Codex skill frontmatter contains `name` and `description`. Put UI metadata in
+`agents/openai.yaml`; keep version coordination in release/skill-set metadata
+when it is genuinely needed.

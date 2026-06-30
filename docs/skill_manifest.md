@@ -1,33 +1,21 @@
 # Skill manifest format
 
-## Overview
+Codex skills use `SKILL.md` with exactly two frontmatter fields:
 
-Codex skills require a `SKILL.md` file with YAML front matter. The front matter must include
-at least `name` and `description`. Additional fields (for example `version` or `dependencies`)
-may be included for internal tooling, but Codex only requires the two core fields.
+- `name`: unique skill identifier
+- `description`: concise trigger scope describing what the skill does and when to use it
 
-## Required front matter
-
-- `name` (string): Unique skill identifier.
-- `description` (string): Short, human-readable summary.
-
-## Optional front matter
-
-- `version` (string): SemVer or internal version tag.
-- `dependencies` (list): Other skills required by this skill.
-
-## Example
+Keep workflow instructions in the Markdown body. Put Codex UI metadata and tool
+dependencies in `agents/openai.yaml`; keep bundle/version coordination in skill-set
+or release metadata rather than expanding every skill manifest.
 
 ```markdown
 ---
 name: vibe-loop
-description: Run a single Vibe workflow loop.
-version: "1.0.0"
-dependencies:
-  - vibe-prompts
+description: Run one deterministic Vibe dispatcher step and print the selected prompt body.
 ---
 
-# vibe-loop
+# Vibe Loop
 
-Skill docs go here.
+Follow the workflow instructions here.
 ```

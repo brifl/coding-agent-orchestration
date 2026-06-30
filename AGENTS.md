@@ -52,6 +52,22 @@ At the start of any new session (or when context is unclear), the agent must:
 - If the result is brittle, misleading, stub-like, or likely to fail the first real manual test, keep going or record a concrete blocker issue instead of declaring success.
 - Prefer fewer honest `BLOCKED`/`IN_REVIEW` states over weak signoffs that create false confidence.
 
+### Engineering ownership and simplicity (hard rule)
+
+- Act as a senior owner of the codebase, not as a vendor layering new surfaces beside old ones.
+- Treat clutter as project risk. Every flag, launch option, stale document, compatibility branch, generic framework hook, and duplicated path adds future operator and agent cost.
+- Prefer one stable default path over parameter surfaces. Add a flag, environment variable, Make variable, alias, or shortcut only when the variation is real, expected, and cheaper than simplifying the default.
+- When touching an ownership area, remove directly related stale comments, docs, options, tests, and compatibility code when the cleanup is low risk. Keep cleanup scoped to that area; do not turn it into an unrelated rewrite.
+- Change existing code and interfaces when that produces the clearer system. Do not preserve legacy behavior without evidence of a real consumer or an explicit user requirement.
+- Before adding a diagnostic, report, artifact, or test surface, state how it will reduce future debugging time. If it only creates another place to inspect, simplify instead.
+- Keep verification proportional. Record useful but non-blocking verification under a future PLAN item and continue toward the next capability.
+
+### Roadmap hygiene
+
+- Keep `.vibe/PLAN.md` as an active roadmap: the current stage, the next few committed stages, and a concise non-blocking verification backlog.
+- Move completed-stage detail and long evidence to `.vibe/HISTORY.md` or a bounded artifact; do not let PLAN or STATE become an append-only archive.
+- Remove stale or speculative checkpoints when repository evidence no longer supports them. Preserve decisions and outcomes, not obsolete scaffolding.
+
 ## Workflow model
 
 ### Checkpoint shape (required fields)

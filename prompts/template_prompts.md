@@ -55,6 +55,8 @@ STRATEGIC DESIGN PROCESS
 3) **Make intentional choices:**
    - For each decision, document the choice and one-line rationale.
    - Consider: implementation complexity, testing strategy, rollback safety.
+   - Treat flags, aliases, compatibility branches, generic hooks, and duplicated docs as ongoing risk; prefer simplifying the default path.
+   - Preserve compatibility only for a demonstrated consumer or explicit requirement, not as an automatic design goal.
    - Split large stages into smaller stages if they cross natural boundaries.
    - Split large checkpoints if they exceed "one focused loop" scope.
    - It is better to have more small checkpoints than fewer large ones.
@@ -81,6 +83,7 @@ STRATEGIC DESIGN PROCESS
    Quality bar (hard rule):
    - Acceptance must prove meaningful operator-visible behavior, not just non-empty files, placeholder widgets, or shallow green tests.
    - If the expected live/manual-test behavior is materially stronger than what the checkpoint currently proves, split the work or tighten the acceptance criteria now.
+   - Keep PLAN bounded to the current stage, the next few committed stages, and concise non-blocking verification items. Remove stale/speculative scaffolding instead of accumulating it.
 
 REQUIRED OUTPUT
 - Key design decisions made (3-5 bullet points)
@@ -158,12 +161,15 @@ QUALITY BAR
 - Understand what the user is actually trying to make the system do in the real world.
 - Do not hand off placeholder, misleading, or obviously disappointing live behavior just because a narrow acceptance item passed.
 - If the result would likely fail the first serious manual test, keep working or record a concrete blocker instead of declaring readiness.
+- Own the touched area: remove directly related stale comments, docs, flags, aliases, tests, and compatibility branches when doing so is low risk.
+- Prefer changing the existing design to a clearer default over adding a parallel option or wrapper.
+- Before adding a diagnostic, artifact, or test surface, identify the future debugging cost it removes; simplify if it only adds another place to inspect.
 
 EXECUTION
-1) Implement only current checkpoint deliverables.
-2) Keep diffs small and scoped.
-3) Run verification/demo commands.
-4) If verification fails and fix is not strictly in-scope, record issue and stop.
+1) Implement the current checkpoint and directly related low-risk cleanup in the same ownership area.
+2) Keep diffs scoped, but change existing code when that is clearer than layering additions beside it.
+3) Run verification/demo commands. Put useful non-blocking verification into a concise future PLAN item instead of blocking the next capability.
+4) If required verification fails and the cause is outside the ownership area, record an issue and stop.
 5) Commit at least once using `<checkpoint_id>:` prefix (imperative mood).
 6) If unresolved `Impact: MAJOR|BLOCKER` issues remain, do not hand off as ready-for-review; set status to `BLOCKED` and route to triage.
 7) Evaluator-Optimizer pass (required):
@@ -218,6 +224,7 @@ ALLOWED FILES
 - `.vibe/STATE.md`
 - `.vibe/PLAN.md` (read-only unless fixing an obvious typo that blocks review)
 - Test/log/output files produced by verification commands
+- Changed/delivered files when applying directly related low-risk review cleanup
 
 REQUIRED STATE MUTATIONS
 - FAIL path:
@@ -257,6 +264,8 @@ EXECUTION
    - document what breaks, what is unverified, and residual risk.
 3) Pass C: Code review for improvements:
    - Review the changed/delivered files as a senior code reviewer would.
+   - Treat unnecessary flags, aliases, compatibility branches, generic abstractions, duplicated docs, and redundant tests as maintainability findings, not cosmetic preferences.
+   - Prefer deleting or consolidating directly related clutter over documenting another path around it.
    - Identify the top 3 improvements NOT already captured in future checkpoints or active issues.
    - Tag each improvement: `[MINOR]`, `[MODERATE]`, or `[MAJOR]`.
      - `[MINOR]`: Style, naming, small refactors, missing comments on tricky logic. Fix these in place during this review pass and note what was fixed.
@@ -327,7 +336,7 @@ PREFLIGHT
 ALLOWED FILES
 - `.vibe/STATE.md`
 - `.vibe/PLAN.md` (if issue resolution changes plan scope/wording)
-- Minimal product files only when needed to unblock a `BLOCKER`
+- Product, test, or documentation files in the issue's ownership area when needed to fix the root cause
 
 REQUIRED STATE MUTATIONS
 - For resolved issues: mark resolved and move to HISTORY if your repo uses that pattern.
@@ -349,13 +358,11 @@ REQUIRED COMMANDS
 - Run `python3 .codex/skills/vibe-loop/scripts/agentctl.py --repo-root . validate --strict` before emitting LOOP_RESULT.
 
 EXECUTION
-1) Diversity-first candidate generation (required):
-   - Generate at least 8 candidate issue actions across at least 3 strategy families (example: risk-first, unblock-first, dependency-first, blast-radius-first).
-   - De-duplicate candidates by root cause before ranking.
+1) Generate only materially different issue actions; use multiple strategies when they reveal a real tradeoff, then de-duplicate by root cause.
 2) Produce Top 5 by impact with: `Issue ID`, `Impact`, `Why now`, `Unblock condition`, `Evidence needed`.
 3) Resolve one issue at a time (top 1-2 only).
-4) Prefer docs/plan/config changes over product code changes.
-5) Avoid scope expansion; do not silently start implementation work.
+4) Fix the root cause in its owning layer; do not prefer additive docs/config when simplifying existing code is the clearer fix.
+5) Remove directly related stale surfaces while resolving the issue, but avoid unrelated rewrites.
 6) Confidence calibration (required):
    - For each resolved/updated issue claim, record `confidence` (0.0-1.0) and `evidence_strength` (`LOW|MEDIUM|HIGH`).
    - If any `critical: true` claim has `confidence < 0.75` or `evidence_strength == LOW`, set status to `IN_PROGRESS|BLOCKED` and route to `issues_triage`.
@@ -367,7 +374,7 @@ REQUIRED OUTPUT
 - Files changed.
 - Commands run + short results.
 - Remaining unresolved questions (max 2).
-- Candidate strategy families used + dedup summary.
+- Alternatives considered and why the chosen root-cause fix wins.
 
 REPORT SCHEMA (required)
 - LOOP_RESULT payload must include `report` with:
@@ -428,9 +435,10 @@ EXECUTION
    - clear evidence for old checkpoints
    - sync objective/deliverables/acceptance to active checkpoint
 3) Prune `.vibe/PLAN.md`:
-   - remove only fully completed stages
-   - Preserve any stages/checkpoints marked (SKIP); they are deferred, not completed
-   - keep future backlog stages
+   - keep the current stage, the next 1-3 committed stages, and a concise non-blocking verification backlog
+   - remove fully completed stages after summarizing outcomes in HISTORY
+   - remove stale/speculative checkpoints that repository evidence no longer supports
+   - Preserve any stages/checkpoints marked (SKIP) only when the deferred item still has a real owner/outcome; compress long-range ideas instead of carrying full checkpoint scaffolding
 4) If no stage transition is needed, do not change checkpoint status unless required for alignment.
 
 REQUIRED OUTPUT
@@ -547,13 +555,12 @@ REQUIRED COMMANDS
 - Additional test/validation commands required by the chosen improvement.
 
 EXECUTION
-1) Diversity-first candidate generation:
-   - Generate at least 10 candidate process improvements across at least 3 strategy families
-     (example: reliability-first, clarity-first, automation-first, validation-first).
+1) Generate 3-5 materially different process improvements, favoring deletion, consolidation, and stronger defaults before new machinery.
+   - Use strategy families only when they reveal genuinely different choices; do not create candidates to satisfy a quota.
    - Tag every candidate with exactly one bracketed idea-impact label:
      `[MAJOR]`, `[MODERATE]`, or `[MINOR]`.
    - Cluster/deduplicate by root cause.
-2) Produce Top 5 candidate improvements by idea impact, ordered
+2) Produce the candidate improvements by idea impact (max 5), ordered
    `[MAJOR] -> [MODERATE] -> [MINOR]`, each with:
    - Idea impact tag
    - Expected payoff
@@ -561,12 +568,13 @@ EXECUTION
    - Validation command(s)
 3) Choose exactly one improvement that addresses a diagnosed issue.
 4) Keep scope bounded to workflow system assets (not product features).
-5) Add/adjust tests when behavior changes in scripts.
-6) Validate and report pass/fail with concrete command output summaries.
+5) Remove directly related stale flags, docs, compatibility paths, and tests in the chosen ownership area.
+6) Add or adjust tests only when they reduce future debugging time or protect a stable contract.
+7) Validate and report pass/fail with concrete command output summaries.
 
 REQUIRED OUTPUT
 A) Diagnostic findings
-B) Top 5 candidate improvements by idea impact (`[MAJOR]` / `[MODERATE]` / `[MINOR]`)
+B) Candidate improvements by idea impact (`[MAJOR]` / `[MODERATE]` / `[MINOR]`, max 5)
 C) Chosen improvement
 D) Files changed
 E) Validation commands + results
@@ -737,7 +745,7 @@ CONTRACT
 - Optimize for operator-trust quality: understand the real outcome the user wants and do not sign off weak or placeholder behavior as success.
 
 MODE
-- Single-loop: run exactly one loop, then stop; prefer `$vibe-one-loop`.
+- Single-loop: run exactly one loop, then stop; use `$vibe-loop`.
 - Continuous: only when asked; use `$vibe-run` and keep looping until the
   dispatcher returns `recommended_role == "stop"` or a hard blocker requires
   human input.
@@ -1069,9 +1077,7 @@ OUTPUT FORMAT
 - Brief scan approach (1-3 bullets).
 
 ## Actions
-1) Diversity-first candidate generation:
-   - Generate at least 10 candidate refactors across at least 3 strategy families
-     (example: maintainability-first, risk-reduction-first, performance-first, testability-first).
+1) Generate only materially different, evidence-backed refactors; use multiple perspectives when they expose real tradeoffs.
    - Tag every candidate with exactly one bracketed idea-impact label:
      `[MAJOR]`, `[MODERATE]`, or `[MINOR]`.
    - Cluster/deduplicate by root cause.
@@ -1269,8 +1275,8 @@ OUTPUT FORMAT
 - Brief approach (1-3 bullets).
 
 ## Actions
-1) Diversity-first candidate generation:
-   - Generate at least 10 candidate test gaps across at least 3 strategy families
+1) Generate only distinct, risk-backed test gaps; do not create candidates to satisfy a quota.
+   - Consider failure-mode, boundary, integration-risk, and regression-history perspectives when they materially differ
      (example: failure-mode-first, boundary-first, integration-risk-first, regression-history-first).
    - Tag every candidate with exactly one bracketed idea-impact label:
      `[MAJOR]`, `[MODERATE]`, or `[MINOR]`.
@@ -1301,6 +1307,7 @@ RULES
   for meaningful risk reduction in scoped areas, and `MINOR` for low-risk edge/cleanup coverage.
 - Do not use issue-impact labels (`BLOCKER` / `QUESTION`) for test-gap idea tagging.
 - Avoid vanity coverage targets.
+- Before proposing a new test or diagnostic surface, state the likely regression or debugging time it removes. Omit tests that only duplicate another place to check.
 - Do not create or switch branches.
 
 DISPATCHER CONTRACT (when selected by `agentctl` workflow)
@@ -1354,6 +1361,7 @@ OUTPUT FORMAT
 RULES
 - Follow existing repo conventions (fixtures, snapshot style, etc.).
 - Avoid overspecifying behavior; assert stable contracts.
+- Prefer extending the nearest existing test surface over adding a parallel fixture, runner, or diagnostic path.
 - Do not create or switch branches.
 
 DISPATCHER CONTRACT (when selected by `agentctl` workflow)
@@ -1406,6 +1414,7 @@ OUTPUT FORMAT
 
 RULES
 - Be explicit about outcome vs implementation assertions.
+- Remove redundant or brittle tests when stronger existing coverage makes them unnecessary; test count is not a quality goal.
 - Do not create or switch branches.
 
 DISPATCHER CONTRACT (when selected by `agentctl` workflow)

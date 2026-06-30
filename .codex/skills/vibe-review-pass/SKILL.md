@@ -1,7 +1,6 @@
 ---
 name: vibe-review-pass
 description: Review a completed checkpoint and summarize pass/fail.
-version: "1.0.0"
 ---
 # vibe-review-pass
 

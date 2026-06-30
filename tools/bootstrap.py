@@ -5,7 +5,7 @@ bootstrap.py
 Repo bootstrapper for the coding-agent-orchestration kit.
 
 Commands:
-  init-repo <path>
+  <path>
     - Ensures <path> exists and is a directory.
     - Creates <path>/.vibe/ and installs STATE/PLAN/HISTORY templates (only if missing).
     - Adds ".vibe/" to <path>/.gitignore (idempotent).
@@ -28,33 +28,27 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
 import shutil
 import subprocess
 import sys
 from pathlib import Path
 from typing import Any, Iterable
 
-# Add parent dir to path to allow sibling imports
-_tools_dir = Path(__file__).parent.resolve()
-if str(_tools_dir) not in sys.path:
-    sys.path.insert(0, str(_tools_dir))
-
+from cli_error_utils import format_cli_error
 from constants import PROMPT_CATALOG_FILENAME, SUPPORTED_AGENTS, validate_agent_name
 from path_utils import resolve_claude_home, resolve_codex_home
 from prompt_catalog_paths import canonical_repo_prompt_catalog_path
 from resource_resolver import find_resource
-from cli_error_utils import format_cli_error
-from skillset_utils import find_skillset, load_skillset, parse_skillset_yaml  # noqa: F401
+from skillset_utils import find_skillset, load_skillset
 
 # All supported agents for bulk installation
 ALL_AGENTS = list(SUPPORTED_AGENTS)
 
 
-# Canonical doc templates for init-repo
+# Canonical repo-install templates
 CANONICAL_AGENTS_TEMPLATE = Path("templates/repo_root/AGENTS.md")
 CANONICAL_VIBE_TEMPLATE = Path("templates/repo_root/VIBE.md")
-DEFAULT_INIT_SKILLSET = "vibe-base"
+DEFAULT_REPO_SKILLSET = "vibe-base"
 
 
 def _repo_root_from_this_file() -> Path:
@@ -154,7 +148,7 @@ def _ensure_gitignore_contains(repo_path: Path, lines: Iterable[str]) -> bool:
     return True
 
 
-def init_repo(target_repo: Path, skillset: str | None = None, overwrite: bool = False) -> int:
+def install_repo(target_repo: Path, skillset: str | None = None, overwrite: bool = False) -> int:
     repo_root = _repo_root_from_this_file()
 
     if not target_repo.exists():
@@ -169,7 +163,7 @@ def init_repo(target_repo: Path, skillset: str | None = None, overwrite: bool = 
     created = []
     overwritten = []
     skipped = []
-    effective_skillset = (skillset or DEFAULT_INIT_SKILLSET).strip()
+    effective_skillset = (skillset or DEFAULT_REPO_SKILLSET).strip()
     if not effective_skillset:
         raise ValueError("Skillset name cannot be empty.")
 
@@ -251,24 +245,14 @@ def init_repo(target_repo: Path, skillset: str | None = None, overwrite: bool = 
     created.extend(_sync_runtime_helpers(repo_root, dst_root, force=True))
 
     # Summary
-    print("init-repo summary")
+    print("repo install summary")
     print(f"- Repo: {target_repo}")
     print(f"- .vibe dir: {vibe_dir}")
     print(f"- .gitignore updated: {'yes' if gi_modified else 'no'}")
     print(f"- Skillset installed: {effective_skillset}")
-    if created:
-        print("- Created:")
-        for p in created:
-            print(f"  - {p}")
-    if overwritten:
-        print("- Overwritten:")
-        for p in overwritten:
-            print(f"  - {p}")
-    if skipped:
-        print("- Skipped (already exists):")
-        for p in skipped:
-            print(f"  - {p}")
-
+    print(f"- Files created/updated: {len(created)}")
+    print(f"- Files overwritten: {len(overwritten)}")
+    print(f"- Existing files preserved: {len(skipped)}")
     print("- Next:")
     print(f"  1. Open Codex in {target_repo}")
     print("  2. Invoke $vibe-run")
@@ -291,7 +275,7 @@ def _default_agent_global_dir(agent: str) -> Path:
 def _resolve_skillset(repo_root: Path, name: str) -> list[dict[str, Any]]:
     visited: set[str] = set()
     resolving: set[str] = set()
-    resolved: dict[str, str | None] = {}
+    resolved: dict[str, None] = {}
 
     def load_set(set_name: str) -> dict[str, Any]:
         path = find_skillset(repo_root / "skillsets", set_name)
@@ -313,15 +297,12 @@ def _resolve_skillset(repo_root: Path, name: str) -> list[dict[str, Any]]:
             visit_set(str(parent))
         for skill in data.get("skills", []):
             skill_name = str(skill.get("name"))
-            version = skill.get("version")
-            if skill_name in resolved and version and resolved[skill_name] and resolved[skill_name] != version:
-                raise ValueError(f"Version conflict for {skill_name}: {resolved[skill_name]} vs {version}")
-            resolved[skill_name] = resolved.get(skill_name) or version
+            resolved[skill_name] = None
         visited.add(set_name)
         resolving.remove(set_name)
 
     visit_set(name)
-    return [{"name": k, "version": v} for k, v in resolved.items()]
+    return [{"name": skill_name} for skill_name in resolved]
 
 
 def _copy_file(src: Path, dst: Path, *, force: bool = False, preserve_mtime: bool = True) -> bool:
@@ -400,7 +381,6 @@ def install_skills_agent_global(agent: str, force: bool) -> int:
     skill_names = [
         "vibe-prompts",
         "vibe-loop",
-        "vibe-one-loop",
         "vibe-run",
         "continuous-refactor",
         "continuous-test-generation",
@@ -450,15 +430,8 @@ def install_skills_agent_global(agent: str, force: bool) -> int:
     print(f"install-skills summary ({agent} global)")
     print(f"- Destination: {dst_root}")
     print(f"- Skills: {', '.join(skill_names)}")
-    if updated:
-        print("- Updated:")
-        for pth in updated:
-            print(f"  - {pth}")
-    if skipped:
-        print("- No changes:")
-        for pth in skipped:
-            print(f"  - {pth}")
-
+    print(f"- Files updated: {len(updated)}")
+    print(f"- Existing files unchanged: {len(skipped)}")
     return 0
 
 
@@ -482,7 +455,9 @@ def install_skills_agent_repo(agent: str, target_repo: Path, force: bool) -> int
     skipped: list[str] = []
     skill_names: list[str] = []
 
-    for src_dir in sorted(p for p in src_skills_root.iterdir() if p.is_dir()):
+    for src_dir in sorted(
+        p for p in src_skills_root.iterdir() if p.is_dir() and (p / "SKILL.md").exists()
+    ):
         skill_names.append(src_dir.name)
         dst_dir = dst_root / src_dir.name
         updated.extend(_sync_dir(src_dir, dst_dir, force=force))
@@ -501,25 +476,18 @@ def install_skills_agent_repo(agent: str, target_repo: Path, force: bool) -> int
     print(f"- Repo: {target_repo}")
     print(f"- Destination: {dst_root}")
     print(f"- Skills: {', '.join(skill_names)}")
-    if updated:
-        print("- Updated:")
-        for pth in updated:
-            print(f"  - {pth}")
-    if skipped:
-        print("- No changes:")
-        for pth in skipped:
-            print(f"  - {pth}")
-
+    print(f"- Files updated: {len(updated)}")
+    print(f"- Existing files unchanged: {len(skipped)}")
     return 0
 
 
 def _build_parser() -> argparse.ArgumentParser:
-    p = argparse.ArgumentParser(prog="bootstrap.py")
-    sub = p.add_subparsers(dest="cmd", required=True)
-
-    initp = sub.add_parser("init-repo", help="Bootstrap a target repo with AGENTS.md and .vibe templates")
-    initp.add_argument("path", type=str, help="Path to the target repo root")
-    initp.add_argument(
+    parser = argparse.ArgumentParser(
+        prog="bootstrap.py",
+        description="Install Vibe into a target repository.",
+    )
+    parser.add_argument("path", type=str, help="Path to the target repo root")
+    parser.add_argument(
         "--skillset",
         type=str,
         default=None,
@@ -528,18 +496,25 @@ def _build_parser() -> argparse.ArgumentParser:
             "When explicitly provided, also seeds .vibe/config.json if missing."
         ),
     )
-    initp.add_argument(
+    parser.add_argument(
         "--overwrite",
         action="store_true",
         help="Overwrite existing AGENTS.md and VIBE.md (does NOT overwrite STATE.md, PLAN.md, or HISTORY.md)",
     )
 
-    isp = sub.add_parser("install-skills", help="Install skills for a given agent/tool")
-    isp.add_argument("--global", dest="global_install", action="store_true", help="Install to user/global location")
-    isp.add_argument("--repo", dest="repo_install", action="store_true", help="Install into .codex/skills in the repo")
-    isp.add_argument("--agent", choices=("all", *SUPPORTED_AGENTS), required=True, help="Which agent to install for (use 'all' to install for all supported agents)")
-    isp.add_argument("--force", action="store_true", help="Force overwrite of SKILL.md and other files")
-    return p
+    return parser
+
+
+def _build_install_skills_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        prog="bootstrap.py install-skills",
+        description="Install Vibe skills for an agent.",
+    )
+    parser.add_argument("--global", dest="global_install", action="store_true", help="Install to user/global location")
+    parser.add_argument("--repo", dest="repo_install", action="store_true", help="Install into .codex/skills in the repo")
+    parser.add_argument("--agent", choices=("all", *SUPPORTED_AGENTS), required=True, help="Which agent to install for (use 'all' to install for all supported agents)")
+    parser.add_argument("--force", action="store_true", help="Replace installed skill files")
+    return parser
 
 
 def _install_skills_all(global_install: bool, repo_install: bool, force: bool) -> int:
@@ -575,15 +550,9 @@ def _install_skills_all(global_install: bool, repo_install: bool, force: bool) -
 
 
 def main(argv: list[str]) -> int:
-    # Make the common path a one-argument command while preserving subcommands.
-    if argv and argv[0] not in {"init-repo", "install-skills", "-h", "--help"}:
-        argv = ["init-repo", *argv]
-    args = _build_parser().parse_args(argv)
     try:
-        if args.cmd == "init-repo":
-            return init_repo(Path(args.path).expanduser().resolve(), skillset=args.skillset, overwrite=args.overwrite)
-
-        if args.cmd == "install-skills":
+        if argv and argv[0] == "install-skills":
+            args = _build_install_skills_parser().parse_args(argv[1:])
             if args.global_install == args.repo_install:
                 raise ValueError("Choose exactly one of --global or --repo for install-skills.")
             
@@ -594,7 +563,8 @@ def main(argv: list[str]) -> int:
                 return install_skills_agent_global(agent=args.agent, force=args.force)
             return install_skills_agent_repo(agent=args.agent, target_repo=Path.cwd().resolve(), force=args.force)
 
-        raise ValueError(f"Unknown command: {args.cmd}")
+        args = _build_parser().parse_args(argv)
+        return install_repo(Path(args.path).expanduser().resolve(), skillset=args.skillset, overwrite=args.overwrite)
     except Exception as exc:
         print(f"ERROR: {format_cli_error(exc)}", file=sys.stderr)
         return 2

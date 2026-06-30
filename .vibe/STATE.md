@@ -13,7 +13,7 @@
 
 - Stage: 33
 - Checkpoint: 33.0
-- Status: IN_REVIEW  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
+- Status: IN_PROGRESS  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
 
 ## Objective (current checkpoint)
 
@@ -21,24 +21,26 @@ Make fresh installs and exhausted `$vibe-run` sessions inspect the target reposi
 
 ## Deliverables (current checkpoint)
 
-- Direct repo-path bootstrap command with backward compatibility and clean skill copying
+- Direct repo-path bootstrap as the only repo-install command, with clean skill copying
 - Fresh-template routing into repository-aware stage design without overwriting existing workflow files
 - Explicit `$vibe-run` replenishment for empty/exhausted plans with blocker preservation
-- Current Codex-aligned `vibe-run` skill metadata/instructions and stage-design prompt
-- Regression coverage and operator documentation for the install-to-plan-to-execute path
+- Senior-ownership and anti-clutter rules in canonical AGENTS/prompt surfaces
+- Removal of redundant launch aliases and additive-only lifecycle guidance, with regression coverage and operator docs
 
 ## Acceptance (current checkpoint)
 
 - `python3 tools/bootstrap.py /path/to/repo` works with one required argument.
+- Legacy `init-repo` and `vibe-one-loop` launch aliases are removed.
 - Fresh install dispatches `design`; explicit `$vibe-run` replenishes exhausted plans without weakening blocker behavior.
 - Reinstall preserves substantive workflow files and excludes Python cache artifacts.
-- Planning prompt inspects code and produces aligned, executable PLAN/STATE content.
+- Instructions treat clutter as project risk, prefer stable defaults, clean related ownership areas, bound PLAN/evidence, and justify verification surfaces.
 - Focused workflow tests and strict validation pass.
 
 ## Work log (current session)
 
 - 2026-06-30: User-prioritized Stage 33.0 started to modernize repo installation and make `$vibe-run` bootstrap a repository-aware executable backlog before implementation.
 - 2026-06-30: 33.0 implemented — direct repo-path installation, clean/preserving bootstrap behavior, fresh/exhausted-plan design routing, Codex-native skill metadata, repository-aware planning prompts, docs, and regression coverage committed in `38620d0`.
+- 2026-06-30: 33.0 review feedback reopened implementation — remove additive legacy launch surfaces and encode senior ownership/anti-clutter behavior in canonical instructions and prompts.
 
 - 2026-03-08: Backlog expanded again — added Stage 32 to make the system actively handle overwhelming project complexity through working-set derivation, pressure-triggered decomposition, explicit fork tracking, and resume packets.
 - 2026-03-08: context_capture loop — refreshed `.vibe/CONTEXT.md` so the current Stage 27 work, Stage 31 completion, and Stage 32 backlog can be resumed without rediscovery; recorded `LOOP_RESULT`.

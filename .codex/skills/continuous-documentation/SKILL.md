@@ -1,12 +1,6 @@
 ---
 name: continuous-documentation
 description: Continuous runner for the continuous-documentation workflow across supported agents.
-version: "1.0.0"
-agents:
-  - codex
-  - claude
-dependencies:
-  - vibe-run
 ---
 # continuous-documentation
 

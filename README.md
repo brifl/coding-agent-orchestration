@@ -153,8 +153,7 @@ python3 tools/bootstrap.py /path/to/your/repo
 This creates `.vibe/`, adds `.vibe/` to `.gitignore`, installs a baseline `AGENTS.md`,
 and installs repo-local skills into `.codex/skills` from the default `vibe-base` set
 (`vibe-run`, `continuous-refactor`, `continuous-test-generation`, and
-`continuous-documentation` included). The legacy explicit form
-`python3 tools/bootstrap.py init-repo /path/to/your/repo` remains supported.
+`continuous-documentation` included).
 
 The installer preserves existing `STATE.md` and `PLAN.md` files. In a fresh repo,
 open Codex at the target path and invoke `$vibe-run`. Its first dispatch inspects
@@ -166,7 +165,7 @@ silently stopping.
 Use a different set if needed:
 
 ```bash
-python3 tools/bootstrap.py init-repo /path/to/your/repo --skillset vibe-core
+python3 tools/bootstrap.py /path/to/your/repo --skillset vibe-core
 ```
 
 ### Install global skills
@@ -182,7 +181,7 @@ manual bootstrap in `prompts/init/claude_bootstrap.md` or installed skill script
 
 ## Single-loop vs continuous
 
-- **Single loop**: run one loop and stop (use `$vibe-one-loop` or manual prompts).
+- **Single loop**: run one loop and stop (use `$vibe-loop` or manual prompts).
 - **Continuous**: loop until `agentctl` returns `recommended_role == "stop"` (use
   `$vibe-run`, `$continuous-refactor`, `$continuous-test-generation`, or
   `$continuous-documentation`).

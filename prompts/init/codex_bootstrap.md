@@ -7,7 +7,7 @@ CONTRACT
 - `.vibe/PLAN.md` defines deliverables/acceptance/demo/evidence.
 
 MODE
-- Single-loop: run exactly one loop, then stop; prefer `$vibe-one-loop`.
+- Single-loop: run exactly one loop, then stop; use `$vibe-loop`.
 - Continuous: only when asked; use `$vibe-run` and keep looping until the
   dispatcher returns `recommended_role == "stop"` or a hard blocker requires
   human input.

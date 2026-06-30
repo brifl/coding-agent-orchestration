@@ -143,6 +143,10 @@ Introduced stable prompt IDs with a shared catalog and updated agent control too
 
 ## Archived details (checkpoint level)
 
+### 2026-06-30 — Roadmap simplification
+
+Pruned the speculative Stage 27-32 checkpoint scaffolding from active PLAN after repository evidence and current priorities made the ordering stale. Retained the concrete packaging and state-hygiene outcomes as bounded Stages 34-35; moved the known full-suite fixture repair into the non-blocking verification backlog.
+
 ### Work log (archived)
 
 - 2026-03-08 — Consolidation at checkpoint 27.0 archived completed Stages 25, 26, and 31 into HISTORY, removed them from PLAN.md, and pruned STATE work-log/evidence noise to restore a clean active handoff.

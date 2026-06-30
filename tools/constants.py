@@ -25,7 +25,6 @@ PROMPT_SKILL_PRIORITY: tuple[str, ...] = (
     "vibe-prompts",
     "vibe-loop",
     "vibe-run",
-    "vibe-one-loop",
     "continuous-refactor",
     "continuous-test-generation",
     "continuous-documentation",

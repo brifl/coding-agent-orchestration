@@ -1,12 +1,6 @@
 ---
 name: continuous-test-generation
 description: Continuous runner for the continuous-test-generation workflow across supported agents.
-version: "1.0.0"
-agents:
-  - codex
-  - claude
-dependencies:
-  - vibe-run
 ---
 # continuous-test-generation
 

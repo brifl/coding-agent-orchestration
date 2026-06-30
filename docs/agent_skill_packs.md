@@ -10,10 +10,10 @@ Both supported agents use the same prompt catalog:
 
 ## Codex (reference)
 
-- **Instructions**: use `$vibe-one-loop` or `$vibe-run` skills.
+- **Instructions**: use `$vibe-loop` or `$vibe-run` skills.
 - **Prompt pack**: bundled into the Codex skill resources.
 - **Invocation pattern**:
-  1) Run `$vibe-one-loop` for single-loop execution.
+  1) Run `$vibe-loop` for single-loop execution.
   2) Run `$vibe-run` for continuous execution (do not stop after one loop or
      one completed checkpoint; it repeats through review/consolidation until the
      dispatcher returns `recommended_role == "stop"` or a hard blocker requires

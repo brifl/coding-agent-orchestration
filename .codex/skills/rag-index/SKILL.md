@@ -1,7 +1,6 @@
 ---
 name: rag-index
 description: Experimental RAG indexing utilities (scanner + indexer + retriever).
-version: "0.1.0"
 ---
 # rag-index
 

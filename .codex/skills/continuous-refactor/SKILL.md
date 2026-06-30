@@ -1,12 +1,6 @@
 ---
 name: continuous-refactor
 description: Continuous runner for the continuous-refactor workflow across supported agents.
-version: "1.0.0"
-agents:
-  - codex
-  - claude
-dependencies:
-  - vibe-run
 ---
 # continuous-refactor
 

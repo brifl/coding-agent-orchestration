@@ -1,7 +1,6 @@
 ---
 name: vibe-prompts
 description: Deterministic access to the Vibe prompt catalog.
-version: "1.0.0"
 ---
 # vibe-prompts
 

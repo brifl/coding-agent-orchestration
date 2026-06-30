@@ -15,6 +15,7 @@ from path_utils import normalize_home_path, resolve_claude_home, resolve_codex_h
 from resource_resolver import find_resource  # type: ignore
 from skill_registry import discover_skills  # type: ignore
 from skillctl import cmd_validate, resolve_skillset  # type: ignore
+from skillset_utils import load_manifest  # type: ignore
 
 
 def test_core_vibe_skill_manifests_validate() -> None:
@@ -23,7 +24,6 @@ def test_core_vibe_skill_manifests_validate() -> None:
     for name in (
         "vibe-prompts",
         "vibe-loop",
-        "vibe-one-loop",
         "vibe-run",
         "continuous-refactor",
         "continuous-test-generation",
@@ -31,15 +31,17 @@ def test_core_vibe_skill_manifests_validate() -> None:
         assert cmd_validate(skills_root / name) == 0
 
 
-def test_vibe_base_skillset_includes_loop_run_aliases() -> None:
+def test_vibe_base_skillset_has_one_single_loop_entrypoint() -> None:
     payload = resolve_skillset("vibe-base", "codex")
+    assert set(payload) == {"name", "skills"}
+    assert all(set(entry) == {"name"} for entry in payload["skills"])
     names = {entry["name"] for entry in payload["skills"]}
     assert "vibe-prompts" in names
     assert "vibe-loop" in names
-    assert "vibe-one-loop" in names
     assert "vibe-run" in names
     assert "continuous-refactor" in names
     assert "continuous-test-generation" in names
+    assert "vibe-one-loop" not in names
 
 
 def test_bootstrap_global_skill_list_includes_continuous_refactor() -> None:
@@ -54,16 +56,10 @@ def test_supported_agent_defaults_are_codex_and_claude_only() -> None:
     assert SUPPORTED_AGENTS == ("codex", "claude")
 
 
-def test_continuous_skill_manifests_only_list_supported_agents() -> None:
+def test_core_skill_frontmatter_stays_minimal() -> None:
     repo_root = Path(__file__).resolve().parents[2]
-    for path in (
-        repo_root / ".codex" / "skills" / "continuous-refactor" / "SKILL.md",
-        repo_root / ".codex" / "skills" / "continuous-test-generation" / "SKILL.md",
-        repo_root / ".codex" / "skills" / "continuous-documentation" / "SKILL.md",
-    ):
-        text = path.read_text(encoding="utf-8")
-        assert "gemini" not in text
-        assert "copilot" not in text
+    for path in (repo_root / ".codex" / "skills").glob("*/SKILL.md"):
+        assert set(load_manifest(path)) == {"name", "description"}
 
 
 def test_discover_skills_rejects_unsupported_agents() -> None:

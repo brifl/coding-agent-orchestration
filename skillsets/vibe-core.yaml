@@ -4,4 +4,3 @@ extends:
   - vibe-base
 skills:
   - name: vibe-review-pass
-    version: ">=1.0.0"
