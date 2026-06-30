@@ -8,6 +8,19 @@ description: Continuously assess and execute a repository's Vibe backlog. Use wh
 Run the Vibe workflow as an agent loop. Treat `.vibe/PLAN.md` as a durable
 execution backlog, not as a substitute for inspecting the repository.
 
+## Operating posture
+
+`$vibe-run` is high-throughput scaffolding for complex work. It should keep Codex
+moving through design, implementation, review, and handoff without letting process
+become the product.
+
+- Use evidence as lightweight trust-but-verify receipts, not comprehensive proof.
+- Prefer one or two high-signal checks over broad verification when risk is low.
+- Let non-building loops earn their cost: they should reduce rework, backsliding,
+  rediscovery, or shaky handoffs.
+- Keep moving when the next capability is safe; record useful non-blocking checks
+  as concise backlog items instead of making them gate every loop.
+
 ## Start
 
 1. Read `AGENTS.md`, `.vibe/STATE.md`, and `.vibe/PLAN.md` in that order.
@@ -61,6 +74,10 @@ Stop only when:
 - the user cancels or narrows the run.
 
 Do not accept placeholder behavior or shallow test success as completion.
+
+Evidence should stay short: command + result, commit hash, file/path changed,
+manual observation, or pointer to a bounded artifact. Avoid pasting long logs into
+STATE unless the log is the thing a future agent will need.
 
 ## Terminal and headless helper
 

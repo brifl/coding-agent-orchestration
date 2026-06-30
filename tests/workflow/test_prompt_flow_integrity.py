@@ -164,6 +164,31 @@ def test_canonical_agent_and_prompt_surfaces_require_senior_ownership() -> None:
     assert "remove stale/speculative checkpoints" in prompt_text
 
 
+def test_vibe_run_guidance_prioritizes_lightweight_evidence_and_throughput() -> None:
+    repo_root = Path(__file__).resolve().parents[2]
+    agents_text = (repo_root / "AGENTS.md").read_text(encoding="utf-8")
+    template_agents_text = (repo_root / "templates" / "repo_root" / "AGENTS.md").read_text(
+        encoding="utf-8"
+    )
+    prompt_text = (repo_root / "prompts" / "template_prompts.md").read_text(encoding="utf-8")
+    vibe_run_text = (repo_root / ".codex" / "skills" / "vibe-run" / "SKILL.md").read_text(
+        encoding="utf-8"
+    )
+
+    assert agents_text == template_agents_text
+    assert "lightweight trust-but-verify receipt, not a proof dossier" in agents_text
+    assert "Non-building stages must earn their keep" in agents_text
+    assert "1-3 lightweight receipts" in agents_text
+
+    assert "`$vibe-run` is high-throughput scaffolding, not ceremony" in prompt_text
+    assert "Trust-but-verify self-check" in prompt_text
+    assert "Run 1-2 targeted adversarial probes only when they materially reduce risk" in prompt_text
+    assert "Do not paste full logs" in prompt_text
+
+    assert "`$vibe-run` is high-throughput scaffolding for complex work" in vibe_run_text
+    assert "Use evidence as lightweight trust-but-verify receipts" in vibe_run_text
+
+
 def test_removed_launch_aliases_do_not_reappear() -> None:
     repo_root = Path(__file__).resolve().parents[2]
     shipped_paths = [

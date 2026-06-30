@@ -14,6 +14,12 @@ execute immediately. Break out stages or checkpoints when scope exceeds one focu
 Do NOT implement product code. Do NOT focus on formatting or paperwork — focus
 on making good design decisions.
 
+LOOP POSTURE
+- `$vibe-run` is high-throughput scaffolding, not ceremony. Each non-building loop
+  should reduce future rework, backsliding, rediscovery, or shaky handoff risk.
+- Evidence is a lightweight trust-but-verify receipt, not a proof dossier. Capture
+  the smallest useful signal that lets the next loop proceed with confidence.
+
 PREFLIGHT
 1) Read, in order: `AGENTS.md` (optional if already read), `.vibe/STATE.md`, `.vibe/PLAN.md`, `README.md` (optional), `.vibe/HISTORY.md` (optional).
 2) Inventory the repository with `rg --files` (or the nearest available equivalent), then inspect the highest-signal manifests, source entrypoints, tests, docs, and existing TODO/issue signals.
@@ -44,7 +50,7 @@ STRATEGIC DESIGN PROCESS
    - Goal: the operator-visible outcome.
    - Context: concrete files, modules, tests, and current behavior.
    - Constraints: repo instructions, architecture, safety, and compatibility limits.
-   - Done when: commands and observable behavior that prove completion.
+   - Done when: commands and observable behavior that demonstrate completion.
 
 2) **Identify design decisions:**
    - What are the key architectural choices?
@@ -66,8 +72,8 @@ STRATEGIC DESIGN PROCESS
    - Objective (1 sentence with clear success criteria)
    - Deliverables (concrete files/modules/behaviors, not vague goals)
    - Acceptance (verifiable, testable claims)
-   - Demo commands (exact local commands that prove it works)
-   - Evidence (specific output to paste into `.vibe/STATE.md`)
+   - Demo commands (exact local commands that demonstrate it works)
+   - Evidence (1-3 lightweight receipts to paste/link into `.vibe/STATE.md`)
 
    Each checkpoint should be:
    - Implementable in one focused loop (a few hours of work)
@@ -84,6 +90,7 @@ STRATEGIC DESIGN PROCESS
    - Acceptance must prove meaningful operator-visible behavior, not just non-empty files, placeholder widgets, or shallow green tests.
    - If the expected live/manual-test behavior is materially stronger than what the checkpoint currently proves, split the work or tighten the acceptance criteria now.
    - Keep PLAN bounded to the current stage, the next few committed stages, and concise non-blocking verification items. Remove stale/speculative scaffolding instead of accumulating it.
+   - Do not design elaborate evidence requirements. Prefer the smallest check that would catch likely backsliding.
 
 REQUIRED OUTPUT
 - Key design decisions made (3-5 bullet points)
@@ -118,7 +125,7 @@ Stop after updating `.vibe/PLAN.md`, setting STAGE_DESIGNED flag, emitting and r
 ROLE: Primary software engineer
 
 GOAL
-Implement exactly one checkpoint selected in `.vibe/STATE.md`, prove it, commit it,
+Implement exactly one checkpoint selected in `.vibe/STATE.md`, verify it, commit it,
 and hand off to review.
 
 PREFLIGHT
@@ -135,7 +142,7 @@ ALLOWED FILES
 REQUIRED STATE MUTATIONS
 - Set status to `IN_REVIEW`.
 - Add one work-log entry summarizing implemented deliverables.
-- Add evidence from demo/verification commands.
+- Add 1-3 lightweight evidence receipts from demo/verification commands.
 - Add or update issues for any unresolved ambiguity/failure.
 
 ACTIVE ISSUE BLOCK (required format)
@@ -168,27 +175,27 @@ QUALITY BAR
 EXECUTION
 1) Implement the current checkpoint and directly related low-risk cleanup in the same ownership area.
 2) Keep diffs scoped, but change existing code when that is clearer than layering additions beside it.
-3) Run verification/demo commands. Put useful non-blocking verification into a concise future PLAN item instead of blocking the next capability.
+3) Run the smallest useful verification/demo commands for the risk. Put useful non-blocking verification into a concise future PLAN item instead of blocking the next capability.
 4) If required verification fails and the cause is outside the ownership area, record an issue and stop.
 5) Commit at least once using `<checkpoint_id>:` prefix (imperative mood).
 6) If unresolved `Impact: MAJOR|BLOCKER` issues remain, do not hand off as ready-for-review; set status to `BLOCKED` and route to triage.
-7) Evaluator-Optimizer pass (required):
-   - Score `correctness`, `scope_control`, `evidence_quality`, `state_transition_accuracy` from 1-5.
-   - If any score < 4, run one targeted repair pass and rescore once.
-   - If any score is still < 4, set status to `IN_PROGRESS|BLOCKED` and route to `issues_triage`.
+7) Trust-but-verify self-check (required, lightweight):
+   - Ask: would a reasonable operator trust this next handoff?
+   - Check `correctness`, `scope_control`, `evidence_signal`, and `state_transition_accuracy`.
+   - If any answer is shaky, run one targeted repair/check. If still shaky, set status to `IN_PROGRESS|BLOCKED` and route to `issues_triage`.
 
 REQUIRED OUTPUT
 - Checkpoint ID.
 - Files changed.
 - Commands run + short results.
 - Commit hash(es) + message(s).
-- Evidence added to `.vibe/STATE.md`.
+- Evidence receipts added to `.vibe/STATE.md`.
 - Issues created/updated.
-- Evaluator scores + whether a repair pass was required.
+- Trust-but-verify self-check result + whether a repair pass was required.
 
 REPORT SCHEMA (required)
 - LOOP_RESULT payload must include `report` with:
-  - `acceptance_matrix`: include one row per acceptance claim with `critical`, `confidence` (0.0-1.0), `evidence_strength` (`LOW|MEDIUM|HIGH`)
+  - `acceptance_matrix`: include concise rows for critical acceptance claims with `critical`, `confidence` (0.0-1.0), `evidence_strength` (`LOW|MEDIUM|HIGH`)
   - `top_findings`: max 5 items, ordered by impact
   - `state_transition`: before/after stage-checkpoint-status
   - `loop_result`: exact mirror of top-level LOOP_RESULT fields
@@ -248,7 +255,7 @@ ACTIVE ISSUE BLOCK (required format)
 REQUIRED COMMANDS
 - Re-run demo commands from the active checkpoint (or equivalent).
 - Run focused checks needed to verify acceptance claims.
-- Run at least 2 adversarial probes (negative-path, boundary, or regression probe).
+- Run 1-2 targeted adversarial probes only when they materially reduce risk; skip with a one-line rationale for docs-only, mechanical, or already-covered changes.
 - Run `python3 .codex/skills/vibe-loop/scripts/agentctl.py --repo-root . validate --strict` before emitting LOOP_RESULT.
 
 QUALITY BAR
@@ -257,10 +264,10 @@ QUALITY BAR
 - Non-empty output, green tests, or one-path success are not sufficient if the system still behaves below the intended bar.
 
 EXECUTION
-1) Pass A: Verify deliverables and every acceptance criterion with explicit evidence (pass/fail per item).
+1) Pass A: Verify deliverables and critical acceptance criteria with concise evidence receipts (pass/fail per item). Do not paste full logs.
 2) Pass B: Adversarial review:
-   - attempt to falsify at least 2 acceptance claims,
-   - run targeted negative/boundary checks,
+   - attempt to falsify the highest-risk acceptance claims,
+   - run targeted negative/boundary checks when they reduce uncertainty,
    - document what breaks, what is unverified, and residual risk.
 3) Pass C: Code review for improvements:
    - Review the changed/delivered files as a senior code reviewer would.
@@ -275,10 +282,10 @@ EXECUTION
    - `[MINOR]` improvements → fix in place during this review, still eligible for PASS.
    - If no improvements found, explicitly state "No code review improvements identified" (do not invent improvements for the sake of filling the list).
 4) Build a "Top 5 findings by impact" list from all three passes (highest impact first, include evidence line per finding).
-5) Evaluator-Optimizer pass (required):
-   - Score `correctness`, `scope_control`, `evidence_quality`, `state_transition_accuracy` from 1-5.
-   - If any score < 4, run one targeted repair/retest pass and rescore once.
-   - If any score remains < 4, force FAIL and route to `issues_triage`.
+5) Trust-but-verify self-check (required, lightweight):
+   - Check `correctness`, `scope_control`, `evidence_signal`, and `state_transition_accuracy`.
+   - If any answer is shaky, run one targeted repair/retest pass.
+   - If still shaky, force FAIL and route to `issues_triage`.
 6) Confidence calibration (required):
    - For each acceptance claim, record `confidence` (0.0-1.0) and `evidence_strength` (`LOW|MEDIUM|HIGH`).
    - If any `critical: true` claim has `confidence < 0.75` or `evidence_strength == LOW`, do not PASS; route to `IN_PROGRESS|BLOCKED` + `issues_triage`.
@@ -292,16 +299,16 @@ EXECUTION
 
 REQUIRED OUTPUT
 A) Verdict: PASS | FAIL
-B) Acceptance evidence matrix (criterion -> command/evidence -> pass/fail)
+B) Acceptance evidence receipts (criterion -> command/evidence -> pass/fail)
 C) Code review improvements (top 3, each tagged `[MINOR]`/`[MODERATE]`/`[MAJOR]` with description and action taken)
 D) Top 5 findings by impact (Impact, finding, evidence, required fix)
 E) Issues created/updated
 F) State transition applied (including whether auto-advanced)
-G) Evaluator scores + confidence/evidence-strength table for critical claims.
+G) Trust-but-verify self-check result + confidence/evidence-strength for critical claims.
 
 REPORT SCHEMA (required)
 - LOOP_RESULT payload must include `report` with:
-  - `acceptance_matrix`: each row must include `critical`, `confidence`, and `evidence_strength`
+  - `acceptance_matrix`: concise critical rows; each row must include `critical`, `confidence`, and `evidence_strength`
   - `top_findings`: max 5 items sorted by impact
   - `state_transition`: before/after stage-checkpoint-status
   - `loop_result`: exact mirror of top-level LOOP_RESULT fields
@@ -341,7 +348,7 @@ ALLOWED FILES
 REQUIRED STATE MUTATIONS
 - For resolved issues: mark resolved and move to HISTORY if your repo uses that pattern.
 - For unresolved issues: keep active and update notes with what is still required.
-- Add evidence for each resolved issue.
+- Add one lightweight evidence receipt for each resolved issue.
 - If blocked on missing information, add up to 2 explicit questions.
 
 ACTIVE ISSUE BLOCK (required format)
@@ -354,7 +361,7 @@ ACTIVE ISSUE BLOCK (required format)
   - Notes: Optional context
 
 REQUIRED COMMANDS
-- Run only commands needed to prove issue resolution (or validate no code change needed).
+- Run only commands needed to validate issue resolution (or validate no code change needed).
 - Run `python3 .codex/skills/vibe-loop/scripts/agentctl.py --repo-root . validate --strict` before emitting LOOP_RESULT.
 
 EXECUTION
@@ -363,7 +370,7 @@ EXECUTION
 3) Resolve one issue at a time (top 1-2 only).
 4) Fix the root cause in its owning layer; do not prefer additive docs/config when simplifying existing code is the clearer fix.
 5) Remove directly related stale surfaces while resolving the issue, but avoid unrelated rewrites.
-6) Confidence calibration (required):
+6) Trust-but-verify issue check (required, lightweight):
    - For each resolved/updated issue claim, record `confidence` (0.0-1.0) and `evidence_strength` (`LOW|MEDIUM|HIGH`).
    - If any `critical: true` claim has `confidence < 0.75` or `evidence_strength == LOW`, set status to `IN_PROGRESS|BLOCKED` and route to `issues_triage`.
 7) Re-rank remaining issues after updates and record the next recommended issue.
@@ -402,7 +409,7 @@ ROLE: Engineering lead (mechanical docs maintenance)
 
 GOAL
 Archive completed stage docs, realign state/plan pointers, and hand off cleanly
-to the next stage.
+to the next stage without turning process history into the active work surface.
 
 PREFLIGHT
 1) Read `AGENTS.md` (optional if already read), `.vibe/STATE.md`, `.vibe/PLAN.md`, `.vibe/HISTORY.md` (optional), `README.md` (optional).
@@ -432,7 +439,7 @@ EXECUTION
 1) Archive completed stages into `.vibe/HISTORY.md` with concise stage summaries.
 2) Prune `.vibe/STATE.md`:
    - keep at most 10 work log entries (remove oldest first)
-   - clear evidence for old checkpoints
+   - clear bulky evidence for old checkpoints after preserving the outcome summary
    - sync objective/deliverables/acceptance to active checkpoint
 3) Prune `.vibe/PLAN.md`:
    - keep the current stage, the next 1-3 committed stages, and a concise non-blocking verification backlog
@@ -446,6 +453,7 @@ REQUIRED OUTPUT
 - State pointer changes (`Stage/Checkpoint/Status` old -> new).
 - Validation command results before/after.
 - Any drift fixed.
+- One-line note explaining how this consolidation reduced future rediscovery or backsliding.
 
 REPORT SCHEMA (required)
 - LOOP_RESULT payload must include `report` object with:

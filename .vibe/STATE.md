@@ -38,7 +38,6 @@ Make fresh installs and exhausted `$vibe-run` sessions inspect the target reposi
 
 ## Work log (current session)
 
-- 2026-06-30: 33.0 implemented — direct repo-path installation, clean/preserving bootstrap behavior, fresh/exhausted-plan design routing, Codex-native skill metadata, repository-aware planning prompts, docs, and regression coverage committed in `38620d0`.
 - 2026-06-30: 33.0 review feedback reopened implementation — remove additive legacy launch surfaces and encode senior ownership/anti-clutter behavior in canonical instructions and prompts.
 - 2026-06-30: 33.0 review repair implemented in `1abe5ff` — added ownership/roadmap rules, made prompts deletion- and default-oriented, removed duplicate launch/version/dependency surfaces, and reduced active PLAN to current plus two committed stages.
 - 2026-06-30: Review smoke gate exposed a 30-second per-command budget mismatch; split the same 94-test coverage into two focused demo commands instead of adding a timeout parameter.
@@ -48,6 +47,7 @@ Make fresh installs and exhausted `$vibe-run` sessions inspect the target reposi
 - 2026-06-30: Continuous refactor execution removed the prompt catalog mirror, updated prompt/skill docs to use the dispatcher-returned `prompt_catalog_path`, and kept installed repo behavior by verifying bootstrap still generates the `vibe-prompts` resource artifact.
 - 2026-06-30: Continuous refactor scan selected runtime helper mirror simplification after finding generated helper copies under `.codex/skills/**/scripts` and one already-drifted `agentctl.py` mirror.
 - 2026-06-30: Continuous refactor execution removed generated helper mirrors from source skills, kept skill-owned wrappers, updated source-vs-installed skill guidance, and pruned the now-completed packaging surface checkpoint from PLAN into HISTORY.
+- 2026-06-30: `$vibe-run` guidance optimized for high-throughput scaffolding: evidence is now framed as lightweight trust-but-verify receipts, and implementation/review prompts use risk-based checks instead of process-heavy scoring or mandatory probes.
 
 ## Workflow state
 
@@ -74,6 +74,7 @@ Make fresh installs and exhausted `$vibe-run` sessions inspect the target reposi
 - Runtime-helper mirror verification -> `python3 -m pytest tests/workflow/test_bootstrap.py tests/workflow/test_prompt_flow_integrity.py tests/workflow/test_continuous_refactor_workflow_override.py tests/workflow/test_continuous_aux_workflow_overrides.py tests/workflow/test_skill_tooling.py tests/workflow/test_vibe_run.py -v --capture=sys` -> `55 passed in 48.71s`.
 - Helper script smoke -> source `vibe_get_prompt.py` printed `prompt.refactor_scan` via `tools/prompt_catalog.py` fallback; fresh install generated `.codex/skills/vibe-loop/scripts/agentctl.py` and `.codex/skills/vibe-prompts/scripts/prompt_catalog.py`, returned `prompt.refactor_scan`, and used the installed prompt resource path.
 - Post-commit helper mirror verification -> `python3 -m pytest tests/workflow/test_bootstrap.py tests/workflow/test_prompt_flow_integrity.py tests/workflow/test_continuous_refactor_workflow_override.py tests/workflow/test_continuous_aux_workflow_overrides.py -v --capture=sys` -> `37 passed in 45.37s`; `git ls-files '.codex/skills/**/scripts/*.py'` now lists only skill-owned wrappers.
+- `$vibe-run` guidance smoke -> `python3 -m pytest tests/workflow/test_prompt_flow_integrity.py tests/workflow/test_bootstrap.py tests/workflow/test_vibe_run.py -v --capture=sys` -> `29 passed in 37.41s`; `python3 tools/agentctl.py --repo-root . validate --strict` -> `ok: True`; `ruff check tests/workflow/test_prompt_flow_integrity.py` -> all checks passed.
 
 ## Active issues
 

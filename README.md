@@ -10,6 +10,7 @@ Agent work gets messy without a shared contract. This system makes the workflow 
 - **Next actions are deterministic** (chosen by tooling, not improv).
 - **Small checkpoints** keep scope bounded and reviewable.
 - **Context snapshots** reduce repeated rediscovery between sessions.
+- **Lightweight evidence** keeps the loop honest without turning progress into paperwork.
 
 ## The mental model
 
@@ -27,7 +28,7 @@ Agents do **not** invent workflows. They run the prompt loop recommended by `age
 1) `agentctl.py next` chooses the next loop (implement, review, triage, consolidation, etc.).
 2) The loop prompt is fetched from `prompts/template_prompts.md` in this source repo
    or from the generated `vibe-prompts/resources/template_prompts.md` artifact in an installed repo.
-3) The agent updates `.vibe/STATE.md` with evidence and status changes.
+3) The agent updates `.vibe/STATE.md` with short trust-but-verify evidence and status changes.
 4) Record the emitted `LOOP_RESULT: {...}` line:
    `python3 tools/agentctl.py --repo-root . --format json loop-result --line 'LOOP_RESULT: {...}'`
 5) Repeat until the plan is exhausted or blocked.

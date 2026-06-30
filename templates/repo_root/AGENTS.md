@@ -39,7 +39,14 @@ At the start of any new session (or when context is unclear), the agent must:
 ### Output discipline
 
 - Keep outputs concise and structured.
-- Prefer checklists, acceptance evidence, and exact commands over narrative.
+- Prefer checklists, lightweight acceptance evidence, and exact commands over narrative.
+
+### Evidence discipline
+
+- Evidence is a lightweight trust-but-verify receipt, not a proof dossier.
+- Capture the smallest useful signal that supports the next decision: command + short result, file/path changed, commit hash, screenshot/log pointer, or a one-line manual observation.
+- Do not paste long logs, exhaustive explanations, or duplicate matrices into STATE. Summarize the outcome and keep bulky output in a bounded artifact only when someone will realistically inspect it later.
+- Evidence should prevent charging ahead on shaky foundations, not slow normal development. If a check is useful but non-blocking, record it as a concise future verification item and keep moving.
 
 ### Quality bar (hard rule)
 
@@ -61,6 +68,7 @@ At the start of any new session (or when context is unclear), the agent must:
 - Change existing code and interfaces when that produces the clearer system. Do not preserve legacy behavior without evidence of a real consumer or an explicit user requirement.
 - Before adding a diagnostic, report, artifact, or test surface, state how it will reduce future debugging time. If it only creates another place to inspect, simplify instead.
 - Keep verification proportional. Record useful but non-blocking verification under a future PLAN item and continue toward the next capability.
+- Non-building stages must earn their keep: design, review, consolidation, and context capture should reduce rework, decision drift, or rediscovery more than they cost in agent time.
 
 ### Roadmap hygiene
 
@@ -77,7 +85,7 @@ Each checkpoint should define:
 - **Deliverables** (concrete files/modules/behaviors)
 - **Acceptance** (verifiable conditions)
 - **Demo commands** (exact local commands)
-- **Evidence** (what to paste/link back into `.vibe/STATE.md`)
+- **Evidence** (1-3 lightweight receipts to paste/link back into `.vibe/STATE.md`)
 
 ### Role loops
 
