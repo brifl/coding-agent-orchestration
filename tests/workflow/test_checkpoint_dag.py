@@ -373,3 +373,32 @@ def test_cmd_next_parallel_one_matches_default_shape(temp_repo: Path, capsys) ->
     assert len(parallel_payload["recommended_roles"]) == 1
     assert default_payload["recommended_roles"][0]["checkpoint"] == "1.1"
     assert parallel_payload["recommended_roles"][0]["checkpoint"] == "1.1"
+
+
+def test_cmd_next_recommended_roles_matches_non_implementation_role(temp_repo: Path, capsys) -> None:
+    _write_state(temp_repo, stage="1", checkpoint="1.0", status="IN_REVIEW")
+    _write_plan(
+        temp_repo,
+        """# PLAN
+
+## Stage 1 — Demo
+
+### 1.0 — Review me
+""",
+    )
+
+    exit_code, payload = _run_json_command(
+        capsys,
+        ["--repo-root", str(temp_repo), "--format", "json", "next"],
+    )
+
+    assert exit_code == 0
+    assert payload["recommended_role"] == "review"
+    assert payload["recommended_roles"] == [
+        {
+            "checkpoint": "1.0",
+            "prompt_id": "prompt.checkpoint_review",
+            "reason": "Checkpoint status is IN_REVIEW.",
+            "role": "review",
+        }
+    ]

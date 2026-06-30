@@ -3689,7 +3689,7 @@ def cmd_next(args: argparse.Namespace) -> int:
                 }
             ]
     else:
-        if role not in {"design", "stop"}:
+        if role in {"implement", "advance"}:
             parallel_n = getattr(args, "parallel", 1) or 1
             plan_path = repo_root / ".vibe" / "PLAN.md"
             plan_text = _read_text(plan_path) if plan_path.exists() else ""
@@ -3704,7 +3704,7 @@ def cmd_next(args: argparse.Namespace) -> int:
                 }
                 for cp_id in ready_cps
             ]
-        elif role == "design":
+        elif role != "stop":
             recommended_roles = [
                 {
                     "checkpoint": state.checkpoint,
