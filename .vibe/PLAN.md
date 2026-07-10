@@ -52,7 +52,7 @@ Make fresh and existing consumer repositories execute one current, framework-own
   * Installed-runtime fixture output showing managed paths/digests despite stale target copies.
   * Focused wrapper, catalog, workflow-selector, and strict-validation results.
 
-### 33.2 — Make managed reinstall converge
+### (DONE) 33.2 — Make managed reinstall converge
 
 * **Objective:**
   Make repeated installs atomically converge framework-owned files while preserving project-owned work.
