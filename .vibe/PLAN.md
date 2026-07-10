@@ -5,7 +5,7 @@
 **Stage objective:**
 Make dispatch side-effect free, retry-safe, and focused on product progress instead of automatic ceremony.
 
-### 34.0 — Separate routing from verification
+### (DONE) 34.0 — Separate routing from verification
 
 * **Objective:**
   Make `status` and `next` pure queries and execute each explicitly requested verification command at most once.
