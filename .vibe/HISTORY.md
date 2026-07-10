@@ -13,6 +13,10 @@
 
 ## Completed stages
 
+### 2026-07-10 — Stage 33.0: repository-aware bootstrap path
+
+Delivered direct repo bootstrap, fresh/exhausted repository-aware backlog design, current Codex skill packaging, senior-ownership guidance, lightweight evidence, and deferred-work routing through `ed17740`. Review of real Tartu and Story Engine consumers exposed two follow-up gaps—implicit stale-local shadowing and non-convergent upgrades—now split into checkpoints 33.1 and 33.2 instead of weakening the original acceptance bar.
+
 ### 2026-06-30 — Prompt and helper source simplification (continuous refactor)
 
 Removed tracked prompt/resource and runtime-helper mirrors from source skills: `prompts/template_prompts.md` and `tools/*.py` are the editable sources, while bootstrap generates installed skill resources/scripts. Updated skills, docs, tests, and roadmap entries so source-vs-installed paths are explicit and stale future packaging work is not left in PLAN.
