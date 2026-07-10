@@ -164,6 +164,13 @@ the same run then continues into implementation and review. Invoking `$vibe-run`
 against an exhausted backlog returns to repository-aware planning instead of
 silently stopping.
 
+Installed framework skill names are managed as complete directories. The installer
+records their file hashes in `.codex/skills/.vibe-install-manifest.json`, repairs
+managed edits by content, and removes retired files, caches, and obsolete resources
+on reinstall. It reports those ownership outcomes instead of trusting mtimes.
+Project-specific skills belong in a distinct sibling skill directory; those skills,
+project `AGENTS.md`, and substantive `.vibe/` workflow files are preserved.
+
 Use a different set if needed:
 
 ```bash

@@ -16,7 +16,19 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent / "tools"))
 
+import bootstrap  # type: ignore
+import managed_install  # type: ignore
 from bootstrap import _build_install_skills_parser, install_repo  # type: ignore
+
+
+def _managed_snapshot(skills_root: Path) -> dict[str, bytes]:
+    manifest = json.loads(
+        (skills_root / managed_install.MANIFEST_FILENAME).read_text(encoding="utf-8")
+    )
+    return {
+        relative: skills_root.joinpath(*relative.split("/")).read_bytes()
+        for relative in manifest["files"]
+    }
 
 
 def test_install_repo_overwrite_replaces_canonical_docs(tmp_path: Path) -> None:
@@ -82,6 +94,166 @@ def test_install_repo_installs_vibe_base_skills_by_default(tmp_path: Path) -> No
     out = buffer.getvalue()
     assert "- Skillset installed: vibe-base" in out
     assert "Invoke $vibe-run" in out
+
+
+def test_reinstall_repairs_content_ignores_future_mtime_and_is_noop(tmp_path: Path) -> None:
+    repo_root = Path(__file__).resolve().parents[2]
+    assert install_repo(tmp_path) == 0
+    skills_root = tmp_path / ".codex" / "skills"
+    manifest_path = skills_root / managed_install.MANIFEST_FILENAME
+    first_manifest = manifest_path.read_bytes()
+    installed_agentctl = skills_root / "vibe-loop" / "scripts" / "agentctl.py"
+    installed_agentctl.write_text("# local managed edit\n", encoding="utf-8")
+    future = installed_agentctl.stat().st_mtime + 86_400
+    os.utime(installed_agentctl, (future, future))
+
+    repaired_output = io.StringIO()
+    with redirect_stdout(repaired_output):
+        assert install_repo(tmp_path) == 0
+
+    assert installed_agentctl.read_bytes() == (repo_root / "tools" / "agentctl.py").read_bytes()
+    assert manifest_path.read_bytes() == first_manifest
+    assert "Managed local changes repaired: 1 (vibe-loop/scripts/agentctl.py)" in repaired_output.getvalue()
+
+    noop_output = io.StringIO()
+    with redirect_stdout(noop_output):
+        assert install_repo(tmp_path) == 0
+    assert manifest_path.read_bytes() == first_manifest
+    assert "Managed files changed: 0" in noop_output.getvalue()
+
+
+def test_global_install_uses_same_framework_managed_bundle(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    global_skills = tmp_path / "global-skills"
+    fresh_repo = tmp_path / "fresh-repo"
+    fresh_repo.mkdir()
+    monkeypatch.setattr(bootstrap, "_default_agent_global_dir", lambda agent: global_skills)
+
+    assert bootstrap.install_skills_agent_global("codex", force=False) == 0
+    assert install_repo(fresh_repo) == 0
+
+    assert _managed_snapshot(global_skills) == _managed_snapshot(
+        fresh_repo / ".codex" / "skills"
+    )
+    assert (global_skills / managed_install.MANIFEST_FILENAME).read_bytes() == (
+        fresh_repo / ".codex" / "skills" / managed_install.MANIFEST_FILENAME
+    ).read_bytes()
+
+
+def test_legacy_upgrade_converges_managed_tree_and_preserves_project_bytes(tmp_path: Path) -> None:
+    fresh = tmp_path / "fresh"
+    legacy = tmp_path / "legacy"
+    fresh.mkdir()
+    legacy.mkdir()
+    assert install_repo(fresh) == 0
+    assert install_repo(legacy) == 0
+
+    legacy_skills = legacy / ".codex" / "skills"
+    (legacy_skills / managed_install.MANIFEST_FILENAME).unlink()
+    retired = legacy_skills / "vibe-one-loop"
+    retired.mkdir()
+    (retired / "SKILL.md").write_text("retired\n", encoding="utf-8")
+    cache = legacy_skills / "vibe-loop" / "scripts" / "__pycache__"
+    cache.mkdir()
+    (cache / "agentctl.cpython-312.pyc").write_bytes(b"stale bytecode")
+    empty_cache = legacy_skills / "vibe-run" / "scripts" / "__pycache__"
+    empty_cache.mkdir()
+    obsolete_catalog = (
+        legacy_skills / "continuous-refactor" / "resources" / "template_prompts.md"
+    )
+    obsolete_catalog.parent.mkdir(parents=True, exist_ok=True)
+    obsolete_catalog.write_text("obsolete\n", encoding="utf-8")
+    stale_runner = legacy_skills / "vibe-run" / "scripts" / "vibe_run.py"
+    stale_runner.write_text("# stale wrapper\n", encoding="utf-8")
+
+    project_skill = legacy_skills / "project-owned" / "SKILL.md"
+    project_skill.parent.mkdir()
+    project_skill.write_text("project bytes\n", encoding="utf-8")
+    preserved = {
+        project_skill: project_skill.read_bytes(),
+        legacy / "AGENTS.md": b"project agents\n",
+        legacy / ".vibe" / "STATE.md": b"# STATE\n\nproject state\n",
+        legacy / ".vibe" / "PLAN.md": b"# PLAN\n\nproject plan\n",
+    }
+    for path, content in preserved.items():
+        path.write_bytes(content)
+
+    output = io.StringIO()
+    with redirect_stdout(output):
+        assert install_repo(legacy) == 0
+
+    assert _managed_snapshot(legacy_skills) == _managed_snapshot(fresh / ".codex" / "skills")
+    assert (legacy_skills / managed_install.MANIFEST_FILENAME).read_bytes() == (
+        fresh / ".codex" / "skills" / managed_install.MANIFEST_FILENAME
+    ).read_bytes()
+    assert not retired.exists()
+    assert not cache.exists()
+    assert not empty_cache.exists()
+    assert not obsolete_catalog.exists()
+    for path, content in preserved.items():
+        assert path.read_bytes() == content
+    summary = output.getvalue()
+    assert "vibe-one-loop" in summary
+    assert "__pycache__" in summary
+    assert "continuous-refactor/resources/template_prompts.md" in summary
+    assert "vibe-run/scripts/vibe_run.py" in summary
+
+
+def test_invalid_managed_manifest_fails_before_managed_tree_mutation(tmp_path: Path) -> None:
+    assert install_repo(tmp_path) == 0
+    skills_root = tmp_path / ".codex" / "skills"
+    before = _managed_snapshot(skills_root)
+    manifest_path = skills_root / managed_install.MANIFEST_FILENAME
+    manifest_path.write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "managed_skills": ["vibe-loop"],
+                "files": {"../outside": "0" * 64},
+                "bundle_sha256": "0" * 64,
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ValueError, match="Invalid managed manifest path"):
+        install_repo(tmp_path)
+
+    assert _managed_snapshot_from_files(skills_root, before) == before
+    assert not (tmp_path / "outside").exists()
+
+
+def _managed_snapshot_from_files(skills_root: Path, expected: dict[str, bytes]) -> dict[str, bytes]:
+    return {
+        relative: skills_root.joinpath(*relative.split("/")).read_bytes()
+        for relative in expected
+    }
+
+
+def test_manifest_write_failure_rolls_back_managed_skill_swaps(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    assert install_repo(tmp_path) == 0
+    skills_root = tmp_path / ".codex" / "skills"
+    installed_agentctl = skills_root / "vibe-loop" / "scripts" / "agentctl.py"
+    installed_agentctl.write_text("# locally edited before failed install\n", encoding="utf-8")
+    manifest_before = (skills_root / managed_install.MANIFEST_FILENAME).read_bytes()
+    tree_before = _managed_snapshot(skills_root)
+    tree_before["vibe-loop/scripts/agentctl.py"] = installed_agentctl.read_bytes()
+
+    def _fail_manifest_write(path: Path, content: bytes) -> None:
+        del path, content
+        raise OSError("injected manifest write failure")
+
+    monkeypatch.setattr(managed_install, "_write_manifest_atomic", _fail_manifest_write)
+    with pytest.raises(OSError, match="injected manifest write failure"):
+        install_repo(tmp_path)
+
+    assert _managed_snapshot_from_files(skills_root, tree_before) == tree_before
+    assert (skills_root / managed_install.MANIFEST_FILENAME).read_bytes() == manifest_before
 
 
 def test_direct_repo_path_install_routes_first_vibe_run_step_to_design(tmp_path: Path) -> None:

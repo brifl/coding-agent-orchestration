@@ -36,9 +36,13 @@ from typing import Any, Iterable
 
 from cli_error_utils import format_cli_error
 from constants import PROMPT_CATALOG_FILENAME, SUPPORTED_AGENTS, validate_agent_name
+from managed_install import (
+    PRE_MANIFEST_RETIRED_SKILLS,
+    ManagedInstallReport,
+    reconcile_managed_skills,
+)
 from path_utils import resolve_claude_home, resolve_codex_home
 from prompt_catalog_paths import canonical_repo_prompt_catalog_path
-from resource_resolver import find_resource
 from skillset_utils import find_skillset, load_skillset
 
 # All supported agents for bulk installation
@@ -49,6 +53,14 @@ ALL_AGENTS = list(SUPPORTED_AGENTS)
 CANONICAL_AGENTS_TEMPLATE = Path("templates/repo_root/AGENTS.md")
 CANONICAL_VIBE_TEMPLATE = Path("templates/repo_root/VIBE.md")
 DEFAULT_REPO_SKILLSET = "vibe-base"
+DEFAULT_MANAGED_SKILLS = (
+    "vibe-prompts",
+    "vibe-loop",
+    "vibe-run",
+    "continuous-refactor",
+    "continuous-test-generation",
+    "continuous-documentation",
+)
 
 
 def _repo_root_from_this_file() -> Path:
@@ -87,26 +99,6 @@ def _validate_prompt_catalog(repo_root: Path, catalog_path: Path) -> None:
     )
     if proc.returncode != 0:
         raise RuntimeError(f"Prompt catalog validation failed:\n{proc.stderr or proc.stdout}")
-
-
-def _sync_prompt_catalog_to_skills(
-    catalog_path: Path,
-    skills_root: Path,
-    skill_names: Iterable[str],
-    *,
-    force: bool,
-) -> list[str]:
-    updated: list[str] = []
-    for skill_name in sorted({name for name in skill_names if name}):
-        dst_catalog = skills_root / skill_name / "resources" / PROMPT_CATALOG_FILENAME
-        if skill_name == "vibe-prompts":
-            if _copy_file(catalog_path, dst_catalog, force=force):
-                updated.append(str(dst_catalog))
-            continue
-        if dst_catalog.exists():
-            dst_catalog.unlink()
-            updated.append(f"{dst_catalog} (removed)")
-    return updated
 
 
 def _copy_if_missing(src: Path, dst: Path, *, force: bool = False) -> str:
@@ -217,32 +209,15 @@ def install_repo(target_repo: Path, skillset: str | None = None, overwrite: bool
             _write_text(config_path, json.dumps(config_payload, indent=2) + "\n")
             created.append(str(config_path))
 
-    # Auto-install skills from the selected set into .codex/skills.
+    # Reconcile framework-managed skills from the selected set.
     skill_defs = _resolve_skillset(repo_root, effective_skillset)
     dst_root = target_repo / ".codex" / "skills"
-    dst_root.mkdir(parents=True, exist_ok=True)
-    installed_skill_names: list[str] = []
-    for skill in skill_defs:
-        name = skill["name"]
-        installed_skill_names.append(name)
-        src_dir = repo_root / ".codex" / "skills" / name
-        if not src_dir.exists():
-            src_dir = repo_root / "skills" / name
-        if not src_dir.exists():
-            raise FileNotFoundError(f"Skill folder not found for '{name}'.")
-        dst_dir = dst_root / name
-        u = _sync_dir(src_dir, dst_dir, force=False)
-        if u:
-            created.extend(u)
-        else:
-            skipped.append(str(dst_dir))
-
-    catalog_path = _resolve_canonical_prompt_catalog(repo_root)
-    _validate_prompt_catalog(repo_root, catalog_path)
-    created.extend(
-        _sync_prompt_catalog_to_skills(catalog_path, dst_root, installed_skill_names, force=False)
+    managed_report = _reconcile_managed_install(
+        repo_root,
+        dst_root,
+        [str(skill["name"]) for skill in skill_defs],
     )
-    created.extend(_sync_runtime_helpers(repo_root, dst_root, force=True))
+    created.extend(str(dst_root / relative) for relative in managed_report.changed_files)
 
     # Summary
     print("repo install summary")
@@ -253,6 +228,7 @@ def install_repo(target_repo: Path, skillset: str | None = None, overwrite: bool
     print(f"- Files created/updated: {len(created)}")
     print(f"- Files overwritten: {len(overwritten)}")
     print(f"- Existing files preserved: {len(skipped)}")
+    _print_managed_report(managed_report)
     print("- Next:")
     print(f"  1. Open Codex in {target_repo}")
     print("  2. Invoke $vibe-run")
@@ -305,134 +281,88 @@ def _resolve_skillset(repo_root: Path, name: str) -> list[dict[str, Any]]:
     return [{"name": skill_name} for skill_name in resolved]
 
 
-def _copy_file(src: Path, dst: Path, *, force: bool = False, preserve_mtime: bool = True) -> bool:
-    """
-    Copy file src -> dst.
-    Returns True if copied/updated, False if skipped.
-    """
-    if not src.exists():
-        raise FileNotFoundError(f"Missing source file: {src}")
-
-    dst.parent.mkdir(parents=True, exist_ok=True)
-
-    if dst.exists() and not force:
-        # Skip if destination is newer or same mtime
-        try:
-            if dst.stat().st_mtime >= src.stat().st_mtime:
-                return False
-        except OSError:
-            pass
-
-    shutil.copy2(src, dst) if preserve_mtime else shutil.copyfile(src, dst)
-    return True
+def _resolve_skill_source(repo_root: Path, skill_name: str) -> Path:
+    for root in (repo_root / ".codex" / "skills", repo_root / "skills"):
+        candidate = root / skill_name
+        if (candidate / "SKILL.md").is_file():
+            return candidate
+    raise FileNotFoundError(f"Skill folder not found for '{skill_name}'.")
 
 
-def _sync_dir(src_dir: Path, dst_dir: Path, *, force: bool = False) -> list[str]:
-    """
-    Sync a directory recursively (copy files). Returns list of updated files (dst paths).
-    Does not delete extra files in dst.
-    """
-    updated: list[str] = []
-    if not src_dir.exists():
-        raise FileNotFoundError(f"Missing source directory: {src_dir}")
-
-    for src in src_dir.rglob("*"):
-        if src.is_dir():
-            continue
-        rel = src.relative_to(src_dir)
-        if "__pycache__" in rel.parts or src.suffix in {".pyc", ".pyo"}:
-            continue
-        dst = dst_dir / rel
-        if _copy_file(src, dst, force=force):
-            updated.append(str(dst))
-    return updated
-
-
-def _runtime_helper_pairs(repo_root: Path, skills_root: Path) -> list[tuple[Path, Path]]:
-    vibe_loop_scripts = skills_root / "vibe-loop" / "scripts"
-    vibe_prompts_scripts = skills_root / "vibe-prompts" / "scripts"
-    return [
-        (repo_root / "tools" / "agentctl.py", vibe_loop_scripts / "agentctl.py"),
-        (repo_root / "tools" / "checkpoint_templates.py", vibe_loop_scripts / "checkpoint_templates.py"),
-        (repo_root / "tools" / "constants.py", vibe_loop_scripts / "constants.py"),
-        (repo_root / "tools" / "path_utils.py", vibe_loop_scripts / "path_utils.py"),
-        (repo_root / "tools" / "prompt_catalog_paths.py", vibe_loop_scripts / "prompt_catalog_paths.py"),
-        (repo_root / "tools" / "resource_resolver.py", vibe_loop_scripts / "resource_resolver.py"),
-        (repo_root / "tools" / "stage_ordering.py", vibe_loop_scripts / "stage_ordering.py"),
-        (repo_root / "tools" / "workflow_engine.py", vibe_loop_scripts / "workflow_engine.py"),
-        (repo_root / "tools" / "prompt_catalog.py", vibe_prompts_scripts / "prompt_catalog.py"),
-    ]
+def _managed_overlay_sources(repo_root: Path, skill_names: set[str]) -> dict[str, Path]:
+    overlays: dict[str, Path] = {}
+    if "vibe-prompts" in skill_names:
+        overlays[f"vibe-prompts/resources/{PROMPT_CATALOG_FILENAME}"] = (
+            _resolve_canonical_prompt_catalog(repo_root)
+        )
+        overlays["vibe-prompts/scripts/prompt_catalog.py"] = repo_root / "tools" / "prompt_catalog.py"
+    if "vibe-loop" in skill_names:
+        for filename in (
+            "agentctl.py",
+            "checkpoint_templates.py",
+            "constants.py",
+            "path_utils.py",
+            "prompt_catalog_paths.py",
+            "resource_resolver.py",
+            "stage_ordering.py",
+            "workflow_engine.py",
+        ):
+            overlays[f"vibe-loop/scripts/{filename}"] = repo_root / "tools" / filename
+    return overlays
 
 
-def _sync_runtime_helpers(repo_root: Path, skills_root: Path, *, force: bool) -> list[str]:
-    updated: list[str] = []
-    for src, dst in _runtime_helper_pairs(repo_root, skills_root):
-        if _copy_file(src, dst, force=force):
-            updated.append(str(dst))
-    return updated
+def _reconcile_managed_install(
+    repo_root: Path,
+    skills_root: Path,
+    skill_names: Iterable[str],
+) -> ManagedInstallReport:
+    names = tuple(sorted({str(name).strip() for name in skill_names if str(name).strip()}))
+    catalog_path = _resolve_canonical_prompt_catalog(repo_root)
+    _validate_prompt_catalog(repo_root, catalog_path)
+    sources = {name: _resolve_skill_source(repo_root, name) for name in names}
+    overlays = _managed_overlay_sources(repo_root, set(names))
+    return reconcile_managed_skills(skills_root, sources, overlays)
+
+
+def _path_summary(paths: Iterable[str], *, limit: int = 5) -> str:
+    values = list(paths)
+    if not values:
+        return "none"
+    shown = ", ".join(values[:limit])
+    if len(values) > limit:
+        shown += f", ... (+{len(values) - limit})"
+    return shown
+
+
+def _print_managed_report(report: ManagedInstallReport) -> None:
+    print(f"- Managed skills: {', '.join(report.managed_skills)}")
+    print(f"- Managed bundle SHA-256: {report.bundle_sha256}")
+    print(f"- Managed files changed: {len(report.changed_files)}")
+    print(
+        f"- Managed local changes repaired: {len(report.repaired_files)} "
+        f"({_path_summary(report.repaired_files)})"
+    )
+    print(
+        f"- Managed extras removed: {len(report.removed_extras)} "
+        f"({_path_summary(report.removed_extras)})"
+    )
+    print(
+        f"- Retired managed skills removed: {len(report.retired_skills)} "
+        f"({_path_summary(report.retired_skills)})"
+    )
+    print(f"- Managed manifest: {report.manifest_path}")
 
 
 def install_skills_agent_global(agent: str, force: bool) -> int:
     agent = validate_agent_name(agent)
     repo_root = _repo_root_from_this_file()
     dst_root = _default_agent_global_dir(agent)
-    dst_root.mkdir(parents=True, exist_ok=True)
-
-    # Expected skill folders (we install only these by name)
-    skill_names = [
-        "vibe-prompts",
-        "vibe-loop",
-        "vibe-run",
-        "continuous-refactor",
-        "continuous-test-generation",
-        "continuous-documentation",
-    ]
-
-    updated: list[str] = []
-    skipped: list[str] = []
-
-    # 1) Install skill folders via skillctl
-    for name in skill_names:
-        cmd = [
-            sys.executable,
-            str(repo_root / "tools" / "skillctl.py"),
-            "install",
-            name,
-            "--global",
-            "--agent",
-            agent,
-        ]
-        if force:
-            cmd.append("--force")
-        p = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-        if p.returncode != 0:
-            raise RuntimeError(f"skillctl install failed for '{name}':\n{p.stderr or p.stdout}")
-        updated.append(str(dst_root / name))
-
-    # 2) Force-refresh skill contents (including manifests) every install.
-    for name in skill_names:
-        src_dir = find_resource("skill", name, agent=agent)
-        if src_dir is None:
-            raise RuntimeError(f"Could not resolve installed source for skill '{name}'.")
-        updated.extend(_sync_dir(src_dir, dst_root / name, force=True))
-
-    # 3) Canonical catalog location
-    canonical_catalog = _resolve_canonical_prompt_catalog(repo_root)
-    _validate_prompt_catalog(repo_root, canonical_catalog)
-
-    # 4) Sync catalog into every installed skill resources directory (always refresh).
-    updated.extend(
-        _sync_prompt_catalog_to_skills(canonical_catalog, dst_root, skill_names, force=True)
-    )
-
-    # 5) Ensure runtime helper scripts are present inside skills (force refresh).
-    updated.extend(_sync_runtime_helpers(repo_root, dst_root, force=True))
+    del force  # Managed files always converge by content; force is retained for CLI compatibility.
+    report = _reconcile_managed_install(repo_root, dst_root, DEFAULT_MANAGED_SKILLS)
 
     print(f"install-skills summary ({agent} global)")
     print(f"- Destination: {dst_root}")
-    print(f"- Skills: {', '.join(skill_names)}")
-    print(f"- Files updated: {len(updated)}")
-    print(f"- Existing files unchanged: {len(skipped)}")
+    _print_managed_report(report)
     return 0
 
 
@@ -449,36 +379,24 @@ def install_skills_agent_repo(agent: str, target_repo: Path, force: bool) -> int
     if not src_skills_root.exists():
         raise FileNotFoundError(f"Repo-local skills folder missing: {src_skills_root}")
 
+    del force  # Managed files always converge by content; force is retained for CLI compatibility.
     dst_root = target_repo / ".codex" / "skills"
-    dst_root.mkdir(parents=True, exist_ok=True)
-
-    updated: list[str] = []
-    skipped: list[str] = []
-    skill_names: list[str] = []
-
-    for src_dir in sorted(
-        p for p in src_skills_root.iterdir() if p.is_dir() and (p / "SKILL.md").exists()
-    ):
-        skill_names.append(src_dir.name)
-        dst_dir = dst_root / src_dir.name
-        updated.extend(_sync_dir(src_dir, dst_dir, force=force))
+    skill_names = [
+        src_dir.name
+        for src_dir in sorted(src_skills_root.iterdir())
+        if src_dir.is_dir()
+        and (src_dir / "SKILL.md").exists()
+        and src_dir.name not in PRE_MANIFEST_RETIRED_SKILLS
+    ]
 
     if not skill_names:
         raise RuntimeError(f"No repo-local skills found in: {src_skills_root}")
-
-    canonical_catalog = _resolve_canonical_prompt_catalog(repo_root)
-    _validate_prompt_catalog(repo_root, canonical_catalog)
-    updated.extend(
-        _sync_prompt_catalog_to_skills(canonical_catalog, dst_root, skill_names, force=True)
-    )
-    updated.extend(_sync_runtime_helpers(repo_root, dst_root, force=True))
+    report = _reconcile_managed_install(repo_root, dst_root, skill_names)
 
     print(f"install-skills summary ({agent} repo-local)")
     print(f"- Repo: {target_repo}")
     print(f"- Destination: {dst_root}")
-    print(f"- Skills: {', '.join(skill_names)}")
-    print(f"- Files updated: {len(updated)}")
-    print(f"- Existing files unchanged: {len(skipped)}")
+    _print_managed_report(report)
     return 0
 
 
@@ -514,7 +432,11 @@ def _build_install_skills_parser() -> argparse.ArgumentParser:
     parser.add_argument("--global", dest="global_install", action="store_true", help="Install to user/global location")
     parser.add_argument("--repo", dest="repo_install", action="store_true", help="Install into .codex/skills in the repo")
     parser.add_argument("--agent", choices=("all", *SUPPORTED_AGENTS), required=True, help="Which agent to install for (use 'all' to install for all supported agents)")
-    parser.add_argument("--force", action="store_true", help="Replace installed skill files")
+    parser.add_argument(
+        "--force",
+        action="store_true",
+        help="Compatibility flag; framework-managed skill files always converge by content.",
+    )
     return parser
 
 
