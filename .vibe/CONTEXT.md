@@ -15,7 +15,7 @@
 
 ## Gotchas
 
-- Current `status`/`next` can execute checkpoint demos during review; avoid using them as read-only probes until Stage 34.0.
+- `status` and normal `next` are subprocess-free role queries; verification runs only when explicitly requested or selected by implementation/review.
 - Successful `next --run-gates` currently runs configured gates twice; keep gate invocation counting in the 34.0 regression surface.
 - `.vibe/` is ignored by pattern but selected workflow files are already tracked; explicit tracked-file staging may emit an ignore warning.
 

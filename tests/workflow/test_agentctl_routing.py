@@ -11,7 +11,13 @@ from pathlib import Path
 # Add tools directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent.parent / "tools"))
 
-from agentctl import WORK_LOG_CONSOLIDATION_CAP, StateInfo, _recommend_next, _resolve_next_prompt_selection  # type: ignore
+from agentctl import (  # type: ignore
+    WORK_LOG_CONSOLIDATION_CAP,
+    StateInfo,
+    _recommend_next,
+    _resolve_next_prompt_selection,
+    build_parser,
+)
 
 
 def _write_state(repo_root: Path, body: str) -> None:
@@ -1385,131 +1391,57 @@ def test_stop_loop_result_overwrites_existing(temp_repo: Path) -> None:
     assert data["reason"] == "last checkpoint reached"
 
 
-# ── Stage 22 E2E: _extract_demo_commands ─────────────────────────────────────
+def test_status_and_next_queries_do_not_run_subprocess(
+    temp_repo: Path,
+    vibe_state: Path,
+    vibe_plan: Path,
+    capsys,
+    monkeypatch,
+) -> None:
+    import agentctl  # type: ignore
+
+    del vibe_state, vibe_plan
+
+    def _fail_subprocess(*args, **kwargs):  # type: ignore[no-untyped-def]
+        raise AssertionError(f"routing executed subprocess: {args!r} {kwargs!r}")
+
+    monkeypatch.setattr(agentctl.subprocess, "run", _fail_subprocess)
+    parser = build_parser()
+    for command in ("status", "next"):
+        args = parser.parse_args(
+            ["--repo-root", str(temp_repo), "--format", "json", command]
+        )
+        assert args.fn(args) == 0
+        payload = json.loads(capsys.readouterr().out)
+        assert payload["checkpoint"] == "1.0"
 
 
-def test_extract_demo_commands_checkpoint_not_found() -> None:
-    from agentctl import _extract_demo_commands  # type: ignore
+def test_next_run_gates_executes_configured_gates_once(
+    temp_repo: Path,
+    vibe_state: Path,
+    vibe_plan: Path,
+    capsys,
+    monkeypatch,
+) -> None:
+    import agentctl  # type: ignore
 
-    plan_text = "### 1.0 — First\n\n* **Demo commands:**\n  * `echo first`\n"
-    result = _extract_demo_commands(plan_text, "2.0")
-    assert result == []
+    del vibe_state, vibe_plan
+    calls: list[tuple[Path, str | None]] = []
 
+    def _record_gates(repo_root: Path, checkpoint: str | None):
+        calls.append((repo_root, checkpoint))
+        return []
 
-def test_extract_demo_commands_single_command() -> None:
-    from agentctl import _extract_demo_commands  # type: ignore
-
-    plan_text = "### 1.0 — First\n\n* **Demo commands:**\n  * `echo hello`\n"
-    result = _extract_demo_commands(plan_text, "1.0")
-    assert result == ["echo hello"]
-
-
-def test_extract_demo_commands_multiple_commands() -> None:
-    from agentctl import _extract_demo_commands  # type: ignore
-
-    plan_text = (
-        "### 1.0 — First\n\n* **Demo commands:**\n  * `echo one`\n  * `echo two`\n"
-        "\n### 1.1 — Second\n"
+    monkeypatch.setattr(agentctl, "run_gates", _record_gates)
+    parser = build_parser()
+    args = parser.parse_args(
+        ["--repo-root", str(temp_repo), "--format", "json", "next", "--run-gates"]
     )
-    result = _extract_demo_commands(plan_text, "1.0")
-    assert result == ["echo one", "echo two"]
 
-
-def test_extract_demo_commands_stops_at_next_checkpoint() -> None:
-    from agentctl import _extract_demo_commands  # type: ignore
-
-    plan_text = (
-        "### 1.0 — First\n\n* **Demo commands:**\n  * `echo first`\n\n"
-        "### 1.1 — Second\n\n* **Demo commands:**\n  * `echo second`\n"
-    )
-    assert _extract_demo_commands(plan_text, "1.0") == ["echo first"]
-    assert _extract_demo_commands(plan_text, "1.1") == ["echo second"]
-
-
-# ── Stage 22 E2E: _run_smoke_test_gate ───────────────────────────────────────
-
-
-def test_smoke_gate_no_checkpoint(temp_repo: Path) -> None:
-    from agentctl import _run_smoke_test_gate  # type: ignore
-
-    plan_text = "### 1.0 — First\n\n* **Demo commands:**\n  * `echo ok`\n"
-    state = StateInfo(stage="1", checkpoint=None, status="NOT_STARTED", evidence_path=None, issues=())
-    passed, reason = _run_smoke_test_gate(temp_repo, state, plan_text)
-    assert passed is True
-    assert reason is None
-
-
-def test_smoke_gate_no_demo_commands(temp_repo: Path) -> None:
-    from agentctl import _run_smoke_test_gate  # type: ignore
-
-    plan_text = "### 1.0 — First\n\n* **Objective:**\n  No commands.\n"
-    state = StateInfo(stage="1", checkpoint="1.0", status="NOT_STARTED", evidence_path=None, issues=())
-    passed, reason = _run_smoke_test_gate(temp_repo, state, plan_text)
-    assert passed is True
-    assert reason is None
-
-
-def test_smoke_gate_success(temp_repo: Path) -> None:
-    from agentctl import _run_smoke_test_gate  # type: ignore
-    from unittest.mock import MagicMock, patch
-
-    plan_text = "### 1.0 — First\n\n* **Demo commands:**\n  * `echo ok`\n"
-    mock_result = MagicMock()
-    mock_result.returncode = 0
-    mock_result.stderr = ""
-    state = StateInfo(stage="1", checkpoint="1.0", status="NOT_STARTED", evidence_path=None, issues=())
-    with patch("agentctl.subprocess.run", return_value=mock_result):
-        passed, reason = _run_smoke_test_gate(temp_repo, state, plan_text)
-    assert passed is True
-    assert reason is None
-
-
-def test_smoke_gate_nonzero_exit(temp_repo: Path) -> None:
-    from agentctl import _run_smoke_test_gate  # type: ignore
-    from unittest.mock import MagicMock, patch
-
-    plan_text = "### 1.0 — First\n\n* **Demo commands:**\n  * `bad-command`\n"
-    mock_result = MagicMock()
-    mock_result.returncode = 1
-    mock_result.stderr = "command not found"
-    state = StateInfo(stage="1", checkpoint="1.0", status="NOT_STARTED", evidence_path=None, issues=())
-    with patch("agentctl.subprocess.run", return_value=mock_result):
-        passed, reason = _run_smoke_test_gate(temp_repo, state, plan_text)
-    assert passed is False
-    assert reason is not None
-    assert "rc=1" in reason
-    assert "bad-command" in reason
-
-
-def test_smoke_gate_timeout(temp_repo: Path) -> None:
-    from agentctl import _run_smoke_test_gate  # type: ignore
-    from unittest.mock import patch
-    import subprocess as _subprocess
-
-    plan_text = "### 1.0 — First\n\n* **Demo commands:**\n  * `sleep 999`\n"
-    state = StateInfo(stage="1", checkpoint="1.0", status="NOT_STARTED", evidence_path=None, issues=())
-    with patch(
-        "agentctl.subprocess.run",
-        side_effect=_subprocess.TimeoutExpired("sleep 999", 5),
-    ):
-        passed, reason = _run_smoke_test_gate(temp_repo, state, plan_text, timeout=5)
-    assert passed is False
-    assert reason is not None
-    assert "timed out" in reason
-    assert "sleep 999" in reason
-
-
-def test_smoke_gate_oserror(temp_repo: Path) -> None:
-    from agentctl import _run_smoke_test_gate  # type: ignore
-    from unittest.mock import patch
-
-    plan_text = "### 1.0 — First\n\n* **Demo commands:**\n  * `nonexistent-binary`\n"
-    state = StateInfo(stage="1", checkpoint="1.0", status="NOT_STARTED", evidence_path=None, issues=())
-    with patch("agentctl.subprocess.run", side_effect=OSError("No such file")):
-        passed, reason = _run_smoke_test_gate(temp_repo, state, plan_text)
-    assert passed is False
-    assert reason is not None
-    assert "could not run" in reason
+    assert args.fn(args) == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["gate_results"] == []
+    assert calls == [(temp_repo, "1.0")]
 
 
 # ── Stage 22 E2E: _maintenance_cycle_trigger_reason ──────────────────────────

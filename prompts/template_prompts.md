@@ -162,7 +162,7 @@ dispatcher will pause and surface these issues to the human rather than routing 
 issues_triage. Do NOT use DECISION_REQUIRED for technical blockers an agent can resolve.
 
 REQUIRED COMMANDS
-- Run checkpoint demo commands from `.vibe/PLAN.md` (or closest equivalent if paths changed).
+- Run the smallest relevant checkpoint demo/verification subset. Reuse fresh passing evidence only when no later change invalidated it; do not mechanically run every PLAN command.
 - Run `git status --porcelain` before and after commit.
 - Run `python3 .codex/skills/vibe-loop/scripts/agentctl.py --repo-root . validate --strict` before emitting LOOP_RESULT.
 
@@ -256,7 +256,7 @@ ACTIVE ISSUE BLOCK (required format)
   - Notes: Optional context
 
 REQUIRED COMMANDS
-- Re-run demo commands from the active checkpoint (or equivalent).
+- Select the smallest independent demo/verification commands needed for the acceptance claims; do not mechanically duplicate equivalent passing checks.
 - Run focused checks needed to verify acceptance claims.
 - Run 1-2 targeted adversarial probes only when they materially reduce risk; skip with a one-line rationale for docs-only, mechanical, or already-covered changes.
 - Run `python3 .codex/skills/vibe-loop/scripts/agentctl.py --repo-root . validate --strict` before emitting LOOP_RESULT.

@@ -2477,102 +2477,6 @@ def _maintenance_cycle_trigger_reason(
     )
 
 
-def _extract_demo_commands(plan_text: str, checkpoint_id: str) -> list[str]:
-    """Extract demo commands for a specific checkpoint from PLAN.md.
-
-    Looks for a checkpoint heading (### X.Y — ...) followed by a
-    ``* **Demo commands:**`` section with backtick-wrapped commands.
-    """
-    # Find the checkpoint heading
-    heading_pat = re.compile(
-        rf"^\s*#{{3,6}}\s+{OPTIONAL_PLAN_CHECKPOINT_MARKER_PATTERN}"
-        rf"(?:Checkpoint\s+)?{re.escape(checkpoint_id)}\b",
-        re.IGNORECASE,
-    )
-    lines = plan_text.splitlines()
-    start_idx: int | None = None
-    for idx, line in enumerate(lines):
-        if heading_pat.match(line):
-            start_idx = idx
-            break
-    if start_idx is None:
-        return []
-
-    # Find the next checkpoint heading (end boundary)
-    next_heading_pat = re.compile(
-        rf"^\s*#{{3,6}}\s+{OPTIONAL_PLAN_CHECKPOINT_MARKER_PATTERN}"
-        rf"(?:Checkpoint\s+)?{CHECKPOINT_ID_PATTERN}\b",
-        re.IGNORECASE,
-    )
-    end_idx = len(lines)
-    for idx in range(start_idx + 1, len(lines)):
-        if next_heading_pat.match(lines[idx]):
-            end_idx = idx
-            break
-
-    # Find "Demo commands:" within this section
-    section = lines[start_idx:end_idx]
-    in_demo = False
-    commands: list[str] = []
-    for line in section:
-        stripped = line.strip()
-        if stripped.startswith("* **Demo commands:**") or stripped.startswith("- **Demo commands:**"):
-            in_demo = True
-            continue
-        if in_demo:
-            # Stop at next bold field or blank line
-            if stripped.startswith("* **") or stripped.startswith("- **") or stripped == "---":
-                break
-            # Extract backtick-wrapped command
-            m = re.match(r"^\s*[\*\-]\s+`(.+)`\s*$", stripped)
-            if m:
-                commands.append(m.group(1))
-    return commands
-
-
-def _run_smoke_test_gate(
-    repo_root: Path,
-    state: "StateInfo",
-    plan_text: str,
-    timeout: int = 30,
-) -> tuple[bool, str | None]:
-    """Run demo commands for the current checkpoint as a smoke test.
-
-    Returns (passed, failure_reason).  If no demo commands are defined,
-    returns (True, None).
-    """
-    if not state.checkpoint:
-        return (True, None)
-
-    commands = _extract_demo_commands(plan_text, state.checkpoint)
-    if not commands:
-        return (True, None)
-
-    for cmd in commands:
-        try:
-            result = subprocess.run(
-                cmd,
-                shell=True,
-                cwd=str(repo_root),
-                capture_output=True,
-                text=True,
-                timeout=timeout,
-            )
-            if result.returncode != 0:
-                stderr_snippet = (result.stderr or "").strip()[:200]
-                return (
-                    False,
-                    f"Demo command failed (rc={result.returncode}): {cmd}"
-                    + (f"\n{stderr_snippet}" if stderr_snippet else ""),
-                )
-        except subprocess.TimeoutExpired:
-            return (False, f"Demo command timed out after {timeout}s: {cmd}")
-        except OSError as exc:
-            return (False, f"Demo command could not run: {cmd} ({exc})")
-
-    return (True, None)
-
-
 def _has_unprocessed_feedback(repo_root: Path) -> tuple[bool, str]:
     """Return (has_feedback, reason_string) for unprocessed FEEDBACK.md entries."""
     feedback_path = repo_root / ".vibe" / "FEEDBACK.md"
@@ -2600,7 +2504,6 @@ class _DecisionContext:
     """Pre-loaded IO context for the pure role-decision function."""
     workflow_flags: dict[str, bool]
     plan_text: str
-    smoke_gate_result: tuple[bool, str] | None  # Set only when state is IN_REVIEW
     recent_resolved_triage_for_current_state: bool
     context_capture_reason: str | None
     consolidation_reason: str | None
@@ -2631,15 +2534,9 @@ def _gather_decision_context(state: StateInfo, repo_root: Path) -> _DecisionCont
     workflow_flags = _load_workflow_flags(repo_root)
     plan_path = repo_root / ".vibe" / "PLAN.md"
     plan_text = _read_text(plan_path) if plan_path.exists() else ""
-    smoke_gate_result = (
-        _run_smoke_test_gate(repo_root, state, plan_text)
-        if state.status == "IN_REVIEW"
-        else None
-    )
     return _DecisionContext(
         workflow_flags=workflow_flags,
         plan_text=plan_text,
-        smoke_gate_result=smoke_gate_result,
         recent_resolved_triage_for_current_state=_recent_resolved_triage_for_current_state(repo_root),
         context_capture_reason=_context_capture_trigger_reason(repo_root, workflow_flags),
         consolidation_reason=_consolidation_trigger_reason(repo_root),
@@ -2697,12 +2594,8 @@ def _decide_role(state: StateInfo, ctx: _DecisionContext) -> tuple[Role, str, st
     if ctx.unprocessed_feedback_reason:
         return ("issues_triage", ctx.unprocessed_feedback_reason, None)
 
-    # 1) Review if IN_REVIEW — smoke gate result pre-loaded
+    # 1) Review if IN_REVIEW. Verification is explicit and never part of routing.
     if state.status == "IN_REVIEW":
-        if ctx.smoke_gate_result is not None:
-            passed, failure_reason = ctx.smoke_gate_result
-            if not passed:
-                return ("issues_triage", f"Smoke test gate failed: {failure_reason}", None)
         return ("review", "Checkpoint status is IN_REVIEW.", None)
 
     # 2) If DONE, either advance to next checkpoint or stop if plan exhausted
@@ -3701,6 +3594,7 @@ def cmd_next(args: argparse.Namespace) -> int:
         print(_render_output(payload, args.format))
         return 0
 
+    gate_results: list[GateResult] | None = None
     if args.run_gates and state.status in {"NOT_STARTED", "IN_PROGRESS"}:
         gate_results = run_gates(repo_root, state.checkpoint)
         failed_required_gates = [r for r in gate_results if not r.passed and r.gate.required]
@@ -3811,8 +3705,7 @@ def cmd_next(args: argparse.Namespace) -> int:
     if args.workflow:
         payload["workflow"] = args.workflow
 
-    if args.run_gates and state.status in {"NOT_STARTED", "IN_PROGRESS"}:
-        gate_results = run_gates(repo_root, state.checkpoint)
+    if gate_results is not None:
         payload["gate_results"] = [
             {
                 "name": r.gate.name,

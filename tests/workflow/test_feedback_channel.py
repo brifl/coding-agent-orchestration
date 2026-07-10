@@ -7,9 +7,6 @@ from __future__ import annotations
 
 import argparse
 from pathlib import Path
-from unittest.mock import patch
-
-import pytest
 
 import sys
 sys.path.insert(0, str(Path(__file__).parent.parent.parent / "tools"))
@@ -326,7 +323,7 @@ class TestDispatcherRouting:
                 "RUN_CONTEXT_CAPTURE": False,
             },
             plan_text="",
-            smoke_gate_result=None,
+            recent_resolved_triage_for_current_state=False,
             context_capture_reason=None,
             consolidation_reason=None,
             process_improvements_reason=None,
@@ -346,7 +343,7 @@ class TestDispatcherRouting:
                 "RUN_CONTEXT_CAPTURE": False,
             },
             plan_text="",
-            smoke_gate_result=None,
+            recent_resolved_triage_for_current_state=False,
             context_capture_reason=None,
             consolidation_reason=None,
             process_improvements_reason=None,

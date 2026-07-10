@@ -8,7 +8,7 @@ This index maps all documentation surfaces in this repository.
 - `docs/concepts.md` - continuous mode semantics, skill sets, checkpoint DAG, manual fallback.
 - `docs/conventions.md` - coding and doc conventions used across the repo.
 - `docs/workflow_schema.md` - schema for workflow YAML definitions.
-- `docs/workflow_improvements.md` - Stage 22 dispatcher improvements: design/retrospective/maintenance loops, smoke gate, review pass C.
+- `docs/workflow_improvements.md` - Stage 22 dispatcher history plus the Stage 34 explicit-verification replacement.
 - `docs/plan_authoring.md` - how to write and maintain PLAN.md checkpoints.
 - `docs/stage_ordering.md` - stage numbering and ordering rules.
 - `docs/checkpoint_templates.md` - available checkpoint templates and usage.

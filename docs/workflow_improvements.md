@@ -4,6 +4,10 @@ Stage 22 added five improvements to the vibe-run dispatcher and review loop.
 This document describes each feature, the dispatch logic that triggers it, and
 how to observe or test it.
 
+Stage 34 retired the automatic smoke gate described by the original design.
+`status` and normal `next` are read-only role queries; verification runs only
+through an explicit `next --run-gates` request or the implementation/review loop.
+
 ---
 
 ## 1. Stage Design Loop (`STAGE_DESIGNED` flag)
@@ -86,42 +90,14 @@ Fires when:
 
 ---
 
-## 4. Smoke Test Gate
+## 4. Explicit Verification (Stage 34 replacement)
 
-**What it does:**
-Before routing to the `review` role, the dispatcher runs the demo commands
-defined in PLAN.md for the current checkpoint. If any command fails, the
-dispatcher routes to `issues_triage` instead of `review`, surfacing the failure
-as a blocking issue.
-
-**Implementation (`_run_smoke_test_gate`):**
-1. Calls `_extract_demo_commands(plan_text, checkpoint_id)` to find `* **Demo commands:**` lines under the current checkpoint heading.
-2. For each command, runs `subprocess.run(cmd, shell=True, cwd=repo_root, timeout=30)`.
-3. Returns `(False, reason)` on non-zero exit, timeout, or OSError.
-4. Returns `(True, None)` if all commands pass or none are defined.
-
-**Dispatch integration:**
-Inside the `IN_REVIEW` branch of `_recommend_next`:
-```python
-passed, gate_reason = _run_smoke_test_gate(repo_root, state, plan_text)
-if not passed:
-    return ("issues_triage", f"Smoke test gate failed: {gate_reason}", None)
-```
-
-**Demo commands format in PLAN.md:**
-```markdown
-### 1.0 — My checkpoint
-
-* **Demo commands:**
-  * `python3 -m pytest tests/ -q`
-  * `python3 tools/agentctl.py --repo-root . validate --strict`
-```
-
-**Edge cases handled:**
-- No checkpoint set → gate skips (returns `True`).
-- No demo commands defined → gate passes (returns `True`).
-- `TimeoutExpired` → gate fails with "timed out" message.
-- `OSError` → gate fails with "could not run" message.
+The automatic review smoke gate was removed because a role query should not
+execute arbitrary PLAN commands or impose a hidden 30-second timeout. Use
+`agentctl.py next --run-gates` when configured quality gates should run; each
+gate executes once and its result is returned in `gate_results`. Implementation
+and review prompts select proportional checkpoint demos as evidence without
+making verification a hidden dispatcher side effect.
 
 ---
 
@@ -189,7 +165,7 @@ copy-paste ordering mistakes in PLAN.md early.
 
 All features described above are covered by tests in:
 
-- `tests/workflow/test_agentctl_routing.py` — routing and smoke gate tests
+- `tests/workflow/test_agentctl_routing.py` — routing purity and explicit gate tests
 - `tests/workflow/test_issue_schema_validation.py` — validation warning tests
 
 Key test groups added in Stage 22:
@@ -199,8 +175,8 @@ Key test groups added in Stage 22:
 | Stage design trigger | `test_stage_design_flag_*` |
 | Retrospective trigger | `test_retrospective_trigger_*` |
 | Maintenance cycle dispatch | `test_maintenance_cycle_*` |
-| Smoke gate | `test_smoke_gate_*` |
-| `_extract_demo_commands` | `test_extract_demo_commands_*` |
+| Pure status/next queries | `test_status_and_next_queries_do_not_run_subprocess` |
+| Explicit gates run once | `test_next_run_gates_executes_configured_gates_once` |
 | Flag lifecycle integration | `test_flag_lifecycle_*` |
 | Human BLOCKER → stop | `test_all_human_owned_blockers_route_to_stop` |
 | Stop writes LOOP_RESULT | `test_stop_route_writes_loop_result_json` |
