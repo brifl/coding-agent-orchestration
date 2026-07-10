@@ -34,15 +34,16 @@ Make dispatcher status and next-step selection pure queries, with verification e
 ## Workflow state
 
 - [x] STAGE_DESIGNED
-- [ ] MAINTENANCE_CYCLE_DONE
+- [x] MAINTENANCE_CYCLE_DONE
 - [x] RETROSPECTIVE_DONE
-- [x] RUN_CONTEXT_CAPTURE
+- [ ] RUN_CONTEXT_CAPTURE
 
 ## Work log (current session)
 
 - 2026-07-10: Consolidated completed Stage 33 into HISTORY and advanced to checkpoint 34.0.
 - 2026-07-10: Completed the Stage 33 retrospective with four actionable packaging and routing lessons.
 - 2026-07-10: Confirmed Stage 34 checkpoints remain executable against current dispatcher evidence; no roadmap changes required.
+- 2026-07-10: Folded the modulo-selected maintenance test gaps into 34.0 and reused the freshly updated CONTEXT instead of duplicating non-building loops.
 
 ## Evidence
 
