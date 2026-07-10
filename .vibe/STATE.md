@@ -4,7 +4,7 @@
 
 - Stage: 33
 - Checkpoint: 33.2
-- Status: NOT_STARTED  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
+- Status: IN_REVIEW  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
 
 ## Objective (current checkpoint)
 
@@ -27,9 +27,9 @@ Make repeated installs converge framework-owned files by content while preservin
 ## Current truth
 
 - Stage 33.1 completed self-first managed execution and provenance through `cc2c99c`.
-- Current `_copy_file` trusts destination mtimes and `_sync_dir` never deletes extras.
-- Existing consumer installs have no ownership manifest; retired `vibe-one-loop`, caches, bytecode, and stale managed files can survive reinstall.
-- Global installation can resolve skill source from an older destination via `find_resource`; all install paths need one framework-source reconciler.
+- Repo and global installs now share one framework-source, manifest-driven reconciler.
+- Managed skill directories converge by content, remove extras/retired artifacts, and roll back swaps if manifest commit fails.
+- Ownership is by managed skill name; sibling project skills and substantive repository workflow files remain outside that boundary.
 
 ## Workflow state
 
@@ -41,14 +41,15 @@ Make repeated installs converge framework-owned files by content while preservin
 - 2026-07-10: Implemented self-first runtime/catalog resolution, fail-closed incomplete bundles, provenance digests/modes, and adversarial consumer fixtures.
 - 2026-07-10: Review PASS; all checkpoint acceptance items have direct fixture evidence. Dispatcher smoke timeout is deferred to checkpoint 34.0.
 - 2026-07-10: Advanced to 33.2 to replace incremental copying with a deterministic managed-tree reconciliation contract.
+- 2026-07-10: Implemented deterministic manifests, staged digest validation, rollback-safe swaps, content repair reporting, and legacy/fresh convergence fixtures.
 
 ## Evidence
 
-- Commits `654aa05` and `6926529`: managed runtime/catalog precedence, workflow-engine packaging, provenance, and fail-closed overrides.
-- `45 passed` across wrapper/bootstrap/prompt/workflow suites; Ruff and strict validation passed.
-- Adversarial fixture honored project workflow YAML while stale target Python/catalog markers remained untouched; missing managed runtime/catalog failed closed.
-- Full workflow baseline: `288 passed, 2 failed`; both failures predate this diff and omit an existing `_DecisionContext` field in feedback tests.
-- Review note: dispatcher timed out the passing 48-second bootstrap/skill suite at its hard-coded 30-second smoke limit; checkpoint 34.0 removes that implicit gate.
+- Commit `cd62633`: manifest-driven reconciler, unified install paths, ownership docs, and upgrade/rollback fixtures.
+- `18 passed` bootstrap suite; `44 passed` combined bootstrap/skill/prompt suites; Ruff and strict validation passed.
+- Fresh/global/legacy manifests and managed trees match; future-mtime edits are repaired and reported; second reinstall is a no-op.
+- Project skill plus customized AGENTS/STATE/PLAN stayed byte-identical; retired alias, caches, bytecode, and obsolete catalog were removed.
+- Full workflow suite: `295 passed, 2 failed`; the same pre-existing feedback tests omit `_DecisionContext.recent_resolved_triage_for_current_state`.
 
 ## Active issues
 
