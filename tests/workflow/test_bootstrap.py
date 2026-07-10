@@ -202,6 +202,19 @@ def test_installed_vibe_run_ignores_stale_target_framework_copies(tmp_path: Path
     stale_catalog = target / "prompts" / "template_prompts.md"
     stale_catalog.parent.mkdir(parents=True)
     stale_catalog.write_text("STALE TARGET CATALOG\n", encoding="utf-8")
+    workflows_dir = target / "workflows"
+    workflows_dir.mkdir()
+    (workflows_dir / "continuous-refactor.yaml").write_text(
+        """name: continuous-refactor
+description: managed engine fixture
+triggers:
+  - type: manual
+steps:
+  - prompt_id: prompt.refactor_execute
+  - prompt_id: prompt.refactor_verify
+""",
+        encoding="utf-8",
+    )
 
     runner = target / ".codex" / "skills" / "vibe-run" / "scripts" / "vibe_run.py"
     proc = subprocess.run(
@@ -224,9 +237,69 @@ def test_installed_vibe_run_ignores_stale_target_framework_copies(tmp_path: Path
     )
 
     assert proc.returncode == 0, proc.stderr or proc.stdout
-    assert "ROLE: Senior engineer (refactor scan)" in proc.stdout
+    assert "ROLE: Senior engineer (refactor execution)" in proc.stdout
     assert "STALE TARGET CATALOG" not in proc.stdout
     assert not any(target_tools.glob("*.executed"))
+
+
+def test_incomplete_installed_bundle_fails_closed_before_target_tools(tmp_path: Path) -> None:
+    target = tmp_path / "target"
+    target.mkdir()
+    assert install_repo(target) == 0
+    installed_agentctl = target / ".codex" / "skills" / "vibe-loop" / "scripts" / "agentctl.py"
+    installed_agentctl.unlink()
+
+    target_tools = target / "tools"
+    target_tools.mkdir()
+    markers: list[Path] = []
+    for name in ("agentctl.py", "prompt_catalog.py"):
+        marker = target_tools / f"{name}.executed"
+        markers.append(marker)
+        (target_tools / name).write_text(
+            "from pathlib import Path\n"
+            f"Path({str(marker)!r}).write_text('executed', encoding='utf-8')\n"
+            "raise SystemExit(97)\n",
+            encoding="utf-8",
+        )
+
+    runner = target / ".codex" / "skills" / "vibe-run" / "scripts" / "vibe_run.py"
+    proc = subprocess.run(
+        [sys.executable, str(runner), "--repo-root", str(target), "--max-loops", "1"],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+    )
+
+    assert proc.returncode == 2
+    assert "managed Vibe bundle" in proc.stderr
+    assert "incomplete (missing: agentctl.py)" in proc.stderr
+    assert "Reinstall Vibe skills or pass --runtime-tools-dir" in proc.stderr
+    assert not any(marker.exists() for marker in markers)
+
+
+def test_missing_installed_catalog_does_not_fall_back_to_target_catalog(tmp_path: Path) -> None:
+    target = tmp_path / "target"
+    target.mkdir()
+    assert install_repo(target) == 0
+    installed_catalog = (
+        target / ".codex" / "skills" / "vibe-prompts" / "resources" / "template_prompts.md"
+    )
+    target_catalog = target / "prompts" / "template_prompts.md"
+    target_catalog.parent.mkdir(parents=True)
+    target_catalog.write_bytes(installed_catalog.read_bytes())
+    installed_catalog.unlink()
+
+    runner = target / ".codex" / "skills" / "vibe-run" / "scripts" / "vibe_run.py"
+    proc = subprocess.run(
+        [sys.executable, str(runner), "--repo-root", str(target), "--max-loops", "1"],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+    )
+
+    assert proc.returncode == 2
+    assert f"prompt catalog not found: {installed_catalog.resolve()}" in proc.stderr
+    assert str(target_catalog.resolve()) not in proc.stdout
 
 
 def test_installed_one_loop_prefers_its_bundle_over_codex_home(tmp_path: Path) -> None:

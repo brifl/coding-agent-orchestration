@@ -12,7 +12,7 @@ Deterministic:
 Robust install:
 - Uses the managed skills bundle that contains this script.
 - Locates vibe-prompts as a sibling skill folder.
-- Falls back to CODEX_HOME (or AGENT_HOME) only for incomplete legacy copies.
+- Fails closed when the sibling bundle is incomplete unless an override is explicit.
 """
 
 from __future__ import annotations
@@ -21,30 +21,9 @@ import argparse
 import hashlib
 import json
 import os
-import re
 import subprocess
 import sys
 from pathlib import Path
-
-
-_WSL_UNC_RE = re.compile(r"^//wsl(?:\.localhost)?/[^/]+/(.+)$", re.IGNORECASE)
-_WIN_DRIVE_RE = re.compile(r"^([A-Za-z]):/(.+)$")
-
-
-def _normalize_home_path(raw: str) -> Path:
-    value = raw.strip().strip('"').strip("'")
-    if os.name != "nt":
-        value = value.replace("\\", "/")
-        unc_match = _WSL_UNC_RE.match(value)
-        if unc_match:
-            value = "/" + unc_match.group(1).lstrip("/")
-        else:
-            drive_match = _WIN_DRIVE_RE.match(value)
-            if drive_match:
-                drive = drive_match.group(1).lower()
-                tail = drive_match.group(2)
-                value = f"/mnt/{drive}/{tail}"
-    return Path(value).expanduser().resolve()
 
 
 def _skills_root_from_this_script() -> Path:
@@ -55,44 +34,6 @@ def _skills_root_from_this_script() -> Path:
     p = Path(__file__).resolve()
     # parents: [0]=scripts, [1]=vibe-loop, [2]=skills
     return p.parents[2]
-
-
-def _skills_root_env_fallback() -> Path | None:
-    """
-    If CODEX_HOME or AGENT_HOME is set, use $CODEX_HOME/skills or $AGENT_HOME/skills.
-    """
-    codex_home = os.environ.get("CODEX_HOME")
-    if codex_home:
-        return _normalize_home_path(codex_home) / "skills"
-    agent_home = os.environ.get("AGENT_HOME")
-    if not agent_home:
-        return None
-    return _normalize_home_path(agent_home) / "skills"
-
-
-def _looks_like_skills_root(root: Path) -> bool:
-    """
-    Simple heuristics to ensure the candidate folder contains the required skills.
-    """
-    return any(root.glob("**/vibe-loop")) and any(root.glob("**/vibe-prompts"))
-
-
-def _locate_skills_root() -> Path:
-    """
-    Prefer this wrapper's managed bundle; use an environment install only as a legacy fallback.
-    """
-    script_root = _skills_root_from_this_script()
-    candidates = [script_root]
-    env_root = _skills_root_env_fallback()
-    if env_root and env_root.exists():
-        candidates.append(env_root)
-
-    for candidate in candidates:
-        if _looks_like_skills_root(candidate):
-            return candidate
-
-    # Nothing matched the heuristic; fall back to the script-derived location.
-    return script_root
 
 
 def _run_agentctl(repo_root: Path, agentctl_path: Path) -> dict:
@@ -135,30 +76,27 @@ def _print_prompt(prompt_catalog_path: Path, catalog_path: Path, prompt_id: str)
     sys.stdout.write(p.stdout)
 
 
-def _default_catalog_candidates(repo_root: Path, skills_root: Path) -> list[Path]:
-    return [
-        skills_root / "vibe-prompts" / "resources" / "template_prompts.md",
-        repo_root / ".codex" / "skills" / "vibe-prompts" / "resources" / "template_prompts.md",
-        repo_root / "skills" / "vibe-prompts" / "resources" / "template_prompts.md",
-        repo_root / "prompts" / "template_prompts.md",
+def _resolve_tool_paths(skills_root: Path, runtime_tools_dir: str) -> tuple[Path, Path]:
+    if runtime_tools_dir:
+        tools_dir = Path(runtime_tools_dir).expanduser().resolve()
+        source_label = f"explicit runtime tools directory {tools_dir}"
+        agentctl_path = tools_dir / "agentctl.py"
+        prompt_catalog_path = tools_dir / "prompt_catalog.py"
+    else:
+        source_label = f"managed Vibe bundle {skills_root}"
+        agentctl_path = skills_root / "vibe-loop" / "scripts" / "agentctl.py"
+        prompt_catalog_path = skills_root / "vibe-prompts" / "scripts" / "prompt_catalog.py"
+    missing = [
+        path.name
+        for path in (agentctl_path, prompt_catalog_path)
+        if not path.exists()
     ]
-
-
-def _resolve_tool_paths(repo_root: Path, skills_root: Path) -> tuple[Path | None, Path | None]:
-    installed_tools_dir = skills_root / "vibe-loop" / "scripts"
-    installed_prompt_dir = skills_root / "vibe-prompts" / "scripts"
-    agentctl_candidates = [
-        installed_tools_dir / "agentctl.py",
-        repo_root / "tools" / "agentctl.py",
-    ]
-    prompt_candidates = [
-        installed_prompt_dir / "prompt_catalog.py",
-        repo_root / "tools" / "prompt_catalog.py",
-    ]
-    return (
-        next((path for path in agentctl_candidates if path.exists()), None),
-        next((path for path in prompt_candidates if path.exists()), None),
-    )
+    if missing:
+        raise RuntimeError(
+            f"{source_label} is incomplete (missing: {', '.join(missing)}). "
+            "Reinstall Vibe skills or pass --runtime-tools-dir as an explicit override."
+        )
+    return agentctl_path, prompt_catalog_path
 
 
 def _with_explicit_catalog_provenance(decision: dict, catalog_path: Path) -> dict:
@@ -177,6 +115,22 @@ def _with_explicit_catalog_provenance(decision: dict, catalog_path: Path) -> dic
     return updated
 
 
+def _with_explicit_runtime_provenance(decision: dict, runtime_path: Path) -> dict:
+    updated = dict(decision)
+    try:
+        digest = hashlib.sha256(runtime_path.read_bytes()).hexdigest()
+    except OSError:
+        digest = None
+    updated.update(
+        {
+            "runtime_path": str(runtime_path),
+            "runtime_sha256": digest,
+            "runtime_mode": "explicit",
+        }
+    )
+    return updated
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(prog="vibe_next_and_print.py")
     ap.add_argument("--repo-root", default=".", help="Target repo root (default: .)")
@@ -184,6 +138,11 @@ def main() -> int:
         "--catalog",
         default="",
         help="Optional explicit template_prompts.md override. If omitted, uses the active runtime's catalog.",
+    )
+    ap.add_argument(
+        "--runtime-tools-dir",
+        default="",
+        help="Explicit directory containing agentctl.py and prompt_catalog.py; managed sibling tools are the default.",
     )
     ap.add_argument(
         "--show-decision",
@@ -202,22 +161,22 @@ def main() -> int:
         print(f"ERROR: repo root not found: {repo_root}", file=sys.stderr)
         return 2
 
-    # Locate the managed bundle that owns this wrapper.
-    skills_root = _locate_skills_root()
-    agentctl_path, prompt_catalog_path = _resolve_tool_paths(repo_root, skills_root)
-
-    if agentctl_path is None:
-        print("ERROR: agentctl.py not found in repo or skills tools.", file=sys.stderr)
-        return 2
-
-    if prompt_catalog_path is None:
-        print("ERROR: prompt_catalog.py not found in repo or skills tools.", file=sys.stderr)
+    skills_root = _skills_root_from_this_script()
+    try:
+        agentctl_path, prompt_catalog_path = _resolve_tool_paths(
+            skills_root,
+            args.runtime_tools_dir,
+        )
+    except RuntimeError as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
         return 2
 
     decision = _run_agentctl(repo_root, agentctl_path)
     if args.catalog:
         explicit_catalog = Path(args.catalog).expanduser().resolve()
         decision = _with_explicit_catalog_provenance(decision, explicit_catalog)
+    if args.runtime_tools_dir:
+        decision = _with_explicit_runtime_provenance(decision, agentctl_path)
     prompt_id = decision.get("recommended_prompt_id")
     if not prompt_id:
         print(f"ERROR: agentctl decision missing recommended_prompt_id: {decision}", file=sys.stderr)
@@ -236,8 +195,7 @@ def main() -> int:
     elif decision.get("prompt_catalog_path"):
         catalog_path = Path(decision["prompt_catalog_path"]).expanduser().resolve()
     else:
-        catalog_candidates = _default_catalog_candidates(repo_root, skills_root)
-        catalog_path = next((path for path in catalog_candidates if path.exists()), catalog_candidates[0])
+        catalog_path = skills_root / "vibe-prompts" / "resources" / "template_prompts.md"
 
     if not catalog_path.exists():
         print(f"ERROR: catalog not found at: {catalog_path}", file=sys.stderr)

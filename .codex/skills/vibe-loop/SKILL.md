@@ -13,6 +13,7 @@ This skill uses `.vibe/STATE.md` and `.vibe/PLAN.md` to recommend the next loop 
 
 - Repo root path (default: current working directory)
 - Optional: `--strict` validation for CI-grade checks
+- Optional explicit legacy/custom runtime: `--runtime-tools-dir <dir>`
 
 ## Runtime helpers
 
@@ -41,7 +42,8 @@ This skill uses `.vibe/STATE.md` and `.vibe/PLAN.md` to recommend the next loop 
   - Installed skill directory: `python3 scripts/agentctl.py --repo-root . --format json loop-result --line 'LOOP_RESULT: {...}'`
 - Print the next loop prompt body directly:
   - Run: `python3 scripts/vibe_next_and_print.py --repo-root . --show-decision`
-  - The helper uses the managed bundle containing the wrapper. `CODEX_HOME`/`AGENT_HOME` is only a fallback for incomplete legacy copies.
+  - The helper uses the managed bundle containing the wrapper and fails with reinstall guidance if that bundle is incomplete.
+  - `--runtime-tools-dir` is an explicit override; decision provenance labels it `runtime_mode: explicit`.
 
 ## Intended usage pattern
 

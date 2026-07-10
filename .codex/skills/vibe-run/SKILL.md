@@ -98,3 +98,8 @@ python3 .codex/skills/vibe-run/scripts/vibe_run.py --repo-root . --executor "pyt
 # Protocol dry-run only
 python3 .codex/skills/vibe-run/scripts/vibe_run.py --repo-root . --non-interactive --simulate-loop-result --max-loops 10 --show-decision
 ```
+
+The helper executes only its sibling managed runtime by default. An incomplete
+bundle fails with reinstall guidance instead of falling back to target-repo
+Python. Use `--runtime-tools-dir <dir>` only as an explicit override; the emitted
+decision provenance records that mode and the selected runtime digest.

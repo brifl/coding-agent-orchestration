@@ -212,35 +212,31 @@ def _prompt_for_loop_result(agentctl_path: Path, repo_root: Path) -> int:
             print(f"ERROR: {exc}", file=sys.stderr)
 
 
-def _resolve_tool_paths(repo_root: Path) -> tuple[Path, Path]:
+def _resolve_tool_paths(runtime_tools_dir: str) -> tuple[Path, Path]:
     skills_root = _skills_root_from_this_script()
-    candidates_agentctl = [
-        skills_root / "vibe-loop" / "scripts" / "agentctl.py",
-        repo_root / "tools" / "agentctl.py",
-    ]
-    candidates_prompt_catalog = [
-        skills_root / "vibe-prompts" / "scripts" / "prompt_catalog.py",
-        repo_root / "tools" / "prompt_catalog.py",
-    ]
-    agentctl_path = next((p for p in candidates_agentctl if p.exists()), None)
-    prompt_catalog_path = next((p for p in candidates_prompt_catalog if p.exists()), None)
-    if agentctl_path is None:
-        raise RuntimeError("agentctl.py not found in repo tools or installed skills.")
-    if prompt_catalog_path is None:
-        raise RuntimeError("prompt_catalog.py not found in repo tools or installed skills.")
+    if runtime_tools_dir:
+        tools_dir = Path(runtime_tools_dir).expanduser().resolve()
+        source_label = f"explicit runtime tools directory {tools_dir}"
+        agentctl_path = tools_dir / "agentctl.py"
+        prompt_catalog_path = tools_dir / "prompt_catalog.py"
+    else:
+        source_label = f"managed Vibe bundle {skills_root}"
+        agentctl_path = skills_root / "vibe-loop" / "scripts" / "agentctl.py"
+        prompt_catalog_path = skills_root / "vibe-prompts" / "scripts" / "prompt_catalog.py"
+    if not agentctl_path.exists() or not prompt_catalog_path.exists():
+        missing = [
+            path.name
+            for path in (agentctl_path, prompt_catalog_path)
+            if not path.exists()
+        ]
+        raise RuntimeError(
+            f"{source_label} is incomplete (missing: {', '.join(missing)}). "
+            "Reinstall Vibe skills or pass --runtime-tools-dir as an explicit override."
+        )
     return agentctl_path, prompt_catalog_path
 
 
-def _default_catalog_candidates(repo_root: Path, skills_root: Path) -> list[Path]:
-    return [
-        skills_root / "vibe-prompts" / "resources" / "template_prompts.md",
-        repo_root / ".codex" / "skills" / "vibe-prompts" / "resources" / "template_prompts.md",
-        repo_root / "skills" / "vibe-prompts" / "resources" / "template_prompts.md",
-        repo_root / "prompts" / "template_prompts.md",
-    ]
-
-
-def _resolve_catalog_path(repo_root: Path, decision: dict, user_catalog: str) -> Path:
+def _resolve_catalog_path(decision: dict, user_catalog: str) -> Path:
     if user_catalog:
         return Path(user_catalog).expanduser().resolve()
     decision_catalog = decision.get("prompt_catalog_path")
@@ -248,8 +244,7 @@ def _resolve_catalog_path(repo_root: Path, decision: dict, user_catalog: str) ->
         return Path(decision_catalog).expanduser().resolve()
 
     skills_root = _skills_root_from_this_script()
-    candidates = _default_catalog_candidates(repo_root, skills_root)
-    return next((path for path in candidates if path.exists()), candidates[0])
+    return skills_root / "vibe-prompts" / "resources" / "template_prompts.md"
 
 
 def _with_explicit_catalog_provenance(decision: dict, catalog_path: Path) -> dict:
@@ -263,6 +258,22 @@ def _with_explicit_catalog_provenance(decision: dict, catalog_path: Path) -> dic
             "prompt_catalog_path": str(catalog_path),
             "prompt_catalog_sha256": digest,
             "prompt_catalog_mode": "explicit",
+        }
+    )
+    return updated
+
+
+def _with_explicit_runtime_provenance(decision: dict, runtime_path: Path) -> dict:
+    updated = dict(decision)
+    try:
+        digest = hashlib.sha256(runtime_path.read_bytes()).hexdigest()
+    except OSError:
+        digest = None
+    updated.update(
+        {
+            "runtime_path": str(runtime_path),
+            "runtime_sha256": digest,
+            "runtime_mode": "explicit",
         }
     )
     return updated
@@ -351,6 +362,11 @@ def main() -> int:
     ap.add_argument("--repo-root", default=".", help="Target repo root (default: current directory)")
     ap.add_argument("--catalog", default="", help="Optional path to template_prompts.md")
     ap.add_argument(
+        "--runtime-tools-dir",
+        default="",
+        help="Explicit directory containing agentctl.py and prompt_catalog.py; managed sibling tools are the default.",
+    )
+    ap.add_argument(
         "--workflow",
         default="vibe-run",
         help="Workflow name passed to agentctl next (default: vibe-run, which replenishes exhausted plans)",
@@ -386,7 +402,7 @@ def main() -> int:
         return 2
 
     try:
-        agentctl_path, prompt_catalog_path = _resolve_tool_paths(repo_root)
+        agentctl_path, prompt_catalog_path = _resolve_tool_paths(args.runtime_tools_dir)
     except RuntimeError as exc:
         print(f"ERROR: {exc}", file=sys.stderr)
         return 2
@@ -405,6 +421,8 @@ def main() -> int:
         if args.catalog:
             explicit_catalog = Path(args.catalog).expanduser().resolve()
             decision = _with_explicit_catalog_provenance(decision, explicit_catalog)
+        if args.runtime_tools_dir:
+            decision = _with_explicit_runtime_provenance(decision, agentctl_path)
 
         if args.show_decision:
             print(json.dumps(decision, indent=2, sort_keys=True), file=sys.stderr)
@@ -430,7 +448,7 @@ def main() -> int:
             print(f"ERROR: missing recommended_prompt_id in decision: {decision}", file=sys.stderr)
             return 2
 
-        catalog_path = _resolve_catalog_path(repo_root, decision, args.catalog)
+        catalog_path = _resolve_catalog_path(decision, args.catalog)
         if not catalog_path.exists():
             print(f"ERROR: prompt catalog not found: {catalog_path}", file=sys.stderr)
             return 2

@@ -310,6 +310,8 @@ def test_vibe_run_executor_records_loop_result(tmp_path: Path) -> None:
         [
             sys.executable,
             str(runner),
+            "--runtime-tools-dir",
+            str(repo_root / "tools"),
             "--repo-root",
             str(repo_root),
             "--executor",
@@ -327,7 +329,7 @@ def test_vibe_run_executor_records_loop_result(tmp_path: Path) -> None:
     assert recorded.read_text(encoding="utf-8").startswith("LOOP_RESULT:")
 
 
-def test_vibe_run_falls_back_to_repo_canonical_catalog(tmp_path: Path) -> None:
+def test_vibe_run_does_not_implicitly_use_target_catalog(tmp_path: Path) -> None:
     repo_root = tmp_path / "repo"
     _setup_fake_repo_catalog_fallback(
         repo_root,
@@ -345,6 +347,8 @@ def test_vibe_run_falls_back_to_repo_canonical_catalog(tmp_path: Path) -> None:
         [
             sys.executable,
             str(runner),
+            "--runtime-tools-dir",
+            str(repo_root / "tools"),
             "--repo-root",
             str(repo_root),
             "--executor",
@@ -357,11 +361,12 @@ def test_vibe_run_falls_back_to_repo_canonical_catalog(tmp_path: Path) -> None:
         text=True,
     )
 
-    assert proc.returncode == 0
-    assert f"CATALOG={_repo_catalog_path(repo_root).resolve()}" in proc.stdout
+    assert proc.returncode == 2
+    assert "prompt catalog not found" in proc.stderr
+    assert str(_repo_catalog_path(repo_root).resolve()) not in proc.stdout
 
 
-def test_vibe_run_falls_back_to_installed_vibe_prompts_catalog(tmp_path: Path) -> None:
+def test_vibe_run_can_explicitly_select_target_installed_catalog(tmp_path: Path) -> None:
     repo_root = tmp_path / "repo"
     _setup_fake_repo_catalog_fallback(
         repo_root,
@@ -379,8 +384,12 @@ def test_vibe_run_falls_back_to_installed_vibe_prompts_catalog(tmp_path: Path) -
         [
             sys.executable,
             str(runner),
+            "--runtime-tools-dir",
+            str(repo_root / "tools"),
             "--repo-root",
             str(repo_root),
+            "--catalog",
+            str(_installed_catalog_path(repo_root)),
             "--executor",
             f"{sys.executable} {repo_root / 'executor.py'}",
             "--max-loops",
@@ -415,6 +424,8 @@ def test_vibe_run_explicit_catalog_updates_decision_provenance(tmp_path: Path) -
         [
             sys.executable,
             str(runner),
+            "--runtime-tools-dir",
+            str(repo_root / "tools"),
             "--repo-root",
             str(repo_root),
             "--catalog",
@@ -436,6 +447,11 @@ def test_vibe_run_explicit_catalog_updates_decision_provenance(tmp_path: Path) -
     assert f'"prompt_catalog_path": "{explicit_catalog.resolve()}"' in proc.stderr
     digest = hashlib.sha256(explicit_catalog.read_bytes()).hexdigest()
     assert f'"prompt_catalog_sha256": "{digest}"' in proc.stderr
+    runtime_path = (repo_root / "tools" / "agentctl.py").resolve()
+    runtime_digest = hashlib.sha256(runtime_path.read_bytes()).hexdigest()
+    assert '"runtime_mode": "explicit"' in proc.stderr
+    assert f'"runtime_path": "{runtime_path}"' in proc.stderr
+    assert f'"runtime_sha256": "{runtime_digest}"' in proc.stderr
 
 
 def test_vibe_run_executor_requires_loop_result_line(tmp_path: Path) -> None:
@@ -453,6 +469,8 @@ def test_vibe_run_executor_requires_loop_result_line(tmp_path: Path) -> None:
         [
             sys.executable,
             str(runner),
+            "--runtime-tools-dir",
+            str(repo_root / "tools"),
             "--repo-root",
             str(repo_root),
             "--executor",
@@ -483,6 +501,8 @@ def test_vibe_run_non_interactive_requires_ack_strategy(tmp_path: Path) -> None:
         [
             sys.executable,
             str(runner),
+            "--runtime-tools-dir",
+            str(repo_root / "tools"),
             "--repo-root",
             str(repo_root),
             "--non-interactive",
@@ -506,6 +526,8 @@ def test_vibe_run_simulate_loop_result_continues_non_interactive(tmp_path: Path)
         [
             sys.executable,
             str(runner),
+            "--runtime-tools-dir",
+            str(repo_root / "tools"),
             "--repo-root",
             str(repo_root),
             "--non-interactive",
@@ -533,6 +555,8 @@ def test_vibe_run_minor_threshold_can_accept_approval(tmp_path: Path) -> None:
         [
             sys.executable,
             str(runner),
+            "--runtime-tools-dir",
+            str(repo_root / "tools"),
             "--repo-root",
             str(repo_root),
             "--workflow",
