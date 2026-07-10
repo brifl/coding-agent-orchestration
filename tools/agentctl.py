@@ -51,9 +51,11 @@ except ModuleNotFoundError as exc:
     }
     PROMPT_CATALOG_FILENAME = "template_prompts.md"
 from prompt_catalog_paths import (  # noqa: E402
+    is_repo_canonical_prompt_catalog,
     is_repo_local_prompt_catalog,
     prompt_catalog_contract_description,
     resolve_prompt_catalog_path as _resolve_prompt_catalog_path,
+    runtime_installed_prompt_catalog_path,
 )
 from stage_ordering import (  # noqa: E402
     CHECKPOINT_ID_PATTERN,
@@ -2954,6 +2956,11 @@ CONTINUOUS_WORKFLOW_STEP_ORDER: dict[str, tuple[str, ...]] = {
         "prompt.docs_refactor_analysis",
         "prompt.docs_refactor_fix",
     ),
+    "refactor-cycle": (
+        "prompt.refactor_scan",
+        "prompt.refactor_execute",
+        "prompt.refactor_verify",
+    ),
 }
 
 DEFAULT_LOOP_WORKFLOW_ALIASES = frozenset({"vibe-run"})
@@ -3314,52 +3321,28 @@ def _select_builtin_continuous_prompt(
 
 
 def _load_workflow_selector(repo_root: Path):
-    try:
-        from workflow_engine import select_next_prompt
-        return select_next_prompt
-    except Exception:
-        pass
-
-    tool_candidates = [
-        (repo_root / "tools").resolve(),
-        # Support repos that vendor only skill scripts by falling back to the
-        # framework checkout that contains this script.
-        (Path(__file__).resolve().parents[4] / "tools").resolve(),
-    ]
-    seen: set[str] = set()
-    for tools_dir in tool_candidates:
-        key = str(tools_dir)
-        if key in seen or not tools_dir.exists():
-            continue
-        seen.add(key)
-        if key not in sys.path:
-            sys.path.insert(0, key)
+    local_engine_path = _tools_dir / "workflow_engine.py"
+    if local_engine_path.exists():
         try:
             from workflow_engine import select_next_prompt
             return select_next_prompt
         except Exception:
-            continue
+            pass
 
-    try:
-        from workflow_engine import select_next_prompt
-        return select_next_prompt
-    except Exception as exc:
-        def _fallback_select_next_prompt(
-            workflow_name: str,
-            allowed_prompt_ids: set[str] | None = None,
-            **kwargs: Any,
-        ) -> str | None:
-            advance = bool(kwargs.get("advance", True))
-            return _select_builtin_continuous_prompt(
-                repo_root,
-                workflow_name,
-                allowed_prompt_ids,
-                advance=advance,
-            )
+    def _fallback_select_next_prompt(
+        workflow_name: str,
+        allowed_prompt_ids: set[str] | None = None,
+        **kwargs: Any,
+    ) -> str | None:
+        advance = bool(kwargs.get("advance", True))
+        return _select_builtin_continuous_prompt(
+            repo_root,
+            workflow_name,
+            allowed_prompt_ids,
+            advance=advance,
+        )
 
-        if repo_root.exists():
-            return _fallback_select_next_prompt
-        raise RuntimeError(f"Failed to load workflow engine: {exc}") from exc
+    return _fallback_select_next_prompt
 
 
 def _continuous_workflow_blocking_decision(state: StateInfo) -> tuple[Role, str] | None:
@@ -3617,6 +3600,51 @@ def cmd_validate(args: argparse.Namespace) -> int:
     return 0 if res.ok else 2
 
 
+def _file_sha256(path: Path | None) -> str | None:
+    if path is None:
+        return None
+    try:
+        return hashlib.sha256(path.read_bytes()).hexdigest()
+    except OSError:
+        return None
+
+
+def _runtime_mode(runtime_path: Path) -> str:
+    scripts_dir = runtime_path.parent
+    skill_dir = scripts_dir.parent
+    skills_root = skill_dir.parent
+    if scripts_dir.name == "scripts" and skill_dir.name == "vibe-loop" and skills_root.name == "skills":
+        return "installed"
+    if scripts_dir.name == "tools":
+        return "source"
+    return "standalone"
+
+
+def _prompt_catalog_mode(repo_root: Path, catalog_path: Path | None) -> str:
+    if catalog_path is None:
+        return "missing"
+    installed_catalog = runtime_installed_prompt_catalog_path()
+    if installed_catalog is not None and catalog_path.resolve() == installed_catalog:
+        return "installed"
+    if is_repo_canonical_prompt_catalog(repo_root, catalog_path):
+        return "source"
+    if is_repo_local_prompt_catalog(repo_root, catalog_path):
+        return "repo-local"
+    return "external"
+
+
+def _provenance_payload(repo_root: Path, prompt_catalog_path: Path | None) -> dict[str, Any]:
+    runtime_path = Path(__file__).resolve()
+    return {
+        "runtime_path": str(runtime_path),
+        "runtime_sha256": _file_sha256(runtime_path),
+        "runtime_mode": _runtime_mode(runtime_path),
+        "prompt_catalog_path": str(prompt_catalog_path) if prompt_catalog_path else None,
+        "prompt_catalog_sha256": _file_sha256(prompt_catalog_path),
+        "prompt_catalog_mode": _prompt_catalog_mode(repo_root, prompt_catalog_path),
+    }
+
+
 def cmd_status(args: argparse.Namespace) -> int:
     repo_root = Path(args.repo_root)
     state = load_state(repo_root)
@@ -3624,6 +3652,7 @@ def cmd_status(args: argparse.Namespace) -> int:
     role, reason, prompt_override = _recommend_next(state, repo_root)
     summary, sections = _context_summary(repo_root)
     prompt_catalog_path = _resolve_prompt_catalog_path(repo_root)
+    provenance = _provenance_payload(repo_root, prompt_catalog_path)
 
     payload: dict[str, Any] = {
         "stage": state.stage,
@@ -3640,7 +3669,7 @@ def cmd_status(args: argparse.Namespace) -> int:
         "recommended_prompt_id": prompt_override or PROMPT_MAP[role]["id"],
         "recommended_prompt_title": PROMPT_MAP[role]["title"],
         "context_summary": summary,
-        "prompt_catalog_path": str(prompt_catalog_path) if prompt_catalog_path else None,
+        **provenance,
     }
     if args.with_context and sections is not None:
         payload["context_sections"] = sections
@@ -3652,6 +3681,7 @@ def cmd_next(args: argparse.Namespace) -> int:
     repo_root = Path(args.repo_root)
     state = load_state(repo_root)
     prompt_catalog_path = _resolve_prompt_catalog_path(repo_root)
+    provenance = _provenance_payload(repo_root, prompt_catalog_path)
 
     _bootstrap_loop_result_record(repo_root, state)
     loop_ok, loop_reason = _loop_result_ack_status(repo_root)
@@ -3664,7 +3694,7 @@ def cmd_next(args: argparse.Namespace) -> int:
             "stage": state.stage,
             "checkpoint": state.checkpoint,
             "status": state.status,
-            "prompt_catalog_path": str(prompt_catalog_path) if prompt_catalog_path else None,
+            **provenance,
             "workflow": args.workflow,
             "requires_loop_result": True,
         }
@@ -3684,7 +3714,7 @@ def cmd_next(args: argparse.Namespace) -> int:
                 "stage": state.stage,
                 "checkpoint": state.checkpoint,
                 "status": state.status,
-                "prompt_catalog_path": str(prompt_catalog_path) if prompt_catalog_path else None,
+                **provenance,
                 "gate_results": [
                     {
                         "name": r.gate.name,
@@ -3715,7 +3745,7 @@ def cmd_next(args: argparse.Namespace) -> int:
             "stage": state.stage,
             "checkpoint": state.checkpoint,
             "status": state.status,
-            "prompt_catalog_path": str(prompt_catalog_path) if prompt_catalog_path else None,
+            **provenance,
         }
         print(_render_output(payload, args.format))
         return 2
@@ -3776,7 +3806,7 @@ def cmd_next(args: argparse.Namespace) -> int:
         "stage": state.stage,
         "checkpoint": state.checkpoint,
         "status": state.status,
-        "prompt_catalog_path": str(prompt_catalog_path) if prompt_catalog_path else None,
+        **provenance,
     }
     if args.workflow:
         payload["workflow"] = args.workflow

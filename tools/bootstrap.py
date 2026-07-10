@@ -359,6 +359,7 @@ def _runtime_helper_pairs(repo_root: Path, skills_root: Path) -> list[tuple[Path
         (repo_root / "tools" / "prompt_catalog_paths.py", vibe_loop_scripts / "prompt_catalog_paths.py"),
         (repo_root / "tools" / "resource_resolver.py", vibe_loop_scripts / "resource_resolver.py"),
         (repo_root / "tools" / "stage_ordering.py", vibe_loop_scripts / "stage_ordering.py"),
+        (repo_root / "tools" / "workflow_engine.py", vibe_loop_scripts / "workflow_engine.py"),
         (repo_root / "tools" / "prompt_catalog.py", vibe_prompts_scripts / "prompt_catalog.py"),
     ]
 

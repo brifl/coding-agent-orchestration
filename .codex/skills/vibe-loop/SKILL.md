@@ -41,7 +41,7 @@ This skill uses `.vibe/STATE.md` and `.vibe/PLAN.md` to recommend the next loop 
   - Installed skill directory: `python3 scripts/agentctl.py --repo-root . --format json loop-result --line 'LOOP_RESULT: {...}'`
 - Print the next loop prompt body directly:
   - Run: `python3 scripts/vibe_next_and_print.py --repo-root . --show-decision`
-  - The helper uses the same CODEX_HOME-aware layout detection as `tools/bootstrap.py` so it works from both repo trees and global installs.
+  - The helper uses the managed bundle containing the wrapper. `CODEX_HOME`/`AGENT_HOME` is only a fallback for incomplete legacy copies.
 
 ## Intended usage pattern
 
@@ -51,6 +51,6 @@ This skill uses `.vibe/STATE.md` and `.vibe/PLAN.md` to recommend the next loop 
 4) Record LOOP_RESULT via `agentctl loop-result`.
 5) Select next loop from `next`. Repeat until dispatcher returns stop or blocking.
 
-The `vibe_next_and_print.py` helper wraps `agentctl.py` and `prompt_catalog.py`, prints the decision JSON (when `--show-decision` is set), and then emits the prompt body from the catalog. It prefers source `tools/` helpers when present and otherwise uses generated installed skill scripts.
+The `vibe_next_and_print.py` helper wraps `agentctl.py` and `prompt_catalog.py`, prints the decision JSON (when `--show-decision` is set), and then emits the prompt body from the catalog. An installed wrapper uses its sibling generated helpers and catalog even when stale framework copies exist in the target repository. Source-repo commands continue to use the editable `tools/` and `prompts/` files directly.
 
 This skill intentionally does not implement product code by itself; it selects and gates the next action.

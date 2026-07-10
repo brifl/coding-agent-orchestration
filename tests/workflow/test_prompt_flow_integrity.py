@@ -256,6 +256,7 @@ def test_repo_skills_do_not_track_generated_runtime_helper_mirrors() -> None:
         repo_root / ".codex" / "skills" / "vibe-loop" / "scripts" / "prompt_catalog_paths.py",
         repo_root / ".codex" / "skills" / "vibe-loop" / "scripts" / "resource_resolver.py",
         repo_root / ".codex" / "skills" / "vibe-loop" / "scripts" / "stage_ordering.py",
+        repo_root / ".codex" / "skills" / "vibe-loop" / "scripts" / "workflow_engine.py",
         repo_root / ".codex" / "skills" / "vibe-prompts" / "scripts" / "prompt_catalog.py",
     ]
     skill_owned_scripts = [

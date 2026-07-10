@@ -11,6 +11,7 @@ Continuous loop helper:
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 import subprocess
@@ -214,12 +215,12 @@ def _prompt_for_loop_result(agentctl_path: Path, repo_root: Path) -> int:
 def _resolve_tool_paths(repo_root: Path) -> tuple[Path, Path]:
     skills_root = _skills_root_from_this_script()
     candidates_agentctl = [
-        repo_root / "tools" / "agentctl.py",
         skills_root / "vibe-loop" / "scripts" / "agentctl.py",
+        repo_root / "tools" / "agentctl.py",
     ]
     candidates_prompt_catalog = [
-        repo_root / "tools" / "prompt_catalog.py",
         skills_root / "vibe-prompts" / "scripts" / "prompt_catalog.py",
+        repo_root / "tools" / "prompt_catalog.py",
     ]
     agentctl_path = next((p for p in candidates_agentctl if p.exists()), None)
     prompt_catalog_path = next((p for p in candidates_prompt_catalog if p.exists()), None)
@@ -232,23 +233,39 @@ def _resolve_tool_paths(repo_root: Path) -> tuple[Path, Path]:
 
 def _default_catalog_candidates(repo_root: Path, skills_root: Path) -> list[Path]:
     return [
-        repo_root / "prompts" / "template_prompts.md",
+        skills_root / "vibe-prompts" / "resources" / "template_prompts.md",
         repo_root / ".codex" / "skills" / "vibe-prompts" / "resources" / "template_prompts.md",
         repo_root / "skills" / "vibe-prompts" / "resources" / "template_prompts.md",
-        skills_root / "vibe-prompts" / "resources" / "template_prompts.md",
+        repo_root / "prompts" / "template_prompts.md",
     ]
 
 
 def _resolve_catalog_path(repo_root: Path, decision: dict, user_catalog: str) -> Path:
+    if user_catalog:
+        return Path(user_catalog).expanduser().resolve()
     decision_catalog = decision.get("prompt_catalog_path")
     if isinstance(decision_catalog, str) and decision_catalog:
         return Path(decision_catalog).expanduser().resolve()
-    if user_catalog:
-        return Path(user_catalog).expanduser().resolve()
 
     skills_root = _skills_root_from_this_script()
     candidates = _default_catalog_candidates(repo_root, skills_root)
     return next((path for path in candidates if path.exists()), candidates[0])
+
+
+def _with_explicit_catalog_provenance(decision: dict, catalog_path: Path) -> dict:
+    updated = dict(decision)
+    try:
+        digest = hashlib.sha256(catalog_path.read_bytes()).hexdigest()
+    except OSError:
+        digest = None
+    updated.update(
+        {
+            "prompt_catalog_path": str(catalog_path),
+            "prompt_catalog_sha256": digest,
+            "prompt_catalog_mode": "explicit",
+        }
+    )
+    return updated
 
 
 def _record_workflow_approval(
@@ -384,6 +401,10 @@ def main() -> int:
         except RuntimeError as exc:
             print(f"ERROR: {exc}", file=sys.stderr)
             return 2
+
+        if args.catalog:
+            explicit_catalog = Path(args.catalog).expanduser().resolve()
+            decision = _with_explicit_catalog_provenance(decision, explicit_catalog)
 
         if args.show_decision:
             print(json.dumps(decision, indent=2, sort_keys=True), file=sys.stderr)

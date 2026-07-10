@@ -40,6 +40,11 @@ WORKFLOW_STEP_ORDER: dict[str, list[str]] = {
         "prompt.docs_refactor_analysis",
         "prompt.docs_refactor_fix",
     ],
+    "refactor-cycle": [
+        "prompt.refactor_scan",
+        "prompt.refactor_execute",
+        "prompt.refactor_verify",
+    ],
 }
 # Backward-compatible alias used by older callers/tests.
 BUILTIN_WORKFLOW_STEPS = WORKFLOW_STEP_ORDER

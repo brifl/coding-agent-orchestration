@@ -30,6 +30,20 @@ def canonical_repo_prompt_catalog_path(repo_root: Path) -> Path:
     return (repo_root / "prompts" / PROMPT_CATALOG_FILENAME).resolve()
 
 
+def runtime_installed_prompt_catalog_path() -> Path | None:
+    """Return the sibling prompt catalog for an installed vibe-loop runtime."""
+    module_path = Path(__file__).resolve()
+    scripts_dir = module_path.parent
+    skill_dir = scripts_dir.parent
+    skills_root = skill_dir.parent
+    if scripts_dir.name != "scripts" or skill_dir.name != "vibe-loop" or skills_root.name != "skills":
+        return None
+    candidate = skills_root / PROMPT_SKILL_NAME / "resources" / PROMPT_CATALOG_FILENAME
+    if candidate.exists():
+        return candidate.resolve()
+    return None
+
+
 def _iter_prompt_catalog_candidates_in_skills(skills_root: Path) -> list[Path]:
     seen: set[Path] = set()
     candidates: list[Path] = []
@@ -70,6 +84,9 @@ def resolve_installed_prompt_catalog_path(*, agent: str | None = None) -> Path |
 
 
 def resolve_prompt_catalog_path(repo_root: Path) -> Path | None:
+    runtime_catalog = runtime_installed_prompt_catalog_path()
+    if runtime_catalog is not None:
+        return runtime_catalog
     repo_catalog = canonical_repo_prompt_catalog_path(repo_root)
     if repo_catalog.exists():
         return repo_catalog

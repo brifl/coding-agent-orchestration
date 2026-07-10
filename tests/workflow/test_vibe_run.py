@@ -1,6 +1,7 @@
 """Tests for headless executor support in vibe_run.py."""
 from __future__ import annotations
 
+import hashlib
 import subprocess
 import sys
 from pathlib import Path
@@ -392,6 +393,49 @@ def test_vibe_run_falls_back_to_installed_vibe_prompts_catalog(tmp_path: Path) -
 
     assert proc.returncode == 0
     assert f"CATALOG={_installed_catalog_path(repo_root).resolve()}" in proc.stdout
+
+
+def test_vibe_run_explicit_catalog_updates_decision_provenance(tmp_path: Path) -> None:
+    repo_root = tmp_path / "repo"
+    _setup_fake_repo_catalog_fallback(
+        repo_root,
+        executor_body=(
+            "#!/usr/bin/env python3\n"
+            "print('LOOP_RESULT: {\"loop\":\"implement\",\"result\":\"pass\",\"stage\":\"1\",\"checkpoint\":\"1.0\","
+            "\"status\":\"NOT_STARTED\",\"next_role_hint\":\"implement\"}')\n"
+        ),
+        repo_catalog=True,
+        installed_catalog=False,
+    )
+    explicit_catalog = repo_root / "explicit" / "template_prompts.md"
+    _write_prompt_catalog(explicit_catalog)
+
+    runner = Path(__file__).resolve().parents[2] / ".codex" / "skills" / "vibe-run" / "scripts" / "vibe_run.py"
+    proc = subprocess.run(
+        [
+            sys.executable,
+            str(runner),
+            "--repo-root",
+            str(repo_root),
+            "--catalog",
+            str(explicit_catalog),
+            "--max-loops",
+            "1",
+            "--non-interactive",
+            "--simulate-loop-result",
+            "--show-decision",
+        ],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+    )
+
+    assert proc.returncode == 0, proc.stderr or proc.stdout
+    assert f"CATALOG={explicit_catalog.resolve()}" in proc.stdout
+    assert '"prompt_catalog_mode": "explicit"' in proc.stderr
+    assert f'"prompt_catalog_path": "{explicit_catalog.resolve()}"' in proc.stderr
+    digest = hashlib.sha256(explicit_catalog.read_bytes()).hexdigest()
+    assert f'"prompt_catalog_sha256": "{digest}"' in proc.stderr
 
 
 def test_vibe_run_executor_requires_loop_result_line(tmp_path: Path) -> None:

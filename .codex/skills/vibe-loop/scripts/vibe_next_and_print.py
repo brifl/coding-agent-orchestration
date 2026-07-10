@@ -10,14 +10,15 @@ Deterministic:
 - prompt catalog prints the exact body
 
 Robust install:
-- Locates the skills root from this script's path.
+- Uses the managed skills bundle that contains this script.
 - Locates vibe-prompts as a sibling skill folder.
-- Supports CODEX_HOME (or AGENT_HOME) if set.
+- Falls back to CODEX_HOME (or AGENT_HOME) only for incomplete legacy copies.
 """
 
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 import re
@@ -78,15 +79,13 @@ def _looks_like_skills_root(root: Path) -> bool:
 
 def _locate_skills_root() -> Path:
     """
-    Prefer the AGENT_HOME-aware install root but fall back to whichever root contains the skills layout.
+    Prefer this wrapper's managed bundle; use an environment install only as a legacy fallback.
     """
-    candidates: list[Path] = []
+    script_root = _skills_root_from_this_script()
+    candidates = [script_root]
     env_root = _skills_root_env_fallback()
     if env_root and env_root.exists():
         candidates.append(env_root)
-
-    script_root = _skills_root_from_this_script()
-    candidates.append(script_root)
 
     for candidate in candidates:
         if _looks_like_skills_root(candidate):
@@ -94,19 +93,6 @@ def _locate_skills_root() -> Path:
 
     # Nothing matched the heuristic; fall back to the script-derived location.
     return script_root
-
-
-def _load_stage_ordering(repo_root: Path):
-    tools_dir = repo_root / "tools"
-    if not tools_dir.exists():
-        return None
-    if str(tools_dir) not in sys.path:
-        sys.path.insert(0, str(tools_dir))
-    try:
-        import stage_ordering  # type: ignore
-    except Exception:
-        return None
-    return stage_ordering
 
 
 def _run_agentctl(repo_root: Path, agentctl_path: Path) -> dict:
@@ -151,11 +137,44 @@ def _print_prompt(prompt_catalog_path: Path, catalog_path: Path, prompt_id: str)
 
 def _default_catalog_candidates(repo_root: Path, skills_root: Path) -> list[Path]:
     return [
-        repo_root / "prompts" / "template_prompts.md",
+        skills_root / "vibe-prompts" / "resources" / "template_prompts.md",
         repo_root / ".codex" / "skills" / "vibe-prompts" / "resources" / "template_prompts.md",
         repo_root / "skills" / "vibe-prompts" / "resources" / "template_prompts.md",
-        skills_root / "vibe-prompts" / "resources" / "template_prompts.md",
+        repo_root / "prompts" / "template_prompts.md",
     ]
+
+
+def _resolve_tool_paths(repo_root: Path, skills_root: Path) -> tuple[Path | None, Path | None]:
+    installed_tools_dir = skills_root / "vibe-loop" / "scripts"
+    installed_prompt_dir = skills_root / "vibe-prompts" / "scripts"
+    agentctl_candidates = [
+        installed_tools_dir / "agentctl.py",
+        repo_root / "tools" / "agentctl.py",
+    ]
+    prompt_candidates = [
+        installed_prompt_dir / "prompt_catalog.py",
+        repo_root / "tools" / "prompt_catalog.py",
+    ]
+    return (
+        next((path for path in agentctl_candidates if path.exists()), None),
+        next((path for path in prompt_candidates if path.exists()), None),
+    )
+
+
+def _with_explicit_catalog_provenance(decision: dict, catalog_path: Path) -> dict:
+    updated = dict(decision)
+    try:
+        digest = hashlib.sha256(catalog_path.read_bytes()).hexdigest()
+    except OSError:
+        digest = None
+    updated.update(
+        {
+            "prompt_catalog_path": str(catalog_path),
+            "prompt_catalog_sha256": digest,
+            "prompt_catalog_mode": "explicit",
+        }
+    )
+    return updated
 
 
 def main() -> int:
@@ -164,7 +183,7 @@ def main() -> int:
     ap.add_argument(
         "--catalog",
         default="",
-        help="Optional path to template_prompts.md. If omitted, uses repo prompts/template_prompts.md, repo-local .codex/skills resources, or installed vibe-prompts resources.",
+        help="Optional explicit template_prompts.md override. If omitted, uses the active runtime's catalog.",
     )
     ap.add_argument(
         "--show-decision",
@@ -183,30 +202,9 @@ def main() -> int:
         print(f"ERROR: repo root not found: {repo_root}", file=sys.stderr)
         return 2
 
-    stage_ordering = _load_stage_ordering(repo_root)
-
-    # Locate skill install layout (prefers AGENT_HOME when present).
+    # Locate the managed bundle that owns this wrapper.
     skills_root = _locate_skills_root()
-
-    # Prefer repo-local tools when available to keep decisions aligned with the repo.
-    repo_tools_dir = repo_root / "tools"
-    fallback_tools_dir = skills_root.parent / "tools"
-    installed_tools_dir = skills_root / "vibe-loop" / "scripts"
-    installed_prompt_dir = skills_root / "vibe-prompts" / "scripts"
-
-    agentctl_candidates = [
-        repo_tools_dir / "agentctl.py",
-        fallback_tools_dir / "agentctl.py",
-        installed_tools_dir / "agentctl.py",
-    ]
-    prompt_candidates = [
-        repo_tools_dir / "prompt_catalog.py",
-        fallback_tools_dir / "prompt_catalog.py",
-        installed_prompt_dir / "prompt_catalog.py",
-    ]
-
-    agentctl_path = next((p for p in agentctl_candidates if p.exists()), None)
-    prompt_catalog_path = next((p for p in prompt_candidates if p.exists()), None)
+    agentctl_path, prompt_catalog_path = _resolve_tool_paths(repo_root, skills_root)
 
     if agentctl_path is None:
         print("ERROR: agentctl.py not found in repo or skills tools.", file=sys.stderr)
@@ -217,11 +215,9 @@ def main() -> int:
         return 2
 
     decision = _run_agentctl(repo_root, agentctl_path)
-    if stage_ordering and decision.get("stage"):
-        try:
-            stage_ordering.stage_sort_key(decision["stage"])
-        except Exception as exc:
-            print(f"WARNING: invalid stage id in decision: {exc}", file=sys.stderr)
+    if args.catalog:
+        explicit_catalog = Path(args.catalog).expanduser().resolve()
+        decision = _with_explicit_catalog_provenance(decision, explicit_catalog)
     prompt_id = decision.get("recommended_prompt_id")
     if not prompt_id:
         print(f"ERROR: agentctl decision missing recommended_prompt_id: {decision}", file=sys.stderr)
@@ -235,11 +231,10 @@ def main() -> int:
         if decision.get("recommended_role") == "stop":
             return 2
 
-    catalog_path_str = decision.get("prompt_catalog_path")
-    if catalog_path_str:
-        catalog_path = Path(catalog_path_str).expanduser().resolve()
-    elif args.catalog:
+    if args.catalog:
         catalog_path = Path(args.catalog).expanduser().resolve()
+    elif decision.get("prompt_catalog_path"):
+        catalog_path = Path(decision["prompt_catalog_path"]).expanduser().resolve()
     else:
         catalog_candidates = _default_catalog_candidates(repo_root, skills_root)
         catalog_path = next((path for path in catalog_candidates if path.exists()), catalog_candidates[0])
