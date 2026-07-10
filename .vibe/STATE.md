@@ -2,55 +2,50 @@
 
 ## Current focus
 
-- Stage: 33
-- Checkpoint: 33.2
-- Status: DONE  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
+- Stage: 34
+- Checkpoint: 34.0
+- Status: NOT_STARTED  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
 
 ## Objective (current checkpoint)
 
-Make repeated installs converge framework-owned files by content while preserving project-owned work.
+Make dispatcher status and next-step selection pure queries, with verification executed only when explicitly requested.
 
 ## Deliverables (current checkpoint)
 
-- Deterministic manifest of managed skill files and digests
-- Content-based managed refresh and removal of retired managed artifacts
-- Preservation of unrelated project skills and substantive workflow files
-- Legacy-upgrade and local-modification regression fixtures
+- Remove implicit PLAN demo-command execution from routing
+- Run each explicitly requested gate at most once
+- Keep proportional verification in review guidance rather than dispatcher side effects
+- Add subprocess-spy and gate invocation-count regression coverage
 
 ## Acceptance (current checkpoint)
 
-- Fresh install and legacy upgrade produce the same managed tree.
-- Retired skills, caches, bytecode, and obsolete managed resources are removed.
-- Project skills plus customized STATE/PLAN/AGENTS remain byte-identical.
-- Locally changed managed files are repaired by content and reported clearly.
+- `status` and normal `next` perform no subprocess work.
+- Dispatcher owns no PLAN smoke timeout or implicit demo execution.
+- `next --run-gates` executes every configured gate once.
+- Long legitimate demos do not alter role selection merely because they exceed 30 seconds.
 
 ## Current truth
 
-- Stage 33.1 completed self-first managed execution and provenance through `cc2c99c`.
-- Repo and global installs now share one framework-source, manifest-driven reconciler.
-- Managed skill directories converge by content, remove extras/retired artifacts, and roll back swaps if manifest commit fails.
-- Ownership is by managed skill name; sibling project skills and substantive repository workflow files remain outside that boundary.
+- Stage 33 is archived: consumers now execute and reinstall one provenance-visible managed runtime without local framework patches.
+- Current `IN_REVIEW` routing executes PLAN demo commands through `_smoke_test_gate` and imposes a 30-second timeout.
+- The Stage 33 reviews repeatedly reproduced the defect: a passing 48-second suite was misrouted to issues triage.
+- Explicit `next --run-gates` currently calls `run_gates` twice on the successful path.
 
 ## Workflow state
 
-- [x] STAGE_DESIGNED
+- [ ] STAGE_DESIGNED
+- [ ] MAINTENANCE_CYCLE_DONE
+- [ ] RETROSPECTIVE_DONE
+- [x] RUN_CONTEXT_CAPTURE
 
 ## Work log (current session)
 
-- 2026-07-10: Split the Stage 33 review gap into self-first execution (33.1) and convergent managed reinstall (33.2), then replaced the near-term roadmap with the audited correctness, context, and protocol work.
-- 2026-07-10: Implemented self-first runtime/catalog resolution, fail-closed incomplete bundles, provenance digests/modes, and adversarial consumer fixtures.
-- 2026-07-10: Review PASS; all checkpoint acceptance items have direct fixture evidence. Dispatcher smoke timeout is deferred to checkpoint 34.0.
-- 2026-07-10: Advanced to 33.2 to replace incremental copying with a deterministic managed-tree reconciliation contract.
-- 2026-07-10: Implemented deterministic manifests, staged digest validation, rollback-safe swaps, content repair reporting, and legacy/fresh convergence fixtures.
-- 2026-07-10: Review PASS; managed ownership, convergence, cleanup, preservation, and rollback acceptance all have direct fixture evidence.
+- 2026-07-10: Consolidated completed Stage 33 into HISTORY and advanced to checkpoint 34.0.
 
 ## Evidence
 
-- Commit `cd62633`: manifest-driven reconciler, unified install paths, ownership docs, and upgrade/rollback fixtures.
-- `18 passed` bootstrap suite; `44 passed` combined bootstrap/skill/prompt suites; Ruff and strict validation passed.
-- Fresh/global/legacy manifests and managed trees match; future-mtime edits are repaired and reported; second reinstall is a no-op.
-- Project skill plus customized AGENTS/STATE/PLAN stayed byte-identical; retired alias, caches, bytecode, and obsolete catalog were removed.
-- Full workflow suite: `295 passed, 2 failed`; the same pre-existing feedback tests omit `_DecisionContext.recent_resolved_triage_for_current_state`.
+- Stage 33 outcome and commit span are archived in `.vibe/HISTORY.md`.
+- 34.0 trigger: passing bootstrap/skill verification took 48 seconds but implicit review smoke timed out at 30 seconds and changed the recommended role.
 
 ## Active issues
 
