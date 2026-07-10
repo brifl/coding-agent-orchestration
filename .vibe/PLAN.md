@@ -29,7 +29,7 @@ Make fresh and existing consumer repositories execute one current, framework-own
 * **Evidence:**
   * Commits `1abe5ff` through `ed17740`; focused bootstrap/routing/deferral suites passed.
 
-### 33.1 — Make installed execution self-first and provenance-visible
+### (DONE) 33.1 — Make installed execution self-first and provenance-visible
 
 * **Objective:**
   Ensure installed Vibe entrypoints execute their sibling managed runtime and prompt catalog instead of silently preferring stale target-repo framework copies.

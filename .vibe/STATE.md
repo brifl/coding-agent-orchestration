@@ -4,7 +4,7 @@
 
 - Stage: 33
 - Checkpoint: 33.1
-- Status: IN_REVIEW  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
+- Status: DONE  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
 
 ## Objective (current checkpoint)
 
@@ -39,6 +39,7 @@ Ensure installed Vibe entrypoints execute their sibling managed runtime and prom
 
 - 2026-07-10: Split the Stage 33 review gap into self-first execution (33.1) and convergent managed reinstall (33.2), then replaced the near-term roadmap with the audited correctness, context, and protocol work.
 - 2026-07-10: Implemented self-first runtime/catalog resolution, fail-closed incomplete bundles, provenance digests/modes, and adversarial consumer fixtures.
+- 2026-07-10: Review PASS; all checkpoint acceptance items have direct fixture evidence. Dispatcher smoke timeout is deferred to checkpoint 34.0.
 
 ## Evidence
 
@@ -46,6 +47,7 @@ Ensure installed Vibe entrypoints execute their sibling managed runtime and prom
 - `45 passed` across wrapper/bootstrap/prompt/workflow suites; Ruff and strict validation passed.
 - Adversarial fixture honored project workflow YAML while stale target Python/catalog markers remained untouched; missing managed runtime/catalog failed closed.
 - Full workflow baseline: `288 passed, 2 failed`; both failures predate this diff and omit an existing `_DecisionContext` field in feedback tests.
+- Review note: dispatcher timed out the passing 48-second bootstrap/skill suite at its hard-coded 30-second smoke limit; checkpoint 34.0 removes that implicit gate.
 
 ## Active issues
 
