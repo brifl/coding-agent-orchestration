@@ -4,7 +4,7 @@
 
 - Stage: 33
 - Checkpoint: 33.1
-- Status: NOT_STARTED  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
+- Status: IN_REVIEW  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
 
 ## Objective (current checkpoint)
 
@@ -27,8 +27,8 @@ Ensure installed Vibe entrypoints execute their sibling managed runtime and prom
 ## Current truth
 
 - Stage 33.0 delivered the fresh install and repository-aware backlog path through `ed17740`.
-- Real consumer evidence showed Tartu still executes older copied tools/prompts because installed wrappers prefer target-repo files.
-- Tartu's local `agentctl.py` contains no project-only behavior; its useful fixes already exist upstream.
+- Installed wrappers now execute only their sibling runtime/catalog by default and label explicit overrides in decision provenance.
+- The managed helper bundle now includes `workflow_engine.py`, preserving project YAML behavior without importing target Python.
 - Reinstall convergence remains separate checkpoint 33.2 work after resolution precedence is corrected.
 
 ## Workflow state
@@ -38,12 +38,14 @@ Ensure installed Vibe entrypoints execute their sibling managed runtime and prom
 ## Work log (current session)
 
 - 2026-07-10: Split the Stage 33 review gap into self-first execution (33.1) and convergent managed reinstall (33.2), then replaced the near-term roadmap with the audited correctness, context, and protocol work.
+- 2026-07-10: Implemented self-first runtime/catalog resolution, fail-closed incomplete bundles, provenance digests/modes, and adversarial consumer fixtures.
 
 ## Evidence
 
-- Tartu override audit: local `agentctl.py` is an older upstream snapshot; local prompt-path delta only retains removed `vibe-one-loop`.
-- Runtime audit: installed wrappers prefer target `tools/`, prompt lookup prefers target `prompts/`, and `_sync_dir` neither deletes extras nor refreshes newer-mtime destinations.
-- Token/lifecycle audit: dispatch runs hidden verification; automatic maintenance cannot close its flag contract; current CONTEXT is stale.
+- Commits `654aa05` and `6926529`: managed runtime/catalog precedence, workflow-engine packaging, provenance, and fail-closed overrides.
+- `45 passed` across wrapper/bootstrap/prompt/workflow suites; Ruff and strict validation passed.
+- Adversarial fixture honored project workflow YAML while stale target Python/catalog markers remained untouched; missing managed runtime/catalog failed closed.
+- Full workflow baseline: `288 passed, 2 failed`; both failures predate this diff and omit an existing `_DecisionContext` field in feedback tests.
 
 ## Active issues
 
