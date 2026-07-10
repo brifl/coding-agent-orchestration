@@ -4,32 +4,34 @@
 
 - `tools/agentctl.py` is the editable source dispatcher; bootstrap generates its installed helper bundle under `.codex/skills/vibe-loop/scripts/`.
 - `prompts/template_prompts.md` is the editable source catalog; installed consumers receive one generated `vibe-prompts` resource.
+- `tools/managed_install.py` owns deterministic managed-skill manifests, staged swaps, and rollback; sibling skill names remain project-owned.
 - `.vibe/PLAN.md` is the near-term roadmap and `.vibe/STATE.md` is the active checkpoint cockpit.
 
 ## Key Decisions
 
 - 2026-07-10: Installed wrappers must execute sibling managed tools/prompts; project overrides require explicit, provenance-visible configuration.
-- 2026-07-10: Reinstall will become content-addressed and convergent while preserving project-owned workflow files and skills.
+- 2026-07-10: Reinstall is content-addressed and convergent while preserving project-owned workflow files and skills.
 - 2026-07-10: Pure dispatch and removal of automatic meta loops precede broader protocol/context simplification.
 
 ## Gotchas
 
-- Current installed wrappers prefer target-repo `tools/`, and prompt resolution prefers target `prompts/template_prompts.md`; stale consumer copies can shadow current installs.
-- `_sync_dir` skips newer-mtime destinations and never deletes extras, so current reinstall is not convergent.
 - Current `status`/`next` can execute checkpoint demos during review; avoid using them as read-only probes until Stage 34.0.
+- Successful `next --run-gates` currently runs configured gates twice; keep gate invocation counting in the 34.0 regression surface.
 - `.vibe/` is ignored by pattern but selected workflow files are already tracked; explicit tracked-file staging may emit an ignore warning.
 
 ## Hot Files
 
-- `.codex/skills/vibe-run/scripts/vibe_run.py`
-- `.codex/skills/vibe-loop/scripts/vibe_next_and_print.py`
 - `tools/agentctl.py`
-- `tools/prompt_catalog_paths.py`
-- `tools/bootstrap.py`
-- `tests/workflow/test_vibe_run.py`
-- `tests/workflow/test_bootstrap.py`
+- `tests/workflow/test_agentctl_routing.py`
+- `tests/workflow/test_agentctl.py`
 
 ## Agent Notes
 
-- Active work is Stage 33 checkpoint 33.1: self-first installed execution and provenance.
-- Checkpoint 33.2 follows with manifest-based managed reinstall convergence.
+- Active work is Stage 34 checkpoint 34.0: remove implicit verification from routing and deduplicate explicit gates.
+
+## Stage Retrospective Notes
+
+- Stage 33 added checkpoints 33.1/33.2 after real Tartu and Story Engine evidence contradicted the original completion surface; future packaging stages should begin with an adversarial existing-consumer upgrade fixture.
+- Checkpoint 33.1 needed a review correction because “prefer sibling” still allowed silent stale-local fallback; encode ownership as fail-closed plus explicit provenance at design time.
+- Both Stage 33 reviews were misrouted when passing verification exceeded the dispatcher’s hidden 30-second timeout; checkpoint 34.0 must make role queries subprocess-free and leave verification explicitly requested.
+- Checkpoint 33.2 stayed bounded by defining ownership at the managed skill-name boundary; reuse explicit ownership boundaries when preserving project extensions during framework upgrades.
