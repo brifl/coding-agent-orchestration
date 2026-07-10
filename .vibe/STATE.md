@@ -3,33 +3,34 @@
 ## Current focus
 
 - Stage: 34
-- Checkpoint: 34.0
-- Status: DONE  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
+- Checkpoint: 34.1
+- Status: NOT_STARTED  <!-- NOT_STARTED | IN_PROGRESS | IN_REVIEW | BLOCKED | DONE -->
 
 ## Objective (current checkpoint)
 
-Make dispatcher status and next-step selection pure queries, with verification executed only when explicitly requested.
+Reduce the normal lifecycle to design when needed, implementation, review, and one bounded stage rollover.
 
 ## Deliverables (current checkpoint)
 
-- Remove implicit PLAN demo-command execution from routing
-- Run each explicitly requested gate at most once
-- Keep proportional verification in review guidance rather than dispatcher side effects
-- Add subprocess-spy and gate invocation-count regression coverage
+- Remove automatic retrospective, maintenance, context-capture, and process-improvement routing
+- Remove obsolete lifecycle flags from templates, prompts, parser logic, and tests
+- Keep one bounded stage-rollover path that designs only when the next checkpoint is not executable
+- Represent maintenance as explicit PLAN work or explicitly invoked specialized workflows
 
 ## Acceptance (current checkpoint)
 
-- `status` and normal `next` perform no subprocess work.
-- Dispatcher owns no PLAN smoke timeout or implicit demo execution.
-- `next --run-gates` executes every configured gate once.
-- Long legitimate demos do not alter role selection merely because they exceed 30 seconds.
+- Fresh install reaches implementation immediately after its initial design.
+- A stage transition consumes at most two loops before implementation.
+- Routing depends on no wall-clock age, stage number, line count, or lifecycle booleans.
+- Maintenance scans cannot enter normal product review implicitly.
 
 ## Current truth
 
 - Stage 33 is archived: consumers now execute and reinstall one provenance-visible managed runtime without local framework patches.
-- `status` and normal `next` no longer execute subprocesses or PLAN demo commands.
-- Review routing is based on checkpoint state; implementation/review prompts select proportional verification explicitly.
-- `next --run-gates` stores and reports one gate execution result instead of invoking successful gates twice.
+- Checkpoint 34.0 made role queries subprocess-free and explicit gates single-run.
+- The Stage 34 transition still consumed consolidation, retrospective, design, modulo maintenance, and context bookkeeping before implementation.
+- Maintenance prompt selection has no automatic flag-closing contract and can loop or route its scan into normal review.
+- Context, work-log, stage-number, and lifecycle-flag heuristics remain in `_decide_role` and its context gatherer.
 
 ## Workflow state
 
@@ -46,12 +47,12 @@ Make dispatcher status and next-step selection pure queries, with verification e
 - 2026-07-10: Folded the modulo-selected maintenance test gaps into 34.0 and reused the freshly updated CONTEXT instead of duplicating non-building loops.
 - 2026-07-10: Removed implicit review smoke execution, deduplicated explicit gates, and aligned tests/prompts/docs with proportional verification.
 - 2026-07-10: Review PASS; routing purity, one-run gates, and proportional verification acceptance all pass with the full workflow suite green.
+- 2026-07-10: Advanced to 34.1 to delete the transition ceremony directly observed while entering Stage 34.
 
 ## Evidence
 
-- Commit `a05dfff`: subprocess-free routing, one-run explicit gates, proportional verification guidance, and stale smoke-surface removal.
-- `128 passed` focused routing/agentctl/feedback/prompt suites; full workflow suite `289 passed`; Ruff and strict validation passed.
-- Subprocess spy covers both status and normal next; invocation-count fixture proves successful `next --run-gates` calls `run_gates` once.
+- Checkpoint 34.0: commits `a05dfff` and `c6efdc4`; full workflow suite `289 passed`.
+- 34.1 trigger evidence: the Stage 34 transition required four non-building flag updates and selected a modulo test prompt that could not close its own flag.
 
 ## Active issues
 
