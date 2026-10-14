@@ -99,10 +99,7 @@ LOOP_RESULT_LOOPS = {
     "review",
     "issues_triage",
     "consolidation",
-    "context_capture",
-    "improvements",
     "advance",
-    "retrospective",
 }
 LOOP_REPORT_REQUIRED_FIELDS = (
     "acceptance_matrix",
@@ -132,11 +129,8 @@ Role = Literal[
     "review",
     "implement",
     "design",
-    "context_capture",
     "consolidation",
-    "improvements",
     "advance",
-    "retrospective",
     "stop",
 ]
 
@@ -553,18 +547,6 @@ def _get_stage_for_checkpoint(plan_text: str, checkpoint_id: str) -> str | None:
             return current_stage
 
     return None
-
-
-def _get_stage_number(stage_id: str) -> int | None:
-    """Extract the numeric prefix from a stage ID for modular arithmetic.
-
-    Examples: "21" -> 21, "21A" -> 21, "22" -> 22, "5B" -> 5.
-    Returns None if the stage ID does not start with digits.
-    """
-    if not stage_id:
-        return None
-    m = re.match(r"(\d+)", stage_id)
-    return int(m.group(1)) if m else None
 
 
 def _detect_stage_transition(
@@ -2286,195 +2268,29 @@ def _get_section_lines(sections: dict[str, list[str]], section_name: str) -> lis
     return []
 
 
-def _normalize_flag_name(raw: str) -> str:
-    return re.sub(r"[^A-Za-z0-9]+", "_", raw.strip()).strip("_").upper()
-
-
-def _parse_workflow_flags(state_text: str) -> dict[str, bool]:
-    sections = _parse_context_sections(state_text)
-    lines = _get_section_lines(sections, "Workflow state")
-    flags: dict[str, bool] = {}
-
-    checkbox_pat = re.compile(r"^\s*-\s*\[\s*([xX ])\s*\]\s*(.+?)\s*$")
-    bullet_pat = re.compile(r"^\s*-\s+(.+?)\s*$")
-
-    for raw in lines:
-        m = checkbox_pat.match(raw)
-        if m:
-            flag = _normalize_flag_name(m.group(2))
-            if flag:
-                flags[flag] = m.group(1).strip().lower() == "x"
-            continue
-        b = bullet_pat.match(raw)
-        if b:
-            value = b.group(1).strip()
-            if value.lower() in {"none", "none.", "(none)", "(none yet)"}:
-                continue
-            flag = _normalize_flag_name(value)
-            if flag:
-                flags[flag] = True
-
-    return flags
-
-
-def _load_workflow_flags(repo_root: Path) -> dict[str, bool]:
-    state_path = repo_root / ".vibe" / "STATE.md"
-    if not state_path.exists():
-        return {}
-    return _parse_workflow_flags(_read_text(state_path))
-
-
-def _context_capture_trigger_reason(repo_root: Path, workflow_flags: dict[str, bool]) -> str | None:
-    if workflow_flags.get("RUN_CONTEXT_CAPTURE"):
-        return "Workflow flag RUN_CONTEXT_CAPTURE is set."
-
-    context_path = repo_root / ".vibe" / "CONTEXT.md"
-    state_path = repo_root / ".vibe" / "STATE.md"
-    plan_path = repo_root / ".vibe" / "PLAN.md"
-    history_path = repo_root / ".vibe" / "HISTORY.md"
-
-    if not context_path.exists():
-        return "Context snapshot missing (.vibe/CONTEXT.md)."
-
-    context_mtime = context_path.stat().st_mtime
-    sources = [p for p in (state_path, plan_path, history_path) if p.exists()]
-    if not sources:
-        return None
-
-    latest_source_mtime = max(p.stat().st_mtime for p in sources)
-    if latest_source_mtime - context_mtime > 24 * 3600:
-        return "Context snapshot is stale (>24h older than workflow docs)."
-
+def _stage_design_trigger_reason(state: StateInfo, plan_text: str) -> str | None:
+    """Route to design only when the active checkpoint is missing or still a template."""
+    if not state.checkpoint:
+        return "Active checkpoint is missing; stage design is required."
+    section = _extract_checkpoint_section(plan_text, state.checkpoint)
+    if section is None:
+        return f"Checkpoint {state.checkpoint} is missing from PLAN; stage design is required."
+    if re.search(r"<[^>\n]+>", section):
+        return f"Checkpoint {state.checkpoint} still contains placeholders; stage design is required."
+    missing_fields = [
+        name
+        for name in _CHECKPOINT_FIELD_NAMES
+        if not re.search(
+            rf"(?im)^\s*(?:[-*]+\s*)?(?:\*\*)?\s*{re.escape(name)}\s*:?\s*(?:\*\*)?\s*:?\s*$",
+            section,
+        )
+    ]
+    if missing_fields:
+        return (
+            f"Checkpoint {state.checkpoint} is not executable; missing "
+            f"{', '.join(missing_fields)}. Run stage design."
+        )
     return None
-
-
-def _count_nonempty_signal_lines(lines: list[str]) -> int:
-    count = 0
-    for raw in lines:
-        line = raw.strip()
-        if not line:
-            continue
-        if line.startswith("<!--"):
-            continue
-        if line.lower() in {"none", "none.", "(none)", "(none yet)", "(none yet)."}:
-            continue
-        count += 1
-    return count
-
-
-def _consolidation_trigger_reason(repo_root: Path) -> str | None:
-    """Check if work log bloat warrants a consolidation loop."""
-    state_path = repo_root / ".vibe" / "STATE.md"
-    if not state_path.exists():
-        return None
-
-    sections = _parse_context_sections(_read_text(state_path))
-    work_log_lines = _get_section_lines(sections, "Work log (current session)")
-    work_log_entries = sum(1 for line in work_log_lines if re.match(r"^\s*-\s+", line))
-    if work_log_entries > WORK_LOG_CONSOLIDATION_CAP:
-        return f"Work log has {work_log_entries} entries (>{WORK_LOG_CONSOLIDATION_CAP}); consolidation needed to prune."
-
-    return None
-
-
-def _process_improvements_trigger_reason(
-    repo_root: Path,
-    workflow_flags: dict[str, bool],
-    current_checkpoint: str | None = None,
-) -> str | None:
-    if workflow_flags.get("RUN_PROCESS_IMPROVEMENTS"):
-        return "Workflow flag RUN_PROCESS_IMPROVEMENTS is set."
-
-    # If improvements already ran this cycle, suppress the auto-trigger
-    if workflow_flags.get("PROCESS_IMPROVEMENTS_DONE"):
-        return None
-
-    # Retrospective trigger: every 5 stages
-    if current_checkpoint:
-        stage_num = _get_stage_number(current_checkpoint.split(".")[0] if "." in current_checkpoint else current_checkpoint)
-        if stage_num is not None and stage_num > 0 and stage_num % 5 == 0:
-            return f"Stage {stage_num} retrospective: stage number is divisible by 5."
-
-    state_path = repo_root / ".vibe" / "STATE.md"
-    if not state_path.exists():
-        return None
-
-    sections = _parse_context_sections(_read_text(state_path))
-    evidence_lines = _get_section_lines(sections, "Evidence")
-
-    evidence_signal_lines = _count_nonempty_signal_lines(evidence_lines)
-    if evidence_signal_lines > 50:
-        return f"Evidence section has {evidence_signal_lines} non-empty lines (>50)."
-
-    return None
-
-
-def _stage_design_trigger_reason(workflow_flags: dict[str, bool]) -> str | None:
-    """Check if stage design should run before implementation.
-
-    Stage design runs once per stage when STAGE_DESIGNED flag is not set.
-    The flag is cleared on stage transitions (by consolidation) and set
-    by the stage design loop.
-    """
-    if workflow_flags.get("STAGE_DESIGNED"):
-        return None
-    # Only trigger if the flag key exists in workflow state (backward-compat:
-    # repos without the flag won't get unexpected design loops).
-    if "STAGE_DESIGNED" not in workflow_flags:
-        return None
-    return "New stage entered without design; STAGE_DESIGNED flag not set."
-
-
-def _retrospective_trigger_reason(workflow_flags: dict[str, bool]) -> str | None:
-    """Check if a stage retrospective should run after a stage transition.
-
-    Retrospective runs once per stage when RETROSPECTIVE_DONE flag is not set.
-    Consolidation clears the flag; the retrospective loop sets it.
-    Backward-compat: repos without the flag in workflow state won't get unexpected loops.
-    """
-    if workflow_flags.get("RETROSPECTIVE_DONE"):
-        return None
-    if "RETROSPECTIVE_DONE" not in workflow_flags:
-        return None
-    return "Stage transition completed without retrospective; RETROSPECTIVE_DONE flag not set."
-
-
-_MAINTENANCE_CYCLE_TYPES = {0: "refactor", 1: "test", 2: "docs"}
-_MAINTENANCE_PROMPT_MAP = {
-    "refactor": "prompt.refactor_scan",
-    "test": "prompt.test_gap_analysis",
-    "docs": "prompt.docs_gap_analysis",
-}
-
-
-def _maintenance_cycle_trigger_reason(
-    workflow_flags: dict[str, bool],
-    stage_id: str | None,
-) -> tuple[str | None, str | None]:
-    """Check if a periodic maintenance cycle should run.
-
-    Returns (reason, prompt_id) or (None, None).
-
-    Cycle type is determined by stage_number % 3:
-      0 → refactor, 1 → test backfill, 2 → documentation.
-    """
-    if workflow_flags.get("MAINTENANCE_CYCLE_DONE"):
-        return (None, None)
-    if "MAINTENANCE_CYCLE_DONE" not in workflow_flags:
-        return (None, None)
-    if not stage_id:
-        return (None, None)
-
-    stage_num = _get_stage_number(stage_id)
-    if stage_num is None:
-        return (None, None)
-
-    cycle_type = _MAINTENANCE_CYCLE_TYPES.get(stage_num % 3, "refactor")
-    prompt_id = _MAINTENANCE_PROMPT_MAP[cycle_type]
-    return (
-        f"Stage {stage_num} maintenance cycle: {cycle_type} (stage % 3 == {stage_num % 3}).",
-        prompt_id,
-    )
 
 
 def _has_unprocessed_feedback(repo_root: Path) -> tuple[bool, str]:
@@ -2502,12 +2318,8 @@ def _has_unprocessed_feedback(repo_root: Path) -> tuple[bool, str]:
 @dataclass(frozen=True)
 class _DecisionContext:
     """Pre-loaded IO context for the pure role-decision function."""
-    workflow_flags: dict[str, bool]
     plan_text: str
     recent_resolved_triage_for_current_state: bool
-    context_capture_reason: str | None
-    consolidation_reason: str | None
-    process_improvements_reason: str | None
     unprocessed_feedback_reason: str | None
 
 
@@ -2531,18 +2343,11 @@ def _recent_resolved_triage_for_current_state(repo_root: Path) -> bool:
 
 def _gather_decision_context(state: StateInfo, repo_root: Path) -> _DecisionContext:
     """Perform all IO needed for role selection and bundle into a context object."""
-    workflow_flags = _load_workflow_flags(repo_root)
     plan_path = repo_root / ".vibe" / "PLAN.md"
     plan_text = _read_text(plan_path) if plan_path.exists() else ""
     return _DecisionContext(
-        workflow_flags=workflow_flags,
         plan_text=plan_text,
         recent_resolved_triage_for_current_state=_recent_resolved_triage_for_current_state(repo_root),
-        context_capture_reason=_context_capture_trigger_reason(repo_root, workflow_flags),
-        consolidation_reason=_consolidation_trigger_reason(repo_root),
-        process_improvements_reason=_process_improvements_trigger_reason(
-            repo_root, workflow_flags, state.checkpoint
-        ),
         unprocessed_feedback_reason=_has_unprocessed_feedback(repo_root)[1] or None,
     )
 
@@ -2677,33 +2482,10 @@ def _decide_role(state: StateInfo, ctx: _DecisionContext) -> tuple[Role, str, st
                 None,
             )
 
-        # Maintenance loops fire before implementation when NOT_STARTED.
         if state.status == "NOT_STARTED":
-            # Retrospective — runs once per stage after a transition, before design
-            retro_reason = _retrospective_trigger_reason(ctx.workflow_flags)
-            if retro_reason:
-                return ("retrospective", retro_reason, None)
-
-            # Stage design check — runs once per stage after retrospective
-            stage_design_reason = _stage_design_trigger_reason(ctx.workflow_flags)
+            stage_design_reason = _stage_design_trigger_reason(state, ctx.plan_text)
             if stage_design_reason:
                 return ("design", stage_design_reason, None)
-
-            # Maintenance cycle — refactor/test/docs based on stage%3
-            maint_reason, maint_prompt = _maintenance_cycle_trigger_reason(
-                ctx.workflow_flags, state.stage,
-            )
-            if maint_reason and maint_prompt:
-                return ("implement", maint_reason, maint_prompt)
-
-            if ctx.context_capture_reason:
-                return ("context_capture", ctx.context_capture_reason, None)
-
-            if ctx.consolidation_reason:
-                return ("consolidation", ctx.consolidation_reason, None)
-
-            if ctx.process_improvements_reason:
-                return ("improvements", ctx.process_improvements_reason, None)
 
         return ("implement", f"Checkpoint status is {state.status}.", None)
 
@@ -2746,25 +2528,13 @@ PROMPT_MAP: dict[Role, dict[str, str]] = {
         "id": "prompt.stage_design",
         "title": "Stage Design Prompt",
     },
-    "context_capture": {
-        "id": "prompt.context_capture",
-        "title": "Context Capture Prompt",
-    },
     "consolidation": {
         "id": "prompt.consolidation",
         "title": "Consolidation Prompt (docs sync + archival)",
     },
-    "improvements": {
-        "id": "prompt.process_improvements",
-        "title": "Process Improvements Prompt (system uplift)",
-    },
     "advance": {
         "id": "prompt.advance_checkpoint",
         "title": "Advance Checkpoint Prompt",
-    },
-    "retrospective": {
-        "id": "prompt.retrospective",
-        "title": "Stage Retrospective Prompt",
     },
     "stop": {
         "id": "stop",
